@@ -11,6 +11,7 @@ import Role from '../models/role.model';
 import IUser from '../interfaces/user.interface';
 import moment = require('moment');
 import IRole from '../interfaces/role.interface';
+import { Types } from 'mongoose';
 const csv = require('fast-csv');
 
 
@@ -258,24 +259,57 @@ class PrescriptionController implements BaseController {
   public getCsv = async (req: Request, res: Response) => {
     const fechaDesde = moment(req.body.fechaDesde, 'YYYY-MM-DD').startOf('day').toDate();
     const fechaHasta = moment(req.body.fechaHasta, 'YYYY-MM-DD').endOf('day').toDate();
+    const pipeline = [
+      {
+        "$match": {
+          "dispensedAt": { $gte: fechaDesde, $lte: fechaHasta },
+          "status": 'Dispensada',
+          'dispensedBy.userId': new Types.ObjectId(req.body.pharmacistId)
+        }
+      },
+      {
+        "$unwind": '$supplies'
+      },
+      {
+        "$project": {
+          "_id": 0,
+          "IdReceta": { "$toString": '$_id' },
+          "Medico": "$professional.businessName",
+          "Matricula": "$professional.enrollment",
+          "Farmacia": "$dispensedBy.businessName",
+          "Droga": "$supplies.supply.name",
+          "Cantidad": "$supplies.quantity",
+          "Fecha_receta": {
+            "$dateToString": {
+              "date": '$date',
+              "format": "%d/%m/%Y",
+              "timezone": "America/Argentina/Buenos_Aires"
+            }
+          },
+          "Fecha_dispensa": {
+            "$dateToString": {
+              "date": '$dispensedAt',
+              "format": "%d/%m/%Y",
+              "timezone": "America/Argentina/Buenos_Aires"
+            }
+          }
 
-    const listado = await Prescription.find({
-      date: { $gte: fechaDesde, $lte: fechaHasta },
-      status: 'Dispensada',
-      'dispensedBy.userId': req.body.pharmacistId
-    });
+        }
+      }];
+    const listado = await Prescription.aggregate(pipeline);
     res.set('Content-Type', 'text/csv');
     res.setHeader('Content-disposition', 'attachment');
     csv.write(listado, {
       headers: true, transform: (row: any) => {
         return {
-          Id: row.id,
-          Medico: row.professional.businessName,
-          Matricula: row.professional.enrollment,
-          Farmacia: row.dispensedBy.businessName,
-          Drogas: this.getSupplies(row.supplies),
-          'Fecha receta': moment(row.date).format('DD/MM/YYYY'),
-          'Fecha de dispensa': moment(row.dispensedAt).format('DD/MM/YYYY'), //ver esta fecha
+          Id: row.IdReceta,
+          Medico: row.Medico,
+          Matricula: row.Matricula,
+          Farmacia: row.Farmacia,
+          Drogas: row.Droga,
+          Cantidad: row.Cantidad,
+          'Fecha_receta': row.Fecha_receta,
+          'Fecha_dispensa': row.Fecha_dispensa
         };
       }
     }).pipe(res);
