@@ -111,9 +111,8 @@ class PrescriptionController implements BaseController {
 
       // define a default date for retrieve all the documents if the date its not provided
       const defaultStart = '1900-01-01';
-      const defaultEnd = '3000-12-31';
       let startDate: Date = moment(defaultStart, 'YYYY-MM-DD').startOf('day').toDate();
-      let endDate: Date = moment(defaultEnd, 'YYYY-MM-DD').endOf('day').toDate();
+      let endDate: Date = moment(new Date()).endOf('day').toDate();
 
       if (typeof (filterDate) !== 'undefined') {
         startDate = moment(filterDate, 'YYYY-MM-DD').startOf('day').toDate();
