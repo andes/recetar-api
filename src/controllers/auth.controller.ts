@@ -9,6 +9,7 @@ import User from '../models/user.model';
 import IRole from '../interfaces/role.interface';
 import Role from '../models/role.model';
 import { renderHTML, MailOptions, sendMail } from '../utils/roboSender/sendEmail';
+import needle from 'needle';
 
 class AuthController {
 
@@ -300,6 +301,18 @@ class AuthController {
       attachments: null
     };
     await sendMail(options);
+  }
+
+  public getPharmacyAndes = async (req: Request, res: Response): Promise<Response> => {
+    try{
+      const { cuil } = req.params;
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN }, params: { 'cuil': cuil }});
+      // const resp = await needle('get', `${process.env.ANDES_ENDPOINT_DEV}/core/tm/farmacias`, {headers: { 'Authorization': process.env.JWT_LOCAL_TOKEN }, params: { 'cuil': cuil }});
+      return res.status(200).json(resp.body);
+    }catch(err){
+      console.log(err);
+      return res.status(500).json('Server Error');
+    }
   }
 
 }
