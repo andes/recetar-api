@@ -9,6 +9,7 @@ import User from '../models/user.model';
 import IRole from '../interfaces/role.interface';
 import Role from '../models/role.model';
 import { renderHTML, MailOptions, sendMail } from '../utils/roboSender/sendEmail';
+import needle from 'needle';
 
 class AuthController {
 
@@ -300,6 +301,28 @@ class AuthController {
       attachments: null
     };
     await sendMail(options);
+  }
+
+  public getPharmacyAndes = async (req: Request, res: Response): Promise<Response> => {
+    try{
+      const cuil = req.query.cuil;
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${cuil}`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN }});
+      // const resp = await needle('get', `${process.env.ANDES_ENDPOINT_DEV}/core/tm/farmacias?cuil=${cuil}`, {headers: { 'Authorization': process.env.JWT_LOCAL_TOKEN }});
+      return res.status(200).json(resp.body);
+    }catch(err){
+      return res.status(500).json('Server Error');
+    }
+  }
+
+  public getProfessionalsAndes = async (req: Request, res: Response): Promise<Response> => {
+    try{
+      const documento = req.query.documento;
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${documento}`);
+      return res.status(200).json(resp.body);
+    }catch(err){
+      console.log(err);
+      return res.status(500).json('Server Error');
+    }
   }
 
 }
