@@ -305,9 +305,19 @@ class AuthController {
 
   public getPharmacyAndes = async (req: Request, res: Response): Promise<Response> => {
     try{
-      const { cuil } = req.params;
-      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN }, params: { 'cuil': cuil }});
-      // const resp = await needle('get', `${process.env.ANDES_ENDPOINT_DEV}/core/tm/farmacias`, {headers: { 'Authorization': process.env.JWT_LOCAL_TOKEN }, params: { 'cuil': cuil }});
+      const cuil = req.query.cuil;
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${cuil}`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN }});
+      // const resp = await needle('get', `${process.env.ANDES_ENDPOINT_DEV}/core/tm/farmacias?cuil=${cuil}`, {headers: { 'Authorization': process.env.JWT_LOCAL_TOKEN }});
+      return res.status(200).json(resp.body);
+    }catch(err){
+      return res.status(500).json('Server Error');
+    }
+  }
+
+  public getProfessionalsAndes = async (req: Request, res: Response): Promise<Response> => {
+    try{
+      const documento = req.query.documento;
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${documento}`);
       return res.status(200).json(resp.body);
     }catch(err){
       console.log(err);
