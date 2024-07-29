@@ -18,8 +18,8 @@ class AuthController {
   public register = async (req: Request, res: Response): Promise<Response> => {
     try {
       const { username, email, enrollment, cuil, businessName, password, roleType } = req.body;
-      const role: IRole | null = await Role.findOne({ roleType });
-      if (!role) return res.status(404).json('No es posible registrar el usuario');
+      const role: IRole | null = await Role.findOne({ role: roleType });
+      if (!role) return res.status(404).json('No es posible registrar el usuario 1');
       if (roleType === "professional") {
         const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${username}`);
         const professionalAndes = resp.body;
@@ -56,7 +56,7 @@ class AuthController {
           });
         }
       }
-      return res.status(404).json('No se puede registrar el usuario');
+      return res.status(404).json('No se puede registrar el usuario 2');
     } catch (e) {
       let errors: { [key: string]: string } = {};
       Object.keys(e.errors).forEach(prop => {
