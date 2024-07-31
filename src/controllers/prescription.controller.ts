@@ -133,9 +133,13 @@ class PrescriptionController implements BaseController {
     }
   }
 
-  public get = async (req: Request, res: Response): Promise<Response> => {
+  public getPrescriptionsDispensed = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const prescriptions: IPrescription[] | null = await Prescription.find({}).sort({ field: 'desc', date: -1 });
+      const filterDispensedBy: string | undefined = req.query.dispensedBy
+      const prescriptions: IPrescription[] | null = await Prescription.find({
+        "status": "Dispensada",
+        "dispensedBy.cuil": filterDispensedBy
+      }).sort({ field: 'desc', date: -1 });
       return res.status(200).json(prescriptions);
     } catch (err) {
       console.log(err);
@@ -305,6 +309,7 @@ class PrescriptionController implements BaseController {
           "Medico": "$professional.businessName",
           "Matricula": "$professional.enrollment",
           "Farmacia": "$dispensedBy.businessName",
+          "Farmacia_cuit": "$dispensedBy.cuil",
           "Droga": "$supplies.supply.name",
           "Cantidad": "$supplies.quantity",
           "Fecha_receta": {
@@ -334,6 +339,7 @@ class PrescriptionController implements BaseController {
           Medico: row.Medico,
           Matricula: row.Matricula,
           Farmacia: row.Farmacia,
+          'Farmacia_cuit': row.Farmacia_cuit,
           Drogas: row.Droga,
           Cantidad: row.Cantidad,
           'Fecha_receta': row.Fecha_receta,
