@@ -19,7 +19,7 @@ class AuthController {
     try {
       const { username, email, enrollment, cuil, businessName, password, roleType } = req.body;
       const role: IRole | null = await Role.findOne({ role: roleType });
-      if (!role) return res.status(404).json('No es posible registrar el usuario 1');
+      if (!role) return res.status(404).json('No es posible registrar el usuario');
       if (roleType === "professional") {
         const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${username}`);
         const professionalAndes = resp.body;
@@ -40,10 +40,11 @@ class AuthController {
       } else if (roleType === "pharmacist") {
         const { disposicionHabilitacion, vencimientoHabilitacion } = req.body;
         const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${username}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
-        const pharmacyAndes = resp.body;
+        // const resp = await needle('get', `${process.env.ANDES_ENDPOINT_DEV}/core/tm/farmacias?cuil=${username}`, { headers: { 'Authorization': process.env.JWT_LOCAL_TOKEN }});
+        const pharmacyAndes = resp.body[0];
         const checkDisposicionFarmacia = pharmacyAndes.disposicionHabilitacion === disposicionHabilitacion ? true : false;
         const checkMatricula = pharmacyAndes.matriculaDTResponsable === enrollment ? true : false;
-        const diferencia = vencimientoHabilitacion.diff(moment(pharmacyAndes.vencimientoHabilitacion));
+        const diferencia = moment(vencimientoHabilitacion).diff(pharmacyAndes.vencimientoHabilitacion, 'days');
         if (checkDisposicionFarmacia && checkMatricula && diferencia === 0) {
           const newUser = new User({ username, email, password, enrollment, cuil, businessName });
           newUser.roles.push(role);
@@ -56,13 +57,10 @@ class AuthController {
           });
         }
       }
-      return res.status(404).json('No se puede registrar el usuario 2');
-    } catch (e) {
-      let errors: { [key: string]: string } = {};
-      Object.keys(e.errors).forEach(prop => {
-        errors[prop] = e.errors[prop].message;
-      });
-      return res.status(422).json(errors);
+      return res.status(403).json('No se puede registrar el usuario');
+    } catch (errors) {
+      console.log(errors)
+      return res.status(422).json({errors});
     }
   }
 
@@ -336,8 +334,8 @@ class AuthController {
   public getPharmacyAndes = async (req: Request, res: Response): Promise<Response> => {
     try {
       const cuil = req.query.cuil;
-      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${cuil}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
-      // const resp = await needle('get', `${process.env.ANDES_ENDPOINT_DEV}/core/tm/farmacias?cuil=${cuil}`, {headers: { 'Authorization': process.env.JWT_LOCAL_TOKEN }});
+      // const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${cuil}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT_DEV}/core/tm/farmacias?cuil=${cuil}`, {headers: { 'Authorization': process.env.JWT_LOCAL_TOKEN }});
       return res.status(200).json(resp.body);
     } catch (err) {
       return res.status(500).json('Server Error');
