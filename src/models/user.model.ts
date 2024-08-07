@@ -68,6 +68,15 @@ export const userSchema = new Schema({
     default: Date.now
   },
   updatedAt: Date,
+  isActive: {
+    type: Boolean,
+    default: false,
+    required: [true, '{PATH} is required']
+  },
+  lastLogin: {
+    type: Date,
+    default: Date.now
+  },
 });
 
 // Model
