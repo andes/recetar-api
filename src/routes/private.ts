@@ -13,6 +13,7 @@ import patientController from '../controllers/patient.controller';
 // import pharmacyController from '../controllers/pharmacy.controller';
 import supplyController from '../controllers/supply.controller';
 import authController from '../controllers/auth.controller';
+import usersController from '../controllers/users.controller';
 
 class PrivateRoutes {
 
@@ -58,6 +59,9 @@ class PrivateRoutes {
     // this.router.get(`/supplies/:id`, hasPermissionIn('readAny','patient'), supplyController.show);
     // this.router.put(`/supplies/:id`, hasPermissionIn('updateAny','patient'), supplyController.update);
     // this.router.delete(`/supplies/:id`, hasPermissionIn('deleteAny','patient'), supplyController.delete);
+
+    // Users
+    this.router.get('/users/index', hasPermissionIn('readAny', 'user'), usersController.index);
     
     // pharmacy
     // this.router.get(`/pharmacies/`, hasPermissionIn('readAny','patient'), pharmacyController.index);
