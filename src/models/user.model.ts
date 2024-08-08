@@ -87,7 +87,7 @@ User.schema.method('isValidPassword', async function(thisUser: IUser, password: 
   try{
     return await bcrypt.compare(password, thisUser.password);
   } catch(err){
-    throw new Error(err);
+    throw err;
   }
 });
 
