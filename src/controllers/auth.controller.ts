@@ -114,7 +114,7 @@ class AuthController {
 
       const user: IUser | null = await User.findOne({ _id }).populate({ path: 'roles', select: 'role' });
 
-      if (user) {
+      if (user && user.isActive) {
         const roles: string | string[] = [];
         await Promise.all(user.roles.map(async (role) => {
           roles.push(role.role);
@@ -122,7 +122,8 @@ class AuthController {
         const token = this.signInToken(user._id, user.username, user.businessName, roles);
 
         const refreshToken = uuidv4();
-        await User.updateOne({ _id: user._id }, { refreshToken: refreshToken });
+        const now = Date.now();
+        await User.updateOne({ _id: user._id }, { refreshToken: refreshToken, lastLogin: now });
         return res.status(200).json({
           jwt: token,
           refreshToken: refreshToken

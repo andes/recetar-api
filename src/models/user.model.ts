@@ -75,7 +75,7 @@ export const userSchema = new Schema({
   },
   lastLogin: {
     type: Date,
-    default: Date.now
+    default: new Date('2020-04-02T00:00:00.000Z')
   },
 });
 
