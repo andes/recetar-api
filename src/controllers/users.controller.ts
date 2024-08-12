@@ -13,10 +13,8 @@ class UsersController{
 
   public update = async (req: Request, res: Response): Promise<Response> => {
     try{
-      console.log(req.body);
       if (req.body){
         const result = await User.findOneAndUpdate({_id: req.body._id}, req.body, { new: true, projection: {'password':0, 'refreshToken':0, 'authenticationToken':0}}).populate('roles', 'role');
-        console.log(result);
         return res.status(200).json(result);
       }else{
         return res.status(400).json({mensaje: "Request body vacío"})
