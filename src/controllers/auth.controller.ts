@@ -19,10 +19,19 @@ class AuthController {
     try {
       const { username, email, enrollment, cuil, businessName, password, roleType } = req.body;
       const role: IRole | null = await Role.findOne({ role: roleType });
-      if (!role) return res.status(404).json('No es posible registrar el usuario');
+      if (!role) return res.status(400).json({message:'No es posible registrar el usuario'});
+
+      const posibleExistingUser: IUser | null = await User.findOne({ username: username });
+      if (posibleExistingUser) return res.status(400).json({message: 'No es posible registrar, el usuario ya existe'});
+
       if (roleType === "professional") {
         const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${username}`);
-        const professionalAndes = resp.body;
+
+        if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
+          return res.status(400).json({ message: 'No se encuentra el profesional.'});
+        }
+
+        const professionalAndes = resp.body[0];
         const { profesiones } = professionalAndes;
         const lastProfesion = profesiones.find((p: any) => p.profesion.codigo == '1' || p.profesion.codigo == '23');
         const lastMatriculacion = lastProfesion.matriculacion[lastProfesion.matriculacion.length - 1];
@@ -40,7 +49,11 @@ class AuthController {
       } else if (roleType === "pharmacist") {
         const { disposicionHabilitacion, vencimientoHabilitacion } = req.body;
         const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${username}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
-        // const resp = await needle('get', `${process.env.ANDES_ENDPOINT_DEV}/core/tm/farmacias?cuil=${username}`, { headers: { 'Authorization': process.env.JWT_LOCAL_TOKEN }});
+
+        if (!(resp.body && resp.body.length > 0)){
+          return res.status(400).json({ message: 'No se encuentra el farmacia.'});
+        }
+
         const pharmacyAndes = resp.body[0];
         const checkDisposicionFarmacia = pharmacyAndes.disposicionHabilitacion === disposicionHabilitacion ? true : false;
         const checkMatricula = pharmacyAndes.matriculaDTResponsable === enrollment ? true : false;
