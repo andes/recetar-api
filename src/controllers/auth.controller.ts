@@ -354,8 +354,7 @@ class AuthController {
   public getPharmacyAndes = async (req: Request, res: Response): Promise<Response> => {
     try {
       const cuil = req.query.cuil;
-      // const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${cuil}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
-      const resp = await needle('get', `${process.env.ANDES_ENDPOINT_DEV}/core/tm/farmacias?cuil=${cuil}`, {headers: { 'Authorization': process.env.JWT_LOCAL_TOKEN }});
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${cuil}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
       return res.status(200).json(resp.body);
     } catch (err) {
       return res.status(500).json('Server Error');
