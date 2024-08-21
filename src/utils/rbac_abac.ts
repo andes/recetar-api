@@ -29,7 +29,10 @@ class AccessControlLoader {
 
       { role: 'admin', resource: 'user', action: 'update:any', attributes: '*' },
       { role: 'admin', resource: 'user', action: 'read:any', attributes: '*' },
-
+      
+      { role: 'auditor', resource: 'user', action: 'read:any', attributes: '*' },
+      { role: 'auditor', resource: 'user', action: 'update:any', attributes: '*' },
+      
       // prescriptions
       { role: 'professional', resource: 'prescription', action: 'create:any', attributes: '*, !views' },
       { role: 'professional', resource: 'prescription', action: 'read:own', attributes: '*' },
@@ -41,6 +44,8 @@ class AccessControlLoader {
       { role: 'pharmacist', resource: 'prescription', action: 'update:any', attributes: '*, !views' },
 
       { role: 'owner', resource: 'prescription', action: 'delete:any', attributes: '*' },
+
+      { role: 'auditor', resource: 'prescription', action: 'read:any', attributes: '*' },
 
       // patients
       { role: 'professional', resource: 'patient', action: 'create:any', attributes: '*, !views' },
