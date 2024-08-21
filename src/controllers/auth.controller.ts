@@ -17,25 +17,31 @@ class AuthController {
 
   public register = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { username, email, enrollment, cuil, businessName, password, roleType } = req.body;
+      const { username, email, enrollment, cuil, businessName, password, roleType, captcha } = req.body;
+
+      // Verificación Token captcha
+      if (!captcha) return res.status(403).json({message: 'Body incompleto'});
+      const captchaResp: any = await needle('post', 'https://challenges.cloudflare.com/turnstile/v0/siteverify', {secret: process.env.CF_SECRET_KEY, response: captcha})
+      if (!captchaResp || captchaResp.body.success === false) return res.status(403).json("Conexión invalida");
+
+      // Verificación de rol
       const role: IRole | null = await Role.findOne({ role: roleType });
       if (!role) return res.status(400).json({message:'No es posible registrar el usuario'});
 
+      // Verificación de usuario ya registrado
       const posibleExistingUser: IUser | null = await User.findOne({ username: username });
       if (posibleExistingUser) return res.status(400).json({message: 'No es posible registrar, el usuario ya existe'});
 
       if (roleType === "professional") {
         const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${username}`);
-
         if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
           return res.status(400).json({ message: 'No se encuentra el profesional.'});
         }
-
         const professionalAndes = resp.body[0];
         const { profesiones } = professionalAndes;
         const lastProfesion = profesiones.find((p: any) => p.profesion.codigo == '1' || p.profesion.codigo == '23');
         const lastMatriculacion = lastProfesion.matriculacion[lastProfesion.matriculacion.length - 1];
-        if (lastMatriculacion && (moment(lastMatriculacion.fin)) > moment() && (lastMatriculacion.matriculaNumero).toString() === enrollment && cuil === professionalAndes.cuil) {
+        if (lastMatriculacion && (moment(lastMatriculacion.fin)) > moment() && lastMatriculacion.matriculaNumero.toString() === enrollment && cuil === professionalAndes.cuit) {
           const newUser = new User({ username, email, password, enrollment, cuil, businessName });
           newUser.roles.push(role);
           role.users.push(newUser);
@@ -366,6 +372,8 @@ class AuthController {
       return res.status(500).json('Server Error');
     }
   }
+
+  
 
 }
 
