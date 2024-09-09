@@ -42,6 +42,8 @@ class AccessControlLoader {
 
       { role: 'owner', resource: 'prescription', action: 'delete:any', attributes: '*' },
 
+      { role: 'auditor', resource: 'prescription', action: 'read:any', attributes: '*'},
+
       // patients
       { role: 'professional', resource: 'patient', action: 'create:any', attributes: '*, !views' },
       { role: 'professional', resource: 'patient', action: 'read:own', attributes: '*' },
