@@ -57,6 +57,11 @@ class PatientController implements BaseController{
             lastName: item.apellido,
             sex: item.sexo[0].toUpperCase() + item.sexo.substr(1).toLowerCase(),
             status: item.estado[0].toUpperCase() + item.estado.substr(1).toLowerCase(),
+            genero: item.genero,
+            nombreAutopercibido: item.alias,
+            idMPI: item.id,
+            tipoDocumentoExtranjero: item.tipoIdentificacion || '',
+            nroDocumentoExtranjero: item.numeroIdentificacion || '',
           });
         });
       }
