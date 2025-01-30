@@ -12,6 +12,7 @@ import IUser from '../interfaces/user.interface';
 import moment = require('moment');
 import IRole from '../interfaces/role.interface';
 import { Types } from 'mongoose';
+import needle from 'needle';
 const csv = require('fast-csv');
 
 class PrescriptionController implements BaseController {
@@ -125,6 +126,8 @@ class PrescriptionController implements BaseController {
         "patient.dni": filterPatient,
         "date": { "$gte": startDate, "$lt": endDate }
       }).sort({ field: 'desc', date: -1 });
+
+      const resp = await needle('get', `http://localhost:3002/api/modules/recetas?documento=${filterPatient}&estado=vigente`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
 
       return res.status(200).json(prescriptions);
     } catch (err) {

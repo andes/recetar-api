@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 
-class AndesPrescriptionController {
+class AndesPrescriptionController  {
 
   public create = async (req: Request, res: Response): Promise<Response> => {
     try{
