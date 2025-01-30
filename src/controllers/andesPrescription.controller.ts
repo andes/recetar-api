@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
+import { BaseController } from '../interfaces/classes/base-controllers.interface';
 
-class AndesPrescriptionController  {
+class AndesPrescriptionController implements BaseController {
+
+  public index = async (req: Request, res: Response): Promise<Response> => {
+    return res;
+  }
 
   public create = async (req: Request, res: Response): Promise<Response> => {
     try{
@@ -13,6 +18,18 @@ class AndesPrescriptionController  {
       console.log(err);
       return res.status(500).json('Server Error');
     }
+  }
+
+  public show = async (req: Request, res: Response): Promise<Response> => {
+    return res;
+  }
+
+  public update = async (req: Request, res: Response): Promise<Response> => {
+    return res;
+  }
+
+  public delete = async (req: Request, res: Response): Promise<Response> => {
+    return res;
   }
 
 }

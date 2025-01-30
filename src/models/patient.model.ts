@@ -28,10 +28,26 @@ export const patientSchema = new Schema({
   genero: {
     type: String
   },
-  nombreAutopercibido: String,
-  idMPI: String,
-  tipoDocumentoExtranjero: String,
-  nroDocumentoExtranjero: String,
+  nombreAutopercibido: {
+    type: String,
+    default: ''
+  },
+  idMPI: {
+    type: String,
+    default: ''
+  },
+  tipoDocumentoExtranjero: {
+    type: String,
+    default: ''
+  },
+  nroDocumentoExtranjero: {
+    type: String,
+    default: '',
+  },
+  estado: {
+    type: String,
+    enum: ['validado', 'temporal', 'recienNacido', 'extranjero', null],
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -49,7 +65,7 @@ Patient.schema.method('findOrCreate', async function(patientParam: IPatient): Pr
 
     // Si no está local, buscar en MPI de Andes y guardar
     if(!patient){
-      const resp =  await needle("get", `${process.env.ANDES_MPI_ENDPOINT}?documento=${patientParam.dni}&activo=true`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}})
+      const resp =  await needle("get", `${process.env.ANDES_MPI_ENDPOINT}?search=${patientParam.dni}&activo=true`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}})
       resp.body.forEach(async function (item: any) {
         if(item.sexo === patientParam.sex.toLocaleLowerCase()){
           patient = <IPatient>{
@@ -63,6 +79,7 @@ Patient.schema.method('findOrCreate', async function(patientParam: IPatient): Pr
             idMPI: item.id,
             tipoDocumentoExtranjero: item.tipoIdentificacion || '',
             nroDocumentoExtranjero: item.numeroIdentificacion || '',
+            estado: item.estado
           }
 
           patient = new Patient(patient);
@@ -78,7 +95,7 @@ Patient.schema.method('findOrCreate', async function(patientParam: IPatient): Pr
     }
     return patient;
   } catch(err){
-    throw new Error(err);
+    throw new Error(`${err}`);
   }
 });
 

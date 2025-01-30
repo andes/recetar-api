@@ -62,6 +62,7 @@ class PatientController implements BaseController{
             idMPI: item.id,
             tipoDocumentoExtranjero: item.tipoIdentificacion || '',
             nroDocumentoExtranjero: item.numeroIdentificacion || '',
+            estado: item.estado
           });
         });
       }

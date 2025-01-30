@@ -10,6 +10,7 @@ export default interface IPatient extends Document {
   idMPI: string;
   tipoDocumentoExtranjero?: string;
   nroDocumentoExtranjero?: string;
+  estado?: string;   // estado del paciente en ANDES: 
   status?: string;
   createdAt?: Date;
   updatedAt?: Date;
