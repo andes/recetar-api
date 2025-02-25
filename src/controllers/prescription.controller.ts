@@ -64,36 +64,57 @@ class PrescriptionController implements BaseController {
   }
 
   private createPrescription = async (newPrescription: IPrescription, triple: boolean): Promise<IPrescription[]> => {
+    
     let prescriptions: IPrescription[] = [];
-    newPrescription.save();
-    prescriptions.push(newPrescription);
-    if (triple) {
-      const newPrescription2: IPrescription = new Prescription({
-        patient: newPrescription.patient,
-        professional: newPrescription.professional,
-        date: moment(newPrescription.date).add(1, 'month'),
-        observation: newPrescription.observation,
-        diagnostic: newPrescription.diagnostic,
-        supplies: newPrescription.supplies,
-        triple: true
+    if (newPrescription.supplies.length > 1) {
+      newPrescription.supplies.forEach(async(supply) => {
+        newPrescription.supplies = [supply];
+        newPrescription.save();
+        prescriptions.push(newPrescription);
+        if (triple) {
+          const triplePrescriptions: IPrescription[] = await this.triplePrescription(newPrescription);
+          prescriptions = [...prescriptions, ...triplePrescriptions];
+        }
       });
-      newPrescription2.save();
-      prescriptions.push(newPrescription2);
-      const newPrescription3: IPrescription = new Prescription({
-        patient: newPrescription.patient,
-        professional: newPrescription.professional,
-        date: moment(newPrescription2.date).add(1, 'month'),
-        observation: newPrescription.observation,
-        diagnostic: newPrescription.diagnostic,
-        supplies: newPrescription.supplies,
-        triple: true
-      });
-      newPrescription3.save();
-      prescriptions.push(newPrescription3);
-    }
+    } else {
+      newPrescription.save();
+      prescriptions.push(newPrescription);
+      if (triple) {
+        const triplePrescriptions: IPrescription[] = await this.triplePrescription(newPrescription);
+        prescriptions = [...prescriptions, ...triplePrescriptions];
+      }
+    } 
     return prescriptions;
   }
-
+  
+  private triplePrescription = async (newPrescription: IPrescription): Promise<IPrescription[]> => {
+    let prescriptions: IPrescription[] = [];
+    const newPrescription2: IPrescription = new Prescription({
+      patient: newPrescription.patient,
+      professional: newPrescription.professional,
+      date: moment(newPrescription.date).add(1, 'month'),
+      observation: newPrescription.observation,
+      diagnostic: newPrescription.diagnostic,
+      supplies: newPrescription.supplies,
+      triple: true
+    });
+    newPrescription2.save();
+    prescriptions.push(newPrescription2);
+    const newPrescription3: IPrescription = new Prescription({
+      patient: newPrescription.patient,
+      professional: newPrescription.professional,
+      date: moment(newPrescription2.date).add(1, 'month'),
+      observation: newPrescription.observation,
+      diagnostic: newPrescription.diagnostic,
+      supplies: newPrescription.supplies,
+      triple: true
+    });
+    newPrescription3.save();
+    prescriptions.push(newPrescription3);
+    return prescriptions;    
+  }  
+    
+  
   public show = async (req: Request, res: Response): Promise<Response> => {
     try {
       const id: string = req.params.id;
