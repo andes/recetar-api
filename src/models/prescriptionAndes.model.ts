@@ -1,6 +1,5 @@
 import { Schema, Model, model } from 'mongoose';
 import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
-import { ObjectID } from 'mongodb';
 
 
 // Schema
@@ -56,7 +55,6 @@ const prescriptionAndesSchema = new Schema({
     },
     dispensa: [
         {
-            codigo: String,
             descripcion: String,
             cantidad: Number,
             organizacion: {

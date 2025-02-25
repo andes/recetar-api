@@ -14,7 +14,8 @@ import patientController from '../controllers/patient.controller';
 import supplyController from '../controllers/supply.controller';
 import authController from '../controllers/auth.controller';
 import usersController from '../controllers/users.controller';
-
+import snomedSupplyController from '../controllers/snomed.controller';
+import andesPrescriptionController from '../controllers/andesPrescription.controller';
 class PrivateRoutes {
 
   constructor(private router: Router = Router()) { }
@@ -59,6 +60,14 @@ class PrivateRoutes {
     // this.router.get(`/supplies/:id`, hasPermissionIn('readAny','patient'), supplyController.show);
     // this.router.put(`/supplies/:id`, hasPermissionIn('updateAny','patient'), supplyController.update);
     // this.router.delete(`/supplies/:id`, hasPermissionIn('deleteAny','patient'), supplyController.delete);
+
+    // SNOMED
+    this.router.get('/snomed/supplies/', hasPermissionIn('readAny', 'supplies'), snomedSupplyController.index );
+
+    // Andes prescriptions
+    this.router.get('/andes-prescriptions/from-andes/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.getFromAndes);
+    this.router.get('/andes-prescriptions/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);
+    this.router.post('/andes-prescriptions/dispense/', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
 
     // Users
     this.router.get('/users/index', hasPermissionIn('readAny', 'user'), usersController.index);

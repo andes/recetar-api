@@ -1,8 +1,21 @@
 import { ObjectId, ObjectID } from "mongodb";
 import { Document } from "mongoose";
+import { ISnomedConcept } from "./supply.interface";
 
+export interface IDispensa extends Document {
+    descripcion: String;
+    cantidad: Number;
+    medicamento: ISnomedConcept;
+    presentacion: String;
+    unidades: String;
+    cantidadEnvases: Number;
+    organizacion: {
+        id: ObjectID;
+        nombre: String;
+    }
+}
 export default interface IPrescriptionAndes extends Document {
-    id: ObjectID;
+    idAndes: ObjectID;
     organizacion: {
         id: ObjectID;
         nombre: String;
@@ -52,17 +65,7 @@ export default interface IPrescriptionAndes extends Document {
         tratamientoProlongado: Boolean;
         tiempoTratamiento: any;
     }
-    dispensa: [
-        {
-            codigo: String;
-            descripcion: String;
-            cantidad: Number;
-            organizacion: {
-                id: ObjectID;
-                nombre: String;
-            }
-        }
-    ]
+    dispensa: IDispensa[];
     estados: [
         {
             id: ObjectID;

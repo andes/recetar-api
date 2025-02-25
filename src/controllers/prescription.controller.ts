@@ -71,7 +71,7 @@ class PrescriptionController implements BaseController {
       const newPrescription2: IPrescription = new Prescription({
         patient: newPrescription.patient,
         professional: newPrescription.professional,
-        date: moment(newPrescription.date).add(31, 'days'),
+        date: moment(newPrescription.date).add(1, 'month'),
         observation: newPrescription.observation,
         diagnostic: newPrescription.diagnostic,
         supplies: newPrescription.supplies,
@@ -82,7 +82,7 @@ class PrescriptionController implements BaseController {
       const newPrescription3: IPrescription = new Prescription({
         patient: newPrescription.patient,
         professional: newPrescription.professional,
-        date: moment(newPrescription2.date).add(31, 'days'),
+        date: moment(newPrescription2.date).add(1, 'month'),
         observation: newPrescription.observation,
         diagnostic: newPrescription.diagnostic,
         supplies: newPrescription.supplies,
@@ -127,7 +127,6 @@ class PrescriptionController implements BaseController {
         "date": { "$gte": startDate, "$lt": endDate }
       }).sort({ field: 'desc', date: -1 });
 
-      const resp = await needle('get', `http://localhost:3002/api/modules/recetas?documento=${filterPatient}&estado=vigente`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
 
       return res.status(200).json(prescriptions);
     } catch (err) {
@@ -201,7 +200,7 @@ class PrescriptionController implements BaseController {
 
       const dispensedBy: IUser | null = await User.findOne({ _id: pharmacistId });
 
-      if (!dispensedBy) return res.status(4000).json("Farmacia no encontrada");
+      if (!dispensedBy) return res.status(400).json("Farmacia no encontrada");
 
       const userRole: IRole | null = await Role.findOne({ role: "admin", _id: { $in: dispensedBy.roles } }) // checkeamos el rol del usuario no sea admin
 
