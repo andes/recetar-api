@@ -9,8 +9,6 @@ class AuthRoutes {
   routes(): Router {
 
     this.router.post('/login', passportMiddlewareLocal, authController.login);
-    this.router.get(`/pharmacies-andes`, authController.getPharmacyAndes);
-    this.router.get('/professionals-andes', authController.getProfessionalsAndes);
     this.router.get('/jwt-login', checkAuth, authController.login);
     this.router.post('/register', authController.register);
     this.router.post('/logout', authController.logout);
