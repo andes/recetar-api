@@ -7,7 +7,6 @@ import needle from 'needle';
 export const patientSchema = new Schema({
   dni: {
     type: String,
-    required: '{PATH} is required'
   },
   lastName: {
     type: String,
@@ -26,6 +25,29 @@ export const patientSchema = new Schema({
     type: String,
     enum: ['Validado', 'Temporal'],
   },
+  genero: {
+    type: String
+  },
+  nombreAutopercibido: {
+    type: String,
+    default: ''
+  },
+  idMPI: {
+    type: String,
+    default: ''
+  },
+  tipoDocumentoExtranjero: {
+    type: String,
+    default: ''
+  },
+  nroDocumentoExtranjero: {
+    type: String,
+    default: '',
+  },
+  estado: {
+    type: String,
+    enum: ['validado', 'temporal', 'recienNacido', 'extranjero', null],
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -43,7 +65,7 @@ Patient.schema.method('findOrCreate', async function(patientParam: IPatient): Pr
 
     // Si no está local, buscar en MPI de Andes y guardar
     if(!patient){
-      const resp =  await needle("get", `${process.env.ANDES_MPI_ENDPOINT}?documento=${patientParam.dni}`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}})
+      const resp =  await needle("get", `${process.env.ANDES_MPI_ENDPOINT}?search=${patientParam.dni}&activo=true`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}})
       resp.body.forEach(async function (item: any) {
         if(item.sexo === patientParam.sex.toLocaleLowerCase()){
           patient = <IPatient>{
@@ -52,6 +74,12 @@ Patient.schema.method('findOrCreate', async function(patientParam: IPatient): Pr
             lastName: item.apellido,
             sex: item.sexo[0].toUpperCase() + item.sexo.substr(1).toLowerCase(),
             status: item.estado[0].toUpperCase() + item.estado.substr(1).toLowerCase(),
+            genero: item.genero,
+            nombreAutopercibido: item.alias,
+            idMPI: item.id,
+            tipoDocumentoExtranjero: item.tipoIdentificacion || '',
+            nroDocumentoExtranjero: item.numeroIdentificacion || '',
+            estado: item.estado
           }
 
           patient = new Patient(patient);
@@ -67,7 +95,7 @@ Patient.schema.method('findOrCreate', async function(patientParam: IPatient): Pr
     }
     return patient;
   } catch(err){
-    throw new Error(err);
+    throw new Error(`${err}`);
   }
 });
 

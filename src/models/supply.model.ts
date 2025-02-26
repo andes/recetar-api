@@ -31,6 +31,12 @@ export const supplySchema = new Schema({
   },
   observation: {
     type: String,
+  },
+  snomedConcept: {
+    conceptId: String,
+    term: String,
+    fsn: String,
+    semanticTag: String
   }
 },{
   timestamps: true
