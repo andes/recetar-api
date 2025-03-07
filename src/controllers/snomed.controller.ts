@@ -1,12 +1,18 @@
 import { Request, Response } from 'express';
-import Supply from '../models/supply.model';
-import ISupply from '../interfaces/supply.interface';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
+import needle from 'needle';
+import { ISnomedConcept } from '../interfaces/supply.interface';
 
 
 class snomedSupplyController implements BaseController {
     public index = async (req: Request, res: Response): Promise<Response> => {
-        return res;
+        try {
+            const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/term/snomed/expression?expression=<763158003`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
+            const supplies: ISnomedConcept[] = resp.body;
+            return res.status(200).json(supplies);
+        } catch (e) {
+            return res.status(500).json({ mensaje: 'Error', error: e });
+        }
     }
 
     public create = async (req: Request, res: Response): Promise<Response> => {

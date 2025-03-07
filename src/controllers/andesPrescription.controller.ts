@@ -52,7 +52,7 @@ class AndesPrescriptionController implements BaseController {
       const dni = req.query.dni;
       const sexo = req.query.sexo ? req.query.sexo : '';
       
-      const resp = await needle('get', `http://localhost:3002/api/modules/recetas?documento=${dni}&estado=vigente${sexo ? `&sexo=${sexo}` : ''}`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/modules/recetas?documento=${dni}&estado=vigente${sexo ? `&sexo=${sexo}` : ''}`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
       const prescriptions: IPrescriptionAndes[] | null = resp.body;
       console.log(resp.statusCode, resp.body);
       return res.status(200).json(prescriptions)
@@ -66,7 +66,7 @@ class AndesPrescriptionController implements BaseController {
     try {
       if (!req.body) return res.status(400).json({mensaje: 'Missing body payload!'});
 
-      const newPrescriptionAndes: IPrescriptionAndes = new PrescriptionAndes(req.body);
+      const newPrescriptionAndes: IPrescriptionAndes = new PrescriptionAndes(req.body.prescription);
       newPrescriptionAndes.save();
 
       const receta: IPrescriptionAndes = req.body;
@@ -76,7 +76,7 @@ class AndesPrescriptionController implements BaseController {
         recetaId: receta.idAndes
       }
       
-      const resp = await needle('patch', `http://localohost:3002/api/modules/recetas`, data, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
+      const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, data, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
       const resultado: {status: boolean} = resp.body;
 
       return res.status(200).json(resultado);

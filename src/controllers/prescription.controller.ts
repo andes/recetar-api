@@ -148,7 +148,7 @@ class PrescriptionController implements BaseController {
         "date": { "$gte": startDate, "$lt": endDate }
       }).sort({ field: 'desc', date: -1 });
 
-
+      console.log(prescriptions);
       return res.status(200).json(prescriptions);
     } catch (err) {
       console.log(err);
