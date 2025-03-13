@@ -86,7 +86,7 @@ const prescriptionAndesSchema = new Schema({
             id: Schema.Types.ObjectId,
             tipo: {
                 type: String,
-                enum: ['sin dispensa', 'dispensada', 'dispensa-parcial'],
+                enum: ['sin-dispensa', 'dispensada', 'dispensa-parcial'],
                 required: true
             },
             fecha: Date,
@@ -120,7 +120,7 @@ const prescriptionAndesSchema = new Schema({
     estadoDispensaActual: {
         tipo: {
             type: String,
-            enum: ['sin dispensa', 'dispensada', 'dispensa-parcial']
+            enum: ['sin-dispensa', 'dispensada', 'dispensa-parcial']
         },
         fecha: Date,
         id: Schema.Types.ObjectId 

@@ -67,7 +67,7 @@ class PrivateRoutes {
     // Andes prescriptions
     this.router.get('/andes-prescriptions/from-andes/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.getFromAndes);
     this.router.get('/andes-prescriptions/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);
-    this.router.post('/andes-prescriptions/dispense/', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
+    this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
 
     // Users
     this.router.get('/users/index', hasPermissionIn('readAny', 'user'), usersController.index);

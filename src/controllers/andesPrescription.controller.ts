@@ -53,7 +53,16 @@ class AndesPrescriptionController implements BaseController {
       const sexo = req.query.sexo ? req.query.sexo : '';
       
       const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/modules/recetas?documento=${dni}&estado=vigente${sexo ? `&sexo=${sexo}` : ''}`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
-      const prescriptions: IPrescriptionAndes[] | null = resp.body;
+      let prescriptions: IPrescriptionAndes[] | null = resp.body;
+
+      if (prescriptions) {
+        prescriptions = prescriptions.map(prescription => {
+          prescription.idAndes = prescription.id;
+          prescription.id = null;
+          return prescription;
+        });
+      }
+
       console.log(resp.statusCode, resp.body);
       return res.status(200).json(prescriptions)
 
