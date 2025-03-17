@@ -40,12 +40,7 @@ export default interface IPrescriptionAndes extends Document {
     idPrestacion: String;
     idRegistro: String;
     medicamento: {
-        concepto: {
-            conceptId: String;
-            term: String;
-            fsn: String;
-            semanticTag: String;
-        }
+        concepto: ISnomedConcept;
         dosisDiaria: {
             dosis: String;
             instervalo: {
@@ -68,7 +63,7 @@ export default interface IPrescriptionAndes extends Document {
     dispensa: IDispensa[];
     estados: [
         {
-            id: ObjectID;
+            id?: ObjectID;
             tipo: 'vigente' | 'finalizada' | 'vencida' | 'suspendida' | 'rechazada';
             createdAt: Date;
             createdBy: {
@@ -82,7 +77,7 @@ export default interface IPrescriptionAndes extends Document {
     ]
     estadosDispensa: [
         {
-            id: ObjectID;
+            id?: ObjectID;
             tipo: 'sin dispensa' | 'dispensada' | 'dispensa-parcial';
             fecha: Date;
             sistema?: 'sifaho' | 'recetar';
@@ -95,8 +90,8 @@ export default interface IPrescriptionAndes extends Document {
         }
     ]
     estadoActual: {
-        id: ObjectId;
-        tipo: String;
+        id?: ObjectId;
+        tipo: 'vigente' | 'finalizada' | 'vencida' | 'suspendida' | 'rechazada';
         createdAt: Date;
         createdBy: {
             nombre: String;
@@ -108,9 +103,9 @@ export default interface IPrescriptionAndes extends Document {
 
     };
     estadoDispensaActual: {
-        tipo: String;
+        tipo: 'sin-dispensa' | 'dispensada' | 'dispensa-parcial';
         fecha: Date;
-        id: ObjectID;
+        id?: ObjectID;
     }
     paciente: {
         carpetaEfectores: [];
