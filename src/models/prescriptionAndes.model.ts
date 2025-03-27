@@ -139,7 +139,8 @@ const prescriptionAndesSchema = new Schema({
             financiador: String,
             origen: String,
             fechaActualizacion: Date,
-            prepaga: Boolean
+            prepaga: Boolean,
+            numeroAfiliado: String 
         },
         genero: String,
         nombreCompleto: String,

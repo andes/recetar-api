@@ -7,6 +7,9 @@ import Pharmacy from '../models/pharmacy.model';
 import IPharmacy from '../interfaces/pharmacy.interface';
 import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
+import { pharmacistRoleMiddleware } from '../middlewares/roles.middleware';
+import { ObjectID } from 'mongodb';
+import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
 
 class AndesPrescriptionController implements BaseController {
 
@@ -33,6 +36,7 @@ class AndesPrescriptionController implements BaseController {
       
       const id = req.query.id;
       const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({idAndes: id});
+      if (!prescriptionAndes) return res.status(404).json({mensaje: 'Prescription not found!'});
       console.log('index', PrescriptionAndes);
       return res.status(200).json(prescriptionAndes);
     } catch(e) {
@@ -60,8 +64,7 @@ class AndesPrescriptionController implements BaseController {
 
       if (prescriptions) {
         prescriptions = prescriptions.map(prescription => {
-          prescription.idAndes = prescription.id;
-          prescription.id = null;
+          prescription.idAndes = prescription._id;
           return prescription;
         });
       }
@@ -77,15 +80,16 @@ class AndesPrescriptionController implements BaseController {
     try {
       if (!req.body) return res.status(400).json({mensaje: 'Missing body payload!'});
     
-      const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({_id: req.body.prescription.idAndes});
-      if (prescriptionAndes) return res.status(404).json({mensaje: 'Prescription already registered!'});
+      const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({_id: req.body.prescription.id});
+      if (prescriptionAndes) {
+        return res.status(404).json('Prescription already registered!');
+      }
+      const pharmacist: IUser | null = await User.findOne({_id: req.body.pharmacistId.toString()});
+      const receta: IPrescriptionAndes = new PrescriptionAndes(req.body.prescription);
+      receta.save();
       
-      const pharmacist: IUser | null = await User.findOne({id: req.body.pharmacistId});
-      const newPrescriptionAndes: IPrescriptionAndes = new PrescriptionAndes(req.body.prescription);
-      newPrescriptionAndes.save();
-      
-      const receta: IPrescriptionAndes = req.body;
       const dispensa = {
+        id: receta.id.toString(),
         descripcion: '',
         cantidad: receta.medicamento.cantidad,
         medicamento: receta.medicamento.concepto,
@@ -97,21 +101,44 @@ class AndesPrescriptionController implements BaseController {
             nombre: pharmacist?.businessName ? pharmacist.businessName : '',
         }
       };
-      const data = {
+      const body = {
         op: 'dispensar',
         dispensa: dispensa,
-        recetaId: receta.idAndes
+        recetaId: receta.id.toString()
       }
-      const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, data, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
-      
+      const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, body, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
       if (typeof(resp.statusCode) === 'number' && resp.statusCode !== 200) return res.status(resp.statusCode).json({mensaje: 'Error', error: resp.body});
-      // if () {
-
-      // }
+      if (typeof(resp.statusCode) === 'number' && resp.statusCode === 200) {
+        const prescriptionUpdated: IPrescriptionAndes = resp.body;
+        await PrescriptionAndes.findByIdAndUpdate(receta.id.toString(), prescriptionUpdated);
+      }
       
-      const resultado: {status: boolean} = resp.body;
+      const resultado: IPrescriptionAndes = resp.body;
 
       return res.status(200).json(resultado);
+    } catch(e) {
+      console.log('error', e);
+      return res.status(500).json({mensaje: 'Error', error: e});
+    }
+  }
+
+  public cancelDispense = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      if (!req.body) return res.status(400).json({mensaje: 'Missing body payload!'});
+
+      const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({_id: req.body.prescription.id});
+      if (!prescriptionAndes) return res.status(404).json('Prescription not found!');
+
+      const pharmacist: IUser | null = await User.findOne({_id: req.body.pharmacistId.toString()});
+      if (!pharmacist) return res.status(404).json('Pharmacist not found!');
+    
+      const body = {
+        op: 'cancelar-dispensa',
+        recetaId: prescriptionAndes._id.toString(),
+        dispensaId: prescriptionAndes._id.toString(),
+      }
+
+      
     } catch(e) {
       return res.status(500).json({mensaje: 'Error', error: e});
     }
