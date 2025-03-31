@@ -9,7 +9,6 @@ import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
 import { pharmacistRoleMiddleware } from '../middlewares/roles.middleware';
 import { ObjectID } from 'mongodb';
-import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
 
 class AndesPrescriptionController implements BaseController {
 
@@ -57,18 +56,24 @@ class AndesPrescriptionController implements BaseController {
       if (!req.query.dni) return res.status(400).json({mensaje: 'Missing required params!'});
       const dni = req.query.dni;
       const sexo = req.query.sexo ? req.query.sexo : '';
-      
+      let prescriptions: IPrescriptionAndes[] | null = [];
+
       const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/modules/recetas?documento=${dni}&estado=vigente${sexo ? `&sexo=${sexo}` : ''}`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
       if (typeof(resp.statusCode) === 'number' && resp.statusCode !== 200) return res.status(resp.statusCode).json({mensaje: 'Error', error: resp.body});
-      let prescriptions: IPrescriptionAndes[] | null = resp.body;
+      let andesPrescriptions: IPrescriptionAndes[] | null = resp.body;
 
-      if (prescriptions) {
-        prescriptions = prescriptions.map(prescription => {
-          prescription.idAndes = prescription._id;
-          return prescription;
+      if (andesPrescriptions) {
+        andesPrescriptions = andesPrescriptions.map(aPrescription => {
+          aPrescription.idAndes = aPrescription._id;
+          return aPrescription;
         });
+        prescriptions = [...prescriptions, ...andesPrescriptions];
       }
 
+      const savedPrescriptions: IPrescriptionAndes[] | null = await PrescriptionAndes.find({'paciente.documento': dni});
+      if (savedPrescriptions) {
+        prescriptions = [...prescriptions, ...savedPrescriptions];
+      }
       console.log(resp.statusCode, resp.body);
       return res.status(200).json(prescriptions)
     } catch(e) {
@@ -137,8 +142,8 @@ class AndesPrescriptionController implements BaseController {
         recetaId: prescriptionAndes._id.toString(),
         dispensaId: prescriptionAndes._id.toString(),
       }
-
       
+      return res.status(200).json(body);
     } catch(e) {
       return res.status(500).json({mensaje: 'Error', error: e});
     }
