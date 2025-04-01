@@ -23,97 +23,62 @@ class PrescriptionController implements BaseController {
   }
 
   public create = async (req: Request, res: Response): Promise<Response> => {
-    const { professional, patient, date, supplies, observation, diagnostic, triple } = req.body;
+    const { professional, patient, date, supplies, triple } = req.body;
     const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
     const myProfessional: IUser | null = await User.findOne({ _id: professional });
-    const newPrescription: IPrescription = new Prescription({
-      patient: myPatient,
-      professional: {
-        userId: myProfessional?._id,
-        businessName: myProfessional?.businessName,
-        cuil: myProfessional?.cuil,
-        enrollment: myProfessional?.enrollment,
-      },
-      date,
-      observation,
-      diagnostic,
-    });
     try {
-      const errors: any[] = [];
-      let isValid: boolean = false;
-      await Promise.all(supplies.map(async (sup: any) => {
-        if (sup.supply !== null && sup.supply !== '') {
-          const sp: ISupply | null = await Supply.findOne({ _id: sup.supply._id });
-          if (sp) {
-            newPrescription.supplies.push({ supply: sp, quantity: sup.quantity });
-            isValid = true;
-          } else {
-            errors.push({ supply: sup.supply, message: 'Este medicamento no fue encontrado, por favor seleccionar un medicamento válido.' });
-          }
+      let allPrescription: IPrescription[] = [];
+      for (const sup of supplies) {
+        const newPrescription = new Prescription({
+          patient: myPatient,
+          professional: {
+            userId: myProfessional?._id,
+            businessName: myProfessional?.businessName,
+            cuil: myProfessional?.cuil,
+            enrollment: myProfessional?.enrollment,
+          },
+          date,
+          supplies: [sup]
+        });
+        await newPrescription.save();
+        allPrescription.push(newPrescription);
+        if (triple) {
+          let newPrescription2: IPrescription = new Prescription({
+            patient: myPatient,
+            professional: {
+              userId: myProfessional?._id,
+              businessName: myProfessional?.businessName,
+              cuil: myProfessional?.cuil,
+              enrollment: myProfessional?.enrollment,
+            },
+            date: moment(date).add(30, 'days'),
+            supplies: [sup]
+          });
+          await newPrescription2.save();
+          allPrescription.push(newPrescription2);
+          let newPrescription3: IPrescription = new Prescription({
+            patient: myPatient,
+            professional: {
+              userId: myProfessional?._id,
+              businessName: myProfessional?.businessName,
+              cuil: myProfessional?.cuil,
+              enrollment: myProfessional?.enrollment,
+            },
+            date: moment(date).add(60, 'days'),
+            supplies: [sup]
+          });
+          await newPrescription3.save();
+          allPrescription.push(newPrescription3);
         }
-      }));
-      if (errors.length && !isValid) {
-        return res.status(422).json(errors);
       }
-      const pres: IPrescription[] = await this.createPrescription(newPrescription, triple);
-      return res.status(200).json(pres);
+
+      return res.status(200).json(allPrescription);
+
     } catch (err) {
-      console.log(err);
-      return res.status(500).json('Server Error');
+      return res.status(500).json('Error al cargar la prescripción');
     }
   }
 
-  private createPrescription = async (newPrescription: IPrescription, triple: boolean): Promise<IPrescription[]> => {
-    
-    let prescriptions: IPrescription[] = [];
-    if (newPrescription.supplies.length > 1) {
-      newPrescription.supplies.forEach(async(supply) => {
-        newPrescription.supplies = [supply];
-        newPrescription.save();
-        prescriptions.push(newPrescription);
-        if (triple) {
-          const triplePrescriptions: IPrescription[] = await this.triplePrescription(newPrescription);
-          prescriptions = [...prescriptions, ...triplePrescriptions];
-        }
-      });
-    } else {
-      newPrescription.save();
-      prescriptions.push(newPrescription);
-      if (triple) {
-        const triplePrescriptions: IPrescription[] = await this.triplePrescription(newPrescription);
-        prescriptions = [...prescriptions, ...triplePrescriptions];
-      }
-    } 
-    return prescriptions;
-  }
-  
-  private triplePrescription = async (newPrescription: IPrescription): Promise<IPrescription[]> => {
-    let prescriptions: IPrescription[] = [];
-    const newPrescription2: IPrescription = new Prescription({
-      patient: newPrescription.patient,
-      professional: newPrescription.professional,
-      date: moment(newPrescription.date).add(1, 'month'),
-      observation: newPrescription.observation,
-      diagnostic: newPrescription.diagnostic,
-      supplies: newPrescription.supplies,
-      triple: true
-    });
-    newPrescription2.save();
-    prescriptions.push(newPrescription2);
-    const newPrescription3: IPrescription = new Prescription({
-      patient: newPrescription.patient,
-      professional: newPrescription.professional,
-      date: moment(newPrescription2.date).add(1, 'month'),
-      observation: newPrescription.observation,
-      diagnostic: newPrescription.diagnostic,
-      supplies: newPrescription.supplies,
-      triple: true
-    });
-    newPrescription3.save();
-    prescriptions.push(newPrescription3);
-    return prescriptions;    
-  }  
-    
   
   public show = async (req: Request, res: Response): Promise<Response> => {
     try {

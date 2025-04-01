@@ -15,8 +15,6 @@ export default interface ISupply extends Document {
   unity: string;
   firstPresentation: string;
   secondPresentation: string;
-  description: string;
-  observation: string;
   pharmaceutical_form: string;
   snomedConcept: ISnomedConcept;
 }

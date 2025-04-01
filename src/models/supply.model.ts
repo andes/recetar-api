@@ -26,12 +26,6 @@ export const supplySchema = new Schema({
   secondPresentation: {
     type: String
   },
-  description: {
-    type: String,
-  },
-  observation: {
-    type: String,
-  },
   snomedConcept: {
     conceptId: String,
     term: String,
