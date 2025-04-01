@@ -7,6 +7,8 @@ export interface PrescriptionSupply {
   quantity: number;
   diagnostic?: string;
   indication?: string;
+  duplicate: boolean;
+  triplicate: boolean;
 }
 
 export default interface IPrescription extends Document {
@@ -26,11 +28,7 @@ export default interface IPrescription extends Document {
   supplies: PrescriptionSupply[];
   status: string;
   date: Date;
-
-  diagnostic?: string;
-  observation?: string;
   createdAt?: Date;
   updatedAt?: Date;
   triple?: boolean;
-  triplicado?: boolean;
 }

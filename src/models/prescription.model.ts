@@ -21,7 +21,19 @@ const prescriptionSchema = new Schema({
   supplies: [{
     _id: false,
     supply: supplySchema,
-    quantity: Number
+    quantity: Number,
+    diagnostic: {
+      type: String,
+    },
+    indication: {
+      type: String,
+    },
+    duplicate: {
+      type: Boolean,
+    },
+    triplicate: {
+      type: Boolean,
+    }
   }],
   status: {
     type: String,
@@ -38,12 +50,6 @@ const prescriptionSchema = new Schema({
     default: Date.now
   },
   updatedAt: Date,
-  diagnostic: {
-    type: String,
-  },
-  observation: {
-    type: String,
-  },
   triple: {
     type: Boolean,
   }
