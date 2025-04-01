@@ -5,6 +5,8 @@ import IPatient from './patient.interface';
 export interface PrescriptionSupply {
   supply: ISupply;
   quantity: number;
+  diagnostic?: string;
+  indication?: string;
 }
 
 export default interface IPrescription extends Document {
@@ -30,4 +32,5 @@ export default interface IPrescription extends Document {
   createdAt?: Date;
   updatedAt?: Date;
   triple?: boolean;
+  triplicado?: boolean;
 }

@@ -9,29 +9,77 @@ import User from '../models/user.model';
 import IRole from '../interfaces/role.interface';
 import Role from '../models/role.model';
 import { renderHTML, MailOptions, sendMail } from '../utils/roboSender/sendEmail';
+import needle from 'needle';
+import moment from 'moment';
+
 
 class AuthController {
 
   public register = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { username, email, enrollment, cuil, businessName, password, roleType } = req.body;
-      const newUser = new User({ username, email, password, enrollment, cuil, businessName });
-      const role: IRole = await Role.schema.methods.findByRoleOrCreate(roleType);
-      newUser.roles.push(role);
-      role.users.push(newUser);
-      await newUser.save();
-      await role.save();
-      this.sendEmailNewUser(newUser);
-      return res.status(200).json({
-        newUser
-      });
+      const { username, email, enrollment, cuil, businessName, password, roleType, captcha } = req.body;
 
-    } catch (e) {
-      let errors: { [key: string]: string } = {};
-      Object.keys(e.errors).forEach(prop => {
-        errors[prop] = e.errors[prop].message;
-      });
-      return res.status(422).json(errors);
+      // Verificación Token captcha
+      if (!captcha) return res.status(403).json({message: 'Body incompleto'});
+      const captchaResp: any = await needle('post', 'https://challenges.cloudflare.com/turnstile/v0/siteverify', {secret: process.env.CF_SECRET_KEY, response: captcha})
+      if (!captchaResp || captchaResp.body.success === false) return res.status(403).json("Conexión invalida");
+
+      // Verificación de rol
+      const role: IRole | null = await Role.findOne({ role: roleType });
+      if (!role) return res.status(400).json({message:'No es posible registrar el usuario'});
+
+      // Verificación de usuario ya registrado
+      const posibleExistingUser: IUser | null = await User.findOne({ username: username });
+      if (posibleExistingUser) return res.status(400).json({message: 'No es posible registrar, el usuario ya existe'});
+
+      if (roleType === "professional") {
+        const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${username}`);
+        if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
+          return res.status(400).json({ message: 'No se encuentra el profesional.'});
+        }
+        const professionalAndes = resp.body[0];
+        const { profesiones } = professionalAndes;
+        const lastProfesion = profesiones.find((p: any) => p.profesion.codigo == '1' || p.profesion.codigo == '23');
+        const lastMatriculacion = lastProfesion.matriculacion[lastProfesion.matriculacion.length - 1];
+        if (lastMatriculacion && (moment(lastMatriculacion.fin)) > moment() && lastMatriculacion.matriculaNumero.toString() === enrollment && cuil === professionalAndes.cuit) {
+          const newUser = new User({ username, email, password, enrollment, cuil, businessName });
+          newUser.roles.push(role);
+          role.users.push(newUser);
+          await newUser.save();
+          await role.save();
+          this.sendEmailNewUser(newUser);
+          return res.status(200).json({
+            newUser
+          });
+        }
+      } else if (roleType === "pharmacist") {
+        const { disposicionHabilitacion, vencimientoHabilitacion } = req.body;
+        const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${username}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
+
+        if (!(resp.body && resp.body.length > 0)){
+          return res.status(400).json({ message: 'No se encuentra el farmacia.'});
+        }
+
+        const pharmacyAndes = resp.body[0];
+        const checkDisposicionFarmacia = pharmacyAndes.disposicionHabilitacion === disposicionHabilitacion ? true : false;
+        const checkMatricula = pharmacyAndes.matriculaDTResponsable === enrollment ? true : false;
+        const diferencia = moment(vencimientoHabilitacion).diff(pharmacyAndes.vencimientoHabilitacion, 'days');
+        if (checkDisposicionFarmacia && checkMatricula && diferencia === 0) {
+          const newUser = new User({ username, email, password, enrollment, cuil, businessName });
+          newUser.roles.push(role);
+          role.users.push(newUser);
+          await newUser.save();
+          await role.save();
+          this.sendEmailNewUser(newUser);
+          return res.status(200).json({
+            newUser
+          });
+        }
+      }
+      return res.status(403).json('No se puede registrar el usuario');
+    } catch (errors) {
+      console.log(errors)
+      return res.status(422).json({errors});
     }
   }
 
@@ -72,7 +120,7 @@ class AuthController {
 
       const user: IUser | null = await User.findOne({ _id }).populate({ path: 'roles', select: 'role' });
 
-      if (user) {
+      if (user && user.isActive) {
         const roles: string | string[] = [];
         await Promise.all(user.roles.map(async (role) => {
           roles.push(role.role);
@@ -80,7 +128,8 @@ class AuthController {
         const token = this.signInToken(user._id, user.username, user.businessName, roles);
 
         const refreshToken = uuidv4();
-        await User.updateOne({ _id: user._id }, { refreshToken: refreshToken });
+        const now = Date.now();
+        await User.updateOne({ _id: user._id }, { refreshToken: refreshToken, lastLogin: now });
         return res.status(200).json({
           jwt: token,
           refreshToken: refreshToken
@@ -301,6 +350,29 @@ class AuthController {
     };
     await sendMail(options);
   }
+
+  public getPharmacyAndes = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const cuil = req.query.cuil;
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${cuil}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
+      return res.status(200).json(resp.body);
+    } catch (err) {
+      return res.status(500).json('Server Error');
+    }
+  }
+
+  public getProfessionalsAndes = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const documento = req.query.documento;
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${documento}`);
+      return res.status(200).json(resp.body);
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json('Server Error');
+    }
+  }
+
+  
 
 }
 

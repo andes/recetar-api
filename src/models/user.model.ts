@@ -68,6 +68,15 @@ export const userSchema = new Schema({
     default: Date.now
   },
   updatedAt: Date,
+  isActive: {
+    type: Boolean,
+    default: false,
+    required: [true, '{PATH} is required']
+  },
+  lastLogin: {
+    type: Date,
+    default: new Date('2020-04-02T00:00:00.000Z')
+  },
 });
 
 // Model
@@ -78,7 +87,7 @@ User.schema.method('isValidPassword', async function(thisUser: IUser, password: 
   try{
     return await bcrypt.compare(password, thisUser.password);
   } catch(err){
-    throw new Error(err);
+    throw err;
   }
 });
 
