@@ -3,12 +3,9 @@ import { BaseController } from '../interfaces/classes/base-controllers.interface
 import IPrescriptionAndes, { IDispensa } from '../interfaces/prescriptionAndes.interface';
 import needle from 'needle';
 import PrescriptionAndes from '../models/prescriptionAndes.model';
-import Pharmacy from '../models/pharmacy.model';
-import IPharmacy from '../interfaces/pharmacy.interface';
 import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
-import { pharmacistRoleMiddleware } from '../middlewares/roles.middleware';
-import { ObjectID } from 'mongodb';
+
 
 class AndesPrescriptionController implements BaseController {
 
@@ -31,9 +28,9 @@ class AndesPrescriptionController implements BaseController {
 
   public show = async (req: Request, res: Response): Promise<Response> => {
     try{
-      if (!req.query.id) return res.status(400).json({mensaje: 'Missing required params!'});
+      if (!req.params.id) return res.status(400).json({mensaje: 'Missing required params!'});
       
-      const id = req.query.id;
+      const id = req.params.id;
       const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({idAndes: id});
       if (!prescriptionAndes) return res.status(404).json({mensaje: 'Prescription not found!'});
       console.log('index', PrescriptionAndes);
@@ -140,9 +137,19 @@ class AndesPrescriptionController implements BaseController {
       const body = {
         op: 'cancelar-dispensa',
         recetaId: prescriptionAndes._id.toString(),
-        dispensaId: prescriptionAndes._id.toString(),
+        dataDispensa: {
+          dispensaId: prescriptionAndes._id.toString(),
+          motivo: '',
+          organizacion: {
+            id: pharmacist.id,
+            nombre: pharmacist.businessName,
+          }
+        }
       }
       
+      const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, body, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
+      if (typeof(resp.statusCode) === 'number' && resp.statusCode !== 200) return res.status(resp.statusCode).json({mensaje: 'Error', error: resp.body});
+
       return res.status(200).json(body);
     } catch(e) {
       return res.status(500).json({mensaje: 'Error', error: e});
