@@ -7,8 +7,8 @@ export interface PrescriptionSupply {
   quantity: number;
   diagnostic?: string;
   indication?: string;
-  duplicate: boolean;
-  triplicate: boolean;
+  duplicate?: boolean;
+  triplicate?: boolean;
 }
 
 export default interface IPrescription extends Document {
