@@ -149,8 +149,10 @@ class AndesPrescriptionController implements BaseController {
       
       const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, body, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
       if (typeof(resp.statusCode) === 'number' && resp.statusCode !== 200) return res.status(resp.statusCode).json({mensaje: 'Error', error: resp.body});
-
-      return res.status(200).json(body);
+      if (typeof(resp.statusCode) === 'number' && resp.statusCode === 200) {
+        await PrescriptionAndes.findByIdAndDelete(prescriptionAndes.id.toString());
+      }
+      return res.status(200).json(resp.body);
     } catch(e) {
       return res.status(500).json({mensaje: 'Error', error: e});
     }
