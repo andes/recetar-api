@@ -71,7 +71,6 @@ class AndesPrescriptionController implements BaseController {
       if (savedPrescriptions) {
         prescriptions = [...prescriptions, ...savedPrescriptions];
       }
-      console.log(resp.statusCode, resp.body);
       return res.status(200).json(prescriptions)
     } catch(e) {
       return res.status(500).json({error: e})
