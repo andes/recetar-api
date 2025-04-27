@@ -12,7 +12,6 @@ import IUser from '../interfaces/user.interface';
 import moment = require('moment');
 import IRole from '../interfaces/role.interface';
 import { Types } from 'mongoose';
-import needle from 'needle';
 const csv = require('fast-csv');
 
 class PrescriptionController implements BaseController {
