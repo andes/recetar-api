@@ -1,4 +1,5 @@
 import { Document } from 'mongoose';
+import IObraSocial from './obraSocial.interface';
 
 export default interface IPatient extends Document {
   dni?: string;
@@ -8,6 +9,7 @@ export default interface IPatient extends Document {
   genero: string;
   nombreAutopercibido?: string;
   idMPI: string;
+  obraSocial?: IObraSocial;
   tipoDocumentoExtranjero?: string;
   nroDocumentoExtranjero?: string;
   estado?: string;   // estado del paciente en ANDES: 

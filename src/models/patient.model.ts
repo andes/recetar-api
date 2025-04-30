@@ -2,6 +2,7 @@ import { Schema, Model, model } from 'mongoose';
 import IPatient from '../interfaces/patient.interface';
 import { env } from '../config/config';
 import needle from 'needle';
+import { obraSocialSchema } from './obraSocial.model';
 
 // Schema
 export const patientSchema = new Schema({
@@ -44,6 +45,10 @@ export const patientSchema = new Schema({
     type: String,
     default: '',
   },
+  obraSocial: {
+    type: obraSocialSchema,
+    default: null
+  },
   estado: {
     type: String,
     enum: ['validado', 'temporal', 'recienNacido', 'extranjero', null],
@@ -58,16 +63,16 @@ export const patientSchema = new Schema({
 // Model
 const Patient: Model<IPatient> = model<IPatient>('Patient', patientSchema);
 
-Patient.schema.method('findOrCreate', async function(patientParam: IPatient): Promise<IPatient>{
-  try{
+Patient.schema.method('findOrCreate', async function (patientParam: IPatient): Promise<IPatient> {
+  try {
     // Buscar paciente en db local
-    let patient: IPatient | null = await Patient.findOne({ dni: patientParam.dni, sex: patientParam.sex});
+    let patient: IPatient | null = await Patient.findOne({ dni: patientParam.dni, sex: patientParam.sex });
 
     // Si no está local, buscar en MPI de Andes y guardar
-    if(!patient){
-      const resp =  await needle("get", `${process.env.ANDES_MPI_ENDPOINT}?search=${patientParam.dni}&activo=true`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}})
+    if (!patient) {
+      const resp = await needle("get", `${process.env.ANDES_MPI_ENDPOINT}?search=${patientParam.dni}&activo=true`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } })
       resp.body.forEach(async function (item: any) {
-        if(item.sexo === patientParam.sex.toLocaleLowerCase()){
+        if (item.sexo === patientParam.sex.toLocaleLowerCase()) {
           patient = <IPatient>{
             dni: item.documento,
             firstName: item.nombre,
@@ -89,12 +94,12 @@ Patient.schema.method('findOrCreate', async function(patientParam: IPatient): Pr
     }
 
     // Si tampoco no está local ni en MPI, crear uno nuevo
-    if(!patient){
+    if (!patient) {
       patient = new Patient(patientParam);
       await patient.save();
     }
     return patient;
-  } catch(err){
+  } catch (err) {
     throw new Error(`${err}`);
   }
 });
