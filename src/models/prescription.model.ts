@@ -33,6 +33,10 @@ const prescriptionSchema = new Schema({
     },
     triplicate: {
       type: Boolean,
+    },
+    triplicateData: {
+      serie: { type: String },
+      numero: { type: Number },
     }
   }],
   status: {
@@ -50,7 +54,7 @@ const prescriptionSchema = new Schema({
     default: Date.now
   },
   updatedAt: Date,
-  triple: {
+  trimestral: {
     type: Boolean,
   }
 });

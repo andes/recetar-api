@@ -9,6 +9,10 @@ export interface PrescriptionSupply {
   indication?: string;
   duplicate?: boolean;
   triplicate?: boolean;
+  triplicateData?: {
+    serie: string;
+    numero: number;
+  };
 }
 
 export default interface IPrescription extends Document {
@@ -30,5 +34,5 @@ export default interface IPrescription extends Document {
   date: Date;
   createdAt?: Date;
   updatedAt?: Date;
-  triple?: boolean;
+  trimestral?: boolean;
 }
