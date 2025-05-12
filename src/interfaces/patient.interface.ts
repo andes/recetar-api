@@ -5,6 +5,7 @@ export default interface IPatient extends Document {
   dni?: string;
   lastName: string;
   firstName: string;
+  fechaNac?: Date;
   sex: string;
   genero: string;
   nombreAutopercibido?: string;

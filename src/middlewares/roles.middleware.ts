@@ -54,9 +54,7 @@ export const hasPermissionIn = (action: string, resource: string) => {
       }));
 
     }
-    // console.log(user?.roles, roles, 'user');
     const permissions: boolean = checkByAction(roles, action, resource);
-
     if(!permissions) return res.status(406).json('No tiene los permisos suficientes para llevar a acabo esta acción.');
 
     next();
