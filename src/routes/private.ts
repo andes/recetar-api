@@ -45,6 +45,19 @@ class PrivateRoutes {
     this.router.patch(`/prescriptions/:id/cancel-dispense`, hasPermissionIn('updateAny', 'prescription'), prescriptionController.cancelDispense);
     this.router.patch(`/prescriptions/:id`, hasPermissionIn('updateOwn', 'prescription'), prescriptionController.update);
     this.router.delete(`/prescriptions/:id`, hasPermissionIn('deleteAny', 'prescription'), prescriptionController.delete);
+    
+    // prescriptions public
+    this.router.get('/prescriptions-public', prescriptionPublicController.getPrescriptionsDispensed);
+    this.router.get(`/prescriptions-public/`, hasPermissionIn('readAny', 'prescriptionPublic'), prescriptionPublicController.index);
+    this.router.get('/prescriptions-public/get-by-user-id/:userId', prescriptionPublicController.getByUserId);
+    this.router.get('/prescriptions-public/find/:patient_id&:date?', prescriptionPublicController.getPrescriptionsByDateOrPatientId);
+    this.router.get(`/prescriptions-public/:id`, hasPermissionIn('readAny', 'prescriptionPublic'), prescriptionPublicController.show);
+    this.router.post(`/prescriptions-public/`, hasPermissionIn('createAny', 'prescriptionPublic'), prescriptionPublicController.create);
+    this.router.post(`/prescriptions-public/get-csv/`, hasPermissionIn('readAny', 'prescriptionPublic'), prescriptionPublicController.getCsv);
+    this.router.patch(`/prescriptions-public/:id/dispense`, hasPermissionIn('updateAny', 'prescriptionPublic'), prescriptionPublicController.dispense);
+    this.router.patch(`/prescriptions-public/:id/cancel-dispense`, hasPermissionIn('updateAny', 'prescriptionPublic'), prescriptionPublicController.cancelDispense);
+    this.router.patch(`/prescriptions-public/:id`, hasPermissionIn('updateOwn', 'prescriptionPublic'), prescriptionPublicController.update);
+    this.router.delete(`/prescriptions-public/:id`, hasPermissionIn('deleteAny', 'prescriptionPublic'), prescriptionPublicController.delete);
 
         // certificate
         this.router.get(`/certificates/`, certificateController.index);
