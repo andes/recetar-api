@@ -47,6 +47,20 @@ class AccessControlLoader {
 
       { role: 'auditor', resource: 'prescription', action: 'read:any', attributes: '*' },
 
+      // prescriptions public
+      { role: 'professional-public', resource: 'prescriptionPublic', action: 'create:any', attributes: '*, !views' },
+      { role: 'professional-public', resource: 'prescriptionPublic', action: 'read:own', attributes: '*' },
+      { role: 'professional-public', resource: 'prescriptionPublic', action: 'read:any', attributes: '*' },
+      { role: 'professional-public', resource: 'prescriptionPublic', action: 'update:own', attributes: '*' },
+      { role: 'professional-public', resource: 'prescriptionPublic', action: 'delete:any', attributes: '*' },
+
+      { role: 'pharmacist-public', resource: 'prescriptionPublic', action: 'read:any', attributes: '*' },
+      { role: 'pharmacist-public', resource: 'prescriptionPublic', action: 'update:any', attributes: '*' },
+
+      { role: 'owner', resource: 'prescriptionPublic', action: 'delete:any', attributes: '*' },
+
+      { role: 'auditor', resource: 'prescriptionPublic', action: 'read:any', attributes: '*' },
+
       // patients
       { role: 'professional', resource: 'patient', action: 'create:any', attributes: '*, !views' },
       { role: 'professional', resource: 'patient', action: 'read:own', attributes: '*' },
