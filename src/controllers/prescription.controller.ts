@@ -27,6 +27,9 @@ class PrescriptionController implements BaseController {
     const myProfessional: IUser | null = await User.findOne({ _id: professional });
     try {
       let allPrescription: IPrescription[] = [];
+      if (patient?.os) {
+        myPatient.obraSocial = patient.os;
+      }
       for (const sup of supplies) {
         const newPrescription = new Prescription({
           patient: myPatient,
@@ -70,7 +73,6 @@ class PrescriptionController implements BaseController {
           allPrescription.push(newPrescription3);
         }
       }
-
       return res.status(200).json(allPrescription);
 
     } catch (err) {
@@ -78,7 +80,7 @@ class PrescriptionController implements BaseController {
     }
   }
 
-  
+
   public show = async (req: Request, res: Response): Promise<Response> => {
     try {
       const id: string = req.params.id;
