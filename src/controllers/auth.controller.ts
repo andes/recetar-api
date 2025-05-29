@@ -54,7 +54,7 @@ class AuthController {
         }
       } else if (roleType === "pharmacist") {
         const { disposicionHabilitacion, vencimientoHabilitacion } = req.body;
-        const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${username}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
+        const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuit=${username}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
 
         if (!(resp.body && resp.body.length > 0)){
           return res.status(400).json({ message: 'No se encuentra el farmacia.'});
@@ -354,7 +354,7 @@ class AuthController {
   public getPharmacyAndes = async (req: Request, res: Response): Promise<Response> => {
     try {
       const cuil = req.query.cuil;
-      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuil=${cuil}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuit=${cuil}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
       return res.status(200).json(resp.body);
     } catch (err) {
       return res.status(500).json('Server Error');
