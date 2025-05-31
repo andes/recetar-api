@@ -12,7 +12,5 @@ export default interface IUser extends Document{
     authenticationToken?: string;
     createdAt?: Date;
     updatedAt?: Date;
-    isActive: Boolean;
-    lastLogin?: Date;
     isValidPassword(thisUser: IUser, password: string): Promise<boolean>;
 }
