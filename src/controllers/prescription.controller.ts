@@ -22,76 +22,64 @@ class PrescriptionController implements BaseController {
   }
 
   public create = async (req: Request, res: Response): Promise<Response> => {
-    const { professional, patient, date, supplies, observation, diagnostic, triple } = req.body;
+    const { professional, patient, date, supplies, triple } = req.body;
     const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
     const myProfessional: IUser | null = await User.findOne({ _id: professional });
-    const newPrescription: IPrescription = new Prescription({
-      patient: myPatient,
-      professional: {
-        userId: myProfessional?._id,
-        businessName: myProfessional?.businessName,
-        cuil: myProfessional?.cuil,
-        enrollment: myProfessional?.enrollment,
-      },
-      date,
-      observation,
-      diagnostic,
-    });
     try {
-      const errors: any[] = [];
-      let isValid: boolean = false;
-      await Promise.all(supplies.map(async (sup: any) => {
-        if (sup.supply !== null && sup.supply !== '') {
-          const sp: ISupply | null = await Supply.findOne({ _id: sup.supply._id });
-          if (sp) {
-            newPrescription.supplies.push({ supply: sp, quantity: sup.quantity });
-            isValid = true;
-          } else {
-            errors.push({ supply: sup.supply, message: 'Este medicamento no fue encontrado, por favor seleccionar un medicamento válido.' });
-          }
-        }
-      }));
-      if (errors.length && !isValid) {
-        return res.status(422).json(errors);
+      let allPrescription: IPrescription[] = [];
+      if (patient?.os) {
+        myPatient.obraSocial = patient.os;
       }
-      const pres: IPrescription[] = await this.createPrescription(newPrescription, triple);
-      return res.status(200).json(pres);
+      for (const sup of supplies) {
+        const newPrescription = new Prescription({
+          patient: myPatient,
+          professional: {
+            userId: myProfessional?._id,
+            businessName: myProfessional?.businessName,
+            cuil: myProfessional?.cuil,
+            enrollment: myProfessional?.enrollment,
+          },
+          date,
+          supplies: [sup]
+        });
+        await newPrescription.save();
+        allPrescription.push(newPrescription);
+        if (triple) {
+          let newPrescription2: IPrescription = new Prescription({
+            patient: myPatient,
+            professional: {
+              userId: myProfessional?._id,
+              businessName: myProfessional?.businessName,
+              cuil: myProfessional?.cuil,
+              enrollment: myProfessional?.enrollment,
+            },
+            date: moment(date).add(30, 'days'),
+            supplies: [sup]
+          });
+          await newPrescription2.save();
+          allPrescription.push(newPrescription2);
+          let newPrescription3: IPrescription = new Prescription({
+            patient: myPatient,
+            professional: {
+              userId: myProfessional?._id,
+              businessName: myProfessional?.businessName,
+              cuil: myProfessional?.cuil,
+              enrollment: myProfessional?.enrollment,
+            },
+            date: moment(date).add(60, 'days'),
+            supplies: [sup]
+          });
+          await newPrescription3.save();
+          allPrescription.push(newPrescription3);
+        }
+      }
+      return res.status(200).json(allPrescription);
+
     } catch (err) {
-      console.log(err);
-      return res.status(500).json('Server Error');
+      return res.status(500).json('Error al cargar la prescripción');
     }
   }
 
-  private createPrescription = async (newPrescription: IPrescription, triple: boolean): Promise<IPrescription[]> => {
-    let prescriptions: IPrescription[] = [];
-    newPrescription.save();
-    prescriptions.push(newPrescription);
-    if (triple) {
-      const newPrescription2: IPrescription = new Prescription({
-        patient: newPrescription.patient,
-        professional: newPrescription.professional,
-        date: moment(newPrescription.date).add(31, 'days'),
-        observation: newPrescription.observation,
-        diagnostic: newPrescription.diagnostic,
-        supplies: newPrescription.supplies,
-        triple: true
-      });
-      newPrescription2.save();
-      prescriptions.push(newPrescription2);
-      const newPrescription3: IPrescription = new Prescription({
-        patient: newPrescription.patient,
-        professional: newPrescription.professional,
-        date: moment(newPrescription2.date).add(31, 'days'),
-        observation: newPrescription.observation,
-        diagnostic: newPrescription.diagnostic,
-        supplies: newPrescription.supplies,
-        triple: true
-      });
-      newPrescription3.save();
-      prescriptions.push(newPrescription3);
-    }
-    return prescriptions;
-  }
 
   public show = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -126,6 +114,7 @@ class PrescriptionController implements BaseController {
         "date": { "$gte": startDate, "$lt": endDate }
       }).sort({ field: 'desc', date: -1 });
 
+      console.log(prescriptions);
       return res.status(200).json(prescriptions);
     } catch (err) {
       console.log(err);
@@ -133,9 +122,13 @@ class PrescriptionController implements BaseController {
     }
   }
 
-  public get = async (req: Request, res: Response): Promise<Response> => {
+  public getPrescriptionsDispensed = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const prescriptions: IPrescription[] | null = await Prescription.find({}).sort({ field: 'desc', date: -1 });
+      const filterDispensedBy: string | undefined = req.query.dispensedBy
+      const prescriptions: IPrescription[] | null = await Prescription.find({
+        "status": "Dispensada",
+        "dispensedBy.cuil": filterDispensedBy
+      }).sort({ field: 'desc', date: -1 });
       return res.status(200).json(prescriptions);
     } catch (err) {
       console.log(err);
@@ -194,7 +187,7 @@ class PrescriptionController implements BaseController {
 
       const dispensedBy: IUser | null = await User.findOne({ _id: pharmacistId });
 
-      if (!dispensedBy) return res.status(4000).json("Farmacia no encontrada");
+      if (!dispensedBy) return res.status(400).json("Farmacia no encontrada");
 
       const userRole: IRole | null = await Role.findOne({ role: "admin", _id: { $in: dispensedBy.roles } }) // checkeamos el rol del usuario no sea admin
 
@@ -305,6 +298,7 @@ class PrescriptionController implements BaseController {
           "Medico": "$professional.businessName",
           "Matricula": "$professional.enrollment",
           "Farmacia": "$dispensedBy.businessName",
+          "Farmacia_cuit": "$dispensedBy.cuil",
           "Droga": "$supplies.supply.name",
           "Cantidad": "$supplies.quantity",
           "Fecha_receta": {
@@ -334,6 +328,7 @@ class PrescriptionController implements BaseController {
           Medico: row.Medico,
           Matricula: row.Matricula,
           Farmacia: row.Farmacia,
+          'Farmacia_cuit': row.Farmacia_cuit,
           Drogas: row.Droga,
           Cantidad: row.Cantidad,
           'Fecha_receta': row.Fecha_receta,

@@ -2,6 +2,7 @@ import { Schema, Model, model } from 'mongoose';
 import IPrescription from '../interfaces/prescription.interface';
 import { supplySchema } from '../models/supply.model';
 import { patientSchema } from '../models/patient.model';
+import ObraSocial from './obraSocial.model';
 
 // Schema
 const prescriptionSchema = new Schema({
@@ -21,7 +22,19 @@ const prescriptionSchema = new Schema({
   supplies: [{
     _id: false,
     supply: supplySchema,
-    quantity: Number
+    quantity: Number,
+    diagnostic: {
+      type: String,
+    },
+    indication: {
+      type: String,
+    },
+    duplicate: {
+      type: Boolean,
+    },
+    triplicate: {
+      type: Boolean,
+    }
   }],
   status: {
     type: String,
@@ -38,14 +51,12 @@ const prescriptionSchema = new Schema({
     default: Date.now
   },
   updatedAt: Date,
-  diagnostic: {
-    type: String,
-  },
-  observation: {
-    type: String,
-  },
   triple: {
     type: Boolean,
+  },
+  obraSocial: {
+    type: Schema.Types.ObjectId,
+    ref: 'ObraSocial'
   }
 });
 

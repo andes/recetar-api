@@ -51,8 +51,8 @@ export function sendMail(options: MailOptions) {
 export function renderHTML(templateName: string, extras: any): Promise<string> {
     return new Promise((resolve, reject) => {
         // [TODO] Analizar el path relativo o absoluto
-        const TEMPLATE_PATH = './templates/';
-        const url = path.join(process.cwd(), TEMPLATE_PATH, templateName);
+        const TEMPLATE_PATH = process.env.TEMPLATES_PATH || '/var/www/andes/recetar/api/current/src/templates/';
+        const url = path.join(TEMPLATE_PATH, templateName);
 
         fs.readFile(url, { encoding: 'utf-8' }, (err, html) => {
             if (err) {
