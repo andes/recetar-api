@@ -1,12 +1,5 @@
 import { Document } from 'mongoose';
 
-export interface ISnomedConcept {
-  conceptId: string,
-  term: string,
-  fsn: string,
-  semanticTag: string
-}
-
 export default interface ISupply extends Document {
   id: string;
   name: string;
@@ -18,5 +11,4 @@ export default interface ISupply extends Document {
   description: string;
   observation: string;
   pharmaceutical_form: string;
-  snomedConcept: ISnomedConcept;
 }
