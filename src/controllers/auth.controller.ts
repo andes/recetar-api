@@ -20,22 +20,22 @@ class AuthController {
       const { username, email, enrollment, cuil, businessName, password, roleType, captcha } = req.body;
 
       // Verificación Token captcha
-      if (!captcha) return res.status(403).json({message: 'Body incompleto'});
-      const captchaResp: any = await needle('post', 'https://challenges.cloudflare.com/turnstile/v0/siteverify', {secret: process.env.CF_SECRET_KEY, response: captcha})
+      if (!captcha) return res.status(403).json({ message: 'Body incompleto' });
+      const captchaResp: any = await needle('post', 'https://challenges.cloudflare.com/turnstile/v0/siteverify', { secret: process.env.CF_SECRET_KEY, response: captcha })
       if (!captchaResp || captchaResp.body.success === false) return res.status(403).json("Conexión invalida");
 
       // Verificación de rol
       const role: IRole | null = await Role.findOne({ role: roleType });
-      if (!role) return res.status(400).json({message:'No es posible registrar el usuario'});
+      if (!role) return res.status(400).json({ message: 'No es posible registrar el usuario' });
 
       // Verificación de usuario ya registrado
       const posibleExistingUser: IUser | null = await User.findOne({ username: username });
-      if (posibleExistingUser) return res.status(400).json({message: 'No es posible registrar, el usuario ya existe'});
+      if (posibleExistingUser) return res.status(400).json({ message: 'No es posible registrar, el usuario ya existe' });
 
       if (roleType === "professional") {
         const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${username}`);
         if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
-          return res.status(400).json({ message: 'No se encuentra el profesional.'});
+          return res.status(400).json({ message: 'No se encuentra el profesional.' });
         }
         const professionalAndes = resp.body[0];
         const { profesiones } = professionalAndes;
@@ -56,8 +56,8 @@ class AuthController {
         const { disposicionHabilitacion, vencimientoHabilitacion } = req.body;
         const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuit=${username}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
 
-        if (!(resp.body && resp.body.length > 0)){
-          return res.status(400).json({ message: 'No se encuentra el farmacia.'});
+        if (!(resp.body && resp.body.length > 0)) {
+          return res.status(400).json({ message: 'No se encuentra el farmacia.' });
         }
 
         const pharmacyAndes = resp.body[0];
@@ -78,8 +78,7 @@ class AuthController {
       }
       return res.status(403).json('No se puede registrar el usuario');
     } catch (errors) {
-      console.log(errors)
-      return res.status(422).json({errors});
+      return res.status(422).json({ errors });
     }
   }
 
@@ -361,18 +360,51 @@ class AuthController {
     }
   }
 
-  public getProfessionalsAndes = async (req: Request, res: Response): Promise<Response> => {
+
+
+  private validateProfessional = (profesional: any, enrollment: string, cuil: string, graduationDate: string, enrollmentExpiration: string): boolean => {
+    if (!profesional || !profesional.profesiones || profesional.profesiones.length === 0) {
+      return false;
+    }
     try {
-      const documento = req.query.documento;
-      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${documento}`);
-      return res.status(200).json(resp.body);
-    } catch (err) {
-      console.log(err);
-      return res.status(500).json('Server Error');
+      const lastProfesion = profesional.profesiones.find((p: any) => p.profesion.codigo == '1' || p.profesion.codigo == '23' || p.profesion.codigo == '2');
+      const lastMatriculacion = lastProfesion && lastProfesion.matriculacion && lastProfesion.matriculacion.length ? lastProfesion.matriculacion[lastProfesion.matriculacion.length - 1] : null;
+      if (lastMatriculacion) {
+        let res = (moment(lastMatriculacion.fin) > moment());
+        res = res && lastMatriculacion.matriculaNumero.toString() === enrollment;
+        res = res && profesional.cuit === cuil;
+        res = res && moment(lastMatriculacion.fin).format('DD-MM-YYYY') === enrollmentExpiration;
+        res = res && moment(lastProfesion.fechaEgreso).format('DD-MM-YYYY') === graduationDate;
+        return res;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      return false;
     }
   }
 
-  
+  public getProfessionalsAndes = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const dni = req.query.documento;
+      const enrollment = req.query.matricula;
+      const cuil = req.query.cuil;
+      const graduationDate = req.query.fechaEgreso;
+      const enrollmentExpiration = req.query.fechaMatVencimiento;
+      const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${dni}`);
+      if (!resp.body || resp.body.length === 0) {
+        return res.status(404).json({ message: 'No se encuentra el profesional.' });
+      }
+      if (!this.validateProfessional(resp.body[0], enrollment, cuil, graduationDate, enrollmentExpiration)) {
+        return res.status(500).json({ message: 'No se encuentra el profesional.' });
+      }
+      return res.status(200).json(resp.body);
+    } catch (err) {
+      return res.status(500).json({ message: 'Server Error' });
+    }
+  }
+
+
 
 }
 
