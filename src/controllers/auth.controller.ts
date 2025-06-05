@@ -39,7 +39,7 @@ class AuthController {
         }
         const professionalAndes = resp.body[0];
         const { profesiones } = professionalAndes;
-        const lastProfesion = profesiones.find((p: any) => p.profesion.codigo == '1' || p.profesion.codigo == '23');
+        const lastProfesion = profesiones.find((p: any) => p.profesion.codigo == '1' || p.profesion.codigo == '23' || p.profesion.codigo == '2');
         const lastMatriculacion = lastProfesion.matriculacion[lastProfesion.matriculacion.length - 1];
         if (lastMatriculacion && (moment(lastMatriculacion.fin)) > moment() && lastMatriculacion.matriculaNumero.toString() === enrollment && cuil === professionalAndes.cuit) {
           const newUser = new User({ username, email, password, enrollment, cuil, businessName });
