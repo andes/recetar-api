@@ -23,6 +23,7 @@ const prescriptionSchema = new Schema({
     _id: false,
     supply: supplySchema,
     quantity: Number,
+    quantityPresentation: Number,
     diagnostic: {
       type: String,
     },
