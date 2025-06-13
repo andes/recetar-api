@@ -163,7 +163,7 @@ class AndesPrescriptionController implements BaseController {
       if (!req.body) return res.status(400).json({mensaje: 'Missing body payload!'});
 
       const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({_id: req.body.prescription.id});
-      if (!prescriptionAndes) return res.status(404).json('Prescription not found!');
+      if (!prescriptionAndes) return res.status(404).json('Prescription not found!');    
 
       const pharmacist: IUser | null = await User.findOne({_id: req.body.pharmacistId.toString()});
       if (!pharmacist) return res.status(404).json('Pharmacist not found!');
@@ -184,7 +184,7 @@ class AndesPrescriptionController implements BaseController {
       const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, body, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
       if (typeof(resp.statusCode) === 'number' && resp.statusCode !== 200) return res.status(resp.statusCode).json({mensaje: 'Error', error: resp.body});
       if (typeof(resp.statusCode) === 'number' && resp.statusCode === 200) {
-        await PrescriptionAndes.findByIdAndDelete(prescriptionAndes.id.toString());
+        await PrescriptionAndes.findByIdAndUpdate(prescriptionAndes.id.toString(), req.body.prescription);
       }
       return res.status(200).json(resp.body);
     } catch(e) {
