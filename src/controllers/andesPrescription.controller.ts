@@ -31,7 +31,7 @@ class AndesPrescriptionController implements BaseController {
       if (!req.params.id) return res.status(400).json({mensaje: 'Missing required params!'});
       
       const id = req.params.id;
-      const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({idAndes: id});
+      const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({ id });
       if (!prescriptionAndes) return res.status(404).json({mensaje: 'Prescription not found!'});
       console.log('index', PrescriptionAndes);
       return res.status(200).json(prescriptionAndes);
