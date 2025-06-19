@@ -5,6 +5,7 @@ import IPatient from './patient.interface';
 export interface PrescriptionSupply {
   supply: ISupply;
   quantity: number;
+  quantityPresentation?: number;
   diagnostic?: string;
   indication?: string;
   duplicate?: boolean;
