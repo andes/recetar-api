@@ -77,6 +77,13 @@ export const userSchema = new Schema({
     type: Date,
     default: new Date('2020-04-02T00:00:00.000Z')
   },
+  otpSecret: {
+    type: String
+  },
+  otpEnabled: {
+    type: Boolean,
+    default: false
+  }
 });
 
 // Model

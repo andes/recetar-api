@@ -3,7 +3,9 @@ import * as JWT from 'jsonwebtoken';
 import { env, httpCodes } from '../config/config';
 import { v4 as uuidv4 } from 'uuid';
 import _ from 'lodash';
-
+import { authenticator } from 'otplib';
+import qrcode from 'qrcode';
+import { Types } from 'mongoose';
 import IUser from '../interfaces/user.interface';
 import User from '../models/user.model';
 import IRole from '../interfaces/role.interface';
@@ -120,6 +122,33 @@ class AuthController {
       const user: IUser | null = await User.findOne({ _id }).populate({ path: 'roles', select: 'role' });
 
       if (user && user.isActive) {
+        // hardcode otpEnabled && otpSecret
+        user.otpEnabled = true;
+        user.otpSecret = 'JBSWY3DPEHPK3PXP';
+
+        // Verificar si el usuario tiene OTP habilitado
+        if (user.otpEnabled && user.otpSecret) {
+          // Si no se proporciona código OTP, solicitar verificación
+          if (!req.body.otpToken) {
+            return res.status(200).json({
+              requireOtp: true,
+              message: 'Se requiere verificación de doble factor'
+            });
+          }
+
+          // Verificar el código OTP proporcionado
+          const isValidOtp = authenticator.verify({
+            token: req.body.otpToken,
+            secret: user.otpSecret
+          });
+
+          if (!isValidOtp) {
+            return res.status(401).json({
+              message: 'Código de verificación inválido'
+            });
+          }
+        }
+
         const roles: string | string[] = [];
         await Promise.all(user.roles.map(async (role) => {
           roles.push(role.role);
@@ -404,8 +433,103 @@ class AuthController {
     }
   }
 
+  public generateOtpSecret = async (req: Request, res: Response): Promise<Response> => {
+    const { _id } = req.user as IUser;
+    try {
+      const user: IUser | null = await User.findOne({ _id });
+      if (!user) return res.status(404).json('No se ha encontrado el usuario');
 
+      // Generar un nuevo secreto OTP
+      const secret = authenticator.generateSecret();
 
+      // Crear la URI para el código QR
+      const otpAuthUrl = authenticator.keyuri(user.username, 'RecetAR', secret);
+
+      // Generar el código QR
+      const qrCodeUrl = await qrcode.toDataURL(otpAuthUrl);
+
+      // Guardar el secreto temporalmente (no activado aún)
+      await User.updateOne({ _id: user._id }, { otpSecret: secret });
+
+      return res.status(200).json({
+        secret,
+        qrCodeUrl
+      });
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json('Server Error');
+    }
+  }
+
+  public verifyOtp = async (req: Request, res: Response): Promise<Response> => {
+    // const { _id } = req.user as IUser;
+    const { username, otpToken } = req.body;
+
+    try {
+      const user: IUser | null = await User.findOne({ username }).populate({ path: 'roles', select: 'role' });
+      if (!user) return res.status(404).json('No se ha encontrado el usuario');
+      // if (!user.otpSecret) return res.status(400).json('No se ha generado un secreto OTP');
+      if (user && user.isActive) {
+        const otpSecret = 'JBSWY3DPEHPK3PXP';
+        // Verificar el token proporcionado
+        const isValidToken = authenticator.verify({
+          token: otpToken,
+          // secret: user.otpSecret
+          secret: otpSecret
+        });
+
+        if (!isValidToken) {
+          return res.status(401).json('Código de verificación inválido');
+        }
+
+        // // Activar OTP para el usuario
+        // await User.updateOne({ _id: user._id }, { otpEnabled: true });
+
+        const roles: string | string[] = [];
+        await Promise.all(user.roles.map(async (role) => {
+          console.log("role", role);
+          roles.push(role.role);
+        }));
+
+        const token = this.signInToken(user._id, user.username, user.businessName, roles);
+        const refreshToken = uuidv4();
+        await User.updateOne({ _id: user._id }, { refreshToken: refreshToken });
+
+        return res.status(200).json({
+          jwt: token,
+          refreshToken: refreshToken,
+          // message: 'Verificación de doble factor activada correctamente'
+        });
+      }
+
+      return res.status(httpCodes.EXPECTATION_FAILED).json('Debe iniciar sesión');//in the case that not found user
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json('Server Error');
+    }
+  }
+
+  public disableOtp = async (req: Request, res: Response): Promise<Response> => {
+    const { _id } = req.user as IUser;
+    const { password } = req.body;
+
+    try {
+      const user: IUser | null = await User.findOne({ _id });
+      if (!user) return res.status(404).json('No se ha encontrado el usuario');
+
+      // Verificar la contraseña antes de desactivar OTP
+      const isMatch: boolean = await User.schema.methods.isValidPassword(user, password);
+      if (!isMatch) return res.status(401).json({ message: 'Contraseña incorrecta' });
+
+      // Desactivar OTP
+      await User.updateOne({ _id: user._id }, { otpEnabled: false, otpSecret: null });
+
+      return res.status(200).json('Verificación de doble factor desactivada correctamente');
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json('Server Error');
+    }
+  }
 }
 
 export default new AuthController();

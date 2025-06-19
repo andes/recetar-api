@@ -14,5 +14,7 @@ export default interface IUser extends Document{
     updatedAt?: Date;
     isActive: Boolean;
     lastLogin?: Date;
+    otpSecret?: string;
+    otpEnabled?: boolean;
     isValidPassword(thisUser: IUser, password: string): Promise<boolean>;
 }
