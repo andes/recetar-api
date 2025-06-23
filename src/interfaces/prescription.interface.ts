@@ -32,4 +32,5 @@ export default interface IPrescription extends Document {
   createdAt?: Date;
   updatedAt?: Date;
   triple?: boolean;
+  ambito?: string;
 }
