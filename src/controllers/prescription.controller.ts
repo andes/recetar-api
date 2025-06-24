@@ -27,7 +27,7 @@ class PrescriptionController implements BaseController {
     const myProfessional: IUser | null = await User.findOne({ _id: professional });
     try {
       let allPrescription: IPrescription[] = [];
-      if (patient?.os) {
+      if (patient?.os.nombre) {
         myPatient.obraSocial = patient.os;
       }
       for (const sup of supplies) {
