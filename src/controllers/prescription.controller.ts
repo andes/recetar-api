@@ -12,7 +12,9 @@ import IUser from '../interfaces/user.interface';
 import moment = require('moment');
 import IRole from '../interfaces/role.interface';
 import { Types } from 'mongoose';
+import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
 const csv = require('fast-csv');
+import needle from 'needle';
 
 class PrescriptionController implements BaseController {
 
@@ -22,7 +24,7 @@ class PrescriptionController implements BaseController {
   }
 
   public create = async (req: Request, res: Response): Promise<Response> => {
-    const { professional, patient, date, supplies, triple } = req.body;
+    const { professional, patient, date, supplies, triple, ambito } = req.body;
     const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
     const myProfessional: IUser | null = await User.findOne({ _id: professional });
     try {
@@ -40,10 +42,19 @@ class PrescriptionController implements BaseController {
             enrollment: myProfessional?.enrollment,
           },
           date,
-          supplies: [sup]
+          supplies: [sup],
+          ambito
         });
         await newPrescription.save();
         allPrescription.push(newPrescription);
+        // if (ambito === 'publico') {
+        //   const prescriptionAndes: IPrescriptionAndes = mapToAndes(newPrescription, myProfessional, myPatient);
+        //   try {
+        //     await this.enviarRecetaAndes(prescriptionAndes);
+        //   } catch (e) {
+        //     console.error('Error al enviar receta a ANDES:', e);
+        //   }
+        // }
         if (triple) {
           let newPrescription2: IPrescription = new Prescription({
             patient: myPatient,
@@ -54,7 +65,8 @@ class PrescriptionController implements BaseController {
               enrollment: myProfessional?.enrollment,
             },
             date: moment(date).add(30, 'days'),
-            supplies: [sup]
+            supplies: [sup],
+            ambito
           });
           await newPrescription2.save();
           allPrescription.push(newPrescription2);
@@ -67,12 +79,15 @@ class PrescriptionController implements BaseController {
               enrollment: myProfessional?.enrollment,
             },
             date: moment(date).add(60, 'days'),
-            supplies: [sup]
+            supplies: [sup],
+            ambito
           });
           await newPrescription3.save();
           allPrescription.push(newPrescription3);
         }
       }
+      // Post of prescriptions to andes publico
+      
       return res.status(200).json(allPrescription);
 
     } catch (err) {
@@ -417,6 +432,16 @@ class PrescriptionController implements BaseController {
     })
     return drogs;
   }
+  private enviarRecetaAndes = async (prescription: IPrescriptionAndes) => {
+    try {
+      const resp = await needle('post', `${process.env.ANDES_ENDPOINT}/modules/recetas`, prescription, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
+    } catch (e) {
+      console.error('Error al enviar receta a ANDES:', e);
+      throw new Error('Error al enviar receta a ANDES');
+    }
+  } 
+  
 }
+
 
 export default new PrescriptionController();
