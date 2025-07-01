@@ -16,7 +16,6 @@ import authController from '../controllers/auth.controller';
 import usersController from '../controllers/users.controller';
 import snomedSupplyController from '../controllers/snomed.controller';
 import andesPrescriptionController from '../controllers/andesPrescription.controller';
-import prescriptionPublicController from '../controllers/prescription-public.controller';
 class PrivateRoutes {
 
   constructor(private router: Router = Router()) { }
