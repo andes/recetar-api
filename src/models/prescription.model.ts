@@ -58,6 +58,10 @@ const prescriptionSchema = new Schema({
   obraSocial: {
     type: Schema.Types.ObjectId,
     ref: 'ObraSocial'
+  },
+  ambito: {
+    type: String,
+    enum: ['publico', 'privado']
   }
 });
 
