@@ -12,10 +12,17 @@
         "build": "tsc",
         "start": "node dist/src/server.js",
         "start:dev": "ts-node ./src/server.ts",
-        "dev": "nodemon"
+        "start:agenda-ui": "ts-node ./src/agenda-ui.ts",
+        "start:agenda-ui:prod": "node dist/src/agenda-ui.js",
+        "dev": "nodemon",
+        "dev:agenda-ui": "nodemon --config nodemon.agenda.json",
+        "dev:all": "concurrently \"npm run dev\" \"npm run dev:agenda-ui\"",
+        "start:all": "concurrently \"npm run start\" \"npm run start:agenda-ui:prod\""
     },
     "dependencies": {
         "accesscontrol": "^2.2.1",
+        "agenda": "^4.4.0",
+        "agendash": "^2.1.1",
         "bcryptjs": "^2.4.3",
         "body-parser": "^1.20.2",
         "compression": "^1.7.4",
@@ -41,6 +48,7 @@
         "uuid": "^7.0.3"
     },
     "devDependencies": {
+        "@types/agenda": "^4.1.4",
         "@types/bcryptjs": "^2.4.2",
         "@types/compression": "^1.7.0",
         "@types/cors": "^2.8.17",
