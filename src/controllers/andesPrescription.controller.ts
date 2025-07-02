@@ -29,13 +29,17 @@ class AndesPrescriptionController implements BaseController {
 
   public show = async (req: Request, res: Response): Promise<Response> => {
     try{
-      console.log('show', req.query);
       if (!req.query.id) return res.status(400).json({mensaje: 'Missing required params!'});
       
       const id = req.query.id;
       const op = req.query.op ? req.query.op : '';
       const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({ id });
-      if (!prescriptionAndes) return res.status(200).json({mensaje: 'Prescription not found!'});
+      if (!prescriptionAndes) return res.status(200).json({
+        mensaje: 'Prescription not found!',
+        recetaId: id,
+        dispensas: [],
+        estado: 'sin-dispensa'
+      });
 
       if (op === 'andes') {
         const response = {
