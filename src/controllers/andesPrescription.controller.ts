@@ -29,7 +29,7 @@ class AndesPrescriptionController implements BaseController {
 
   public show = async (req: Request, res: Response): Promise<Response> => {
     try{
-      if (!req.query.id) return res.status(400).json({mensaje: 'Missing required params!'});
+      if (!req.params.id) return res.status(400).json({mensaje: 'Missing required params!'});
       
       const id = req.params.id;
       const op = req.query.op ? req.query.op : '';
