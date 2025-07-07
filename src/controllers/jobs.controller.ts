@@ -44,60 +44,6 @@ class JobsController {
         }
     };
 
-    // Programar recordatorio de medicación
-    public scheduleMedicationReminder = async (req: Request, res: Response): Promise<Response> => {
-        try {
-            const { userId, medicationName, dosage, reminderTime, recurring, interval } = req.body;
-
-            if (!userId || !medicationName || !dosage) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Los campos userId, medicationName y dosage son obligatorios'
-                });
-            }
-
-            if (recurring && interval) {
-                // Recordatorio recurrente
-                await this.agendaService.scheduleRecurringMedicationReminder({
-                    userId,
-                    medicationName,
-                    dosage,
-                    interval
-                });
-
-                return res.status(200).json({
-                    success: true,
-                    message: `Recordatorio recurrente programado: ${interval}`,
-                    data: { userId, medicationName, dosage, interval }
-                });
-            } else if (reminderTime) {
-                // Recordatorio único
-                await this.agendaService.scheduleMedicationReminder({
-                    userId,
-                    medicationName,
-                    dosage,
-                    reminderTime
-                });
-
-                return res.status(200).json({
-                    success: true,
-                    message: `Recordatorio programado para ${reminderTime}`,
-                    data: { userId, medicationName, dosage, reminderTime }
-                });
-            } else {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Debe especificar reminderTime o recurring=true con interval'
-                });
-            }
-        } catch (error) {
-            console.error('Error programando recordatorio:', error);
-            return res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
-            });
-        }
-    };
 
     // Obtener trabajos programados
     public getJobs = async (req: Request, res: Response): Promise<Response> => {

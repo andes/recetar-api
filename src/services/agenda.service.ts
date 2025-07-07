@@ -51,100 +51,13 @@ class AgendaService {
             
             console.log(`📧 Enviando email a: ${to}, Asunto: ${subject}`);
             
-            // Aquí integrarías con tu servicio de email existente
-            // Por ejemplo, si tienes un servicio de nodemailer:
-            // await this.sendEmailWithNodemailer(to, subject, body, template);
+           
             
-            // Simular tiempo de procesamiento
+            // Tiempo de procesamiento (logica de envío de email)
             await new Promise(resolve => setTimeout(resolve, 1000));
             console.log(`✅ Email enviado exitosamente a: ${to}`);
         });
 
-        // Job para notificaciones de prescripciones vencidas
-        this.agenda.define('check expired prescriptions', async (job: Job) => {
-            console.log('🔍 Verificando prescripciones vencidas...');
-            
-            // Aquí integrarías con tu modelo de Prescription
-            // const expiredPrescriptions = await PrescriptionModel.find({ 
-            //     expiryDate: { $lt: new Date() },
-            //     status: 'active'
-            // });
-            
-            // Programar notificaciones para cada prescripción vencida
-            // for (const prescription of expiredPrescriptions) {
-            //     await this.scheduleJob('send notification', {
-            //         userId: prescription.userId,
-            //         message: `Tu prescripción ${prescription.id} ha vencido`,
-            //         type: 'prescription_expired'
-            //     });
-            // }
-            
-            console.log('✅ Verificación de prescripciones completada');
-        });
-
-        // Job para recordatorios de medicación
-        this.agenda.define('medication reminder', async (job: Job) => {
-            const { userId, medicationName, dosage } = job.attrs.data as { 
-                userId: string; 
-                medicationName: string; 
-                dosage: string 
-            };
-            
-            console.log(`💊 Enviando recordatorio de medicación para usuario ${userId}: ${medicationName} - ${dosage}`);
-            
-            // Aquí integrarías con tu servicio de notificaciones
-            // await this.sendNotification(userId, {
-            //     title: 'Recordatorio de medicación',
-            //     message: `Es hora de tomar ${medicationName} - ${dosage}`,
-            //     type: 'medication_reminder'
-            // });
-        });
-
-        // Job para generar reportes automáticos
-        this.agenda.define('generate automatic report', async (job: Job) => {
-            const { reportType, recipients, dateRange } = job.attrs.data as { 
-                reportType: string; 
-                recipients: string[]; 
-                dateRange: { start: Date; end: Date } 
-            };
-            
-            console.log(`📊 Generando reporte automático: ${reportType}`);
-            
-            // Aquí integrarías con tu lógica de generación de reportes
-            // const reportData = await this.generateReport(reportType, dateRange);
-            // const reportFile = await this.createReportFile(reportData);
-            
-            // Enviar por email a los destinatarios
-            // for (const recipient of recipients) {
-            //     await this.scheduleJob('send email', {
-            //         to: recipient,
-            //         subject: `Reporte ${reportType} - ${new Date().toISOString().split('T')[0]}`,
-            //         body: `Adjunto encontrarás el reporte ${reportType} solicitado.`,
-            //         attachments: [reportFile]
-            //     });
-            // }
-            
-            console.log('✅ Reporte generado y enviado');
-        });
-
-        // Job para limpieza de datos temporales
-        this.agenda.define('cleanup temp data', async (job: Job) => {
-            console.log('🧹 Iniciando limpieza de datos temporales...');
-            
-            // Aquí integrarías con tus modelos para limpiar datos antiguos
-            // const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 días atrás
-            
-            // Limpiar sesiones expiradas
-            // await SessionModel.deleteMany({ expiresAt: { $lt: new Date() } });
-            
-            // Limpiar logs antiguos
-            // await LogModel.deleteMany({ createdAt: { $lt: cutoffDate } });
-            
-            // Limpiar archivos temporales
-            // await TempFileModel.deleteMany({ createdAt: { $lt: cutoffDate } });
-            
-            console.log('✅ Limpieza de datos completada');
-        });
     }
 
     // Métodos públicos para programar jobs
@@ -198,44 +111,11 @@ class AgendaService {
         await this.scheduleJob('send email', data, when);
     }
 
-    public async scheduleMedicationReminder(reminderData: {
-        userId: string;
-        medicationName: string;
-        dosage: string;
-        reminderTime: string | Date;
-    }): Promise<void> {
-        const { reminderTime, ...data } = reminderData;
-        await this.scheduleJob('medication reminder', data, reminderTime);
-    }
 
-    public async scheduleRecurringMedicationReminder(reminderData: {
-        userId: string;
-        medicationName: string;
-        dosage: string;
-        interval: string; // ej: '0 8,12,20 * * *' para 8am, 12pm, 8pm diario
-    }): Promise<void> {
-        const { interval, ...data } = reminderData;
-        await this.scheduleRecurringJob(interval, 'medication reminder', data);
-    }
 
     public async setupAutomaticTasks(): Promise<void> {
         await this.initialize();
         
-        // Verificar prescripciones vencidas diariamente a las 9 AM
-        await this.scheduleRecurringJob('0 9 * * *', 'check expired prescriptions');
-        
-        // Limpiar datos temporales semanalmente los domingos a las 2 AM
-        await this.scheduleRecurringJob('0 2 * * 0', 'cleanup temp data');
-        
-        // Generar reporte mensual el primer día del mes a las 6 AM
-        await this.scheduleRecurringJob('0 6 1 * *', 'generate automatic report', {
-            reportType: 'monthly_summary',
-            recipients: ['admin@recetar.com'],
-            dateRange: {
-                start: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
-                end: new Date(new Date().getFullYear(), new Date().getMonth(), 0)
-            }
-        });
         
         console.log('🕒 Tareas automáticas configuradas');
     }

@@ -65,28 +65,6 @@ Una vez iniciado el servidor, puedes acceder a:
 - **Agenda UI**: http://localhost:3001
 - **API Principal**: http://localhost:4000/api
 
-## Jobs Predefinidos
-
-La aplicación incluye varios jobs de ejemplo:
-
-### 1. Envío de Email (`send email`)
-- **Descripción**: Envía emails usando los datos proporcionados
-- **Datos requeridos**: `{ to, subject, body }`
-- **Concurrencia**: 10 trabajos simultáneos
-
-### 2. Limpieza de Datos (`cleanup old data`)
-- **Descripción**: Limpia datos antiguos de la base de datos
-- **Programación**: Diariamente a las 2:00 AM
-- **Datos**: No requiere datos adicionales
-
-### 3. Generación de Reportes (`generate report`)
-- **Descripción**: Genera reportes del sistema
-- **Programación**: Semanalmente los lunes a las 8:00 AM
-- **Datos requeridos**: `{ reportType, userId }`
-
-### 4. Notificaciones (`send notification`)
-- **Descripción**: Envía notificaciones a usuarios
-- **Datos requeridos**: `{ userId, message, type }`
 
 ## Programar Jobs desde la API
 

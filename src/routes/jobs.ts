@@ -6,9 +6,6 @@ const router = Router();
 // Programar email
 router.post('/schedule-email', JobsController.scheduleEmail);
 
-// Programar recordatorio de medicación
-router.post('/schedule-medication-reminder', JobsController.scheduleMedicationReminder);
-
 // Obtener trabajos programados
 router.get('/jobs', JobsController.getJobs);
 

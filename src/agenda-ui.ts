@@ -31,7 +31,7 @@ class AgendaUIServer {
             defaultLockLifetime: 10000
         });
 
-        // Definir algunos jobs de ejemplo (puedes agregar más según tus necesidades)
+        // Definir algunos jobs de ejemplo
         this.defineExampleJobs();
     }
 
@@ -40,29 +40,10 @@ class AgendaUIServer {
         this.agenda.define('send email', { concurrency: 10 }, async (job: Job) => {
             const { to, subject, body } = job.attrs.data as { to: string; subject: string; body: string };
             console.log(`Enviando email a: ${to}, Asunto: ${subject}`);
-            // Aquí iría la lógica real de envío de email
-            // Por ejemplo, usando nodemailer que ya tienes instalado
+            // lógica del envío de email
         });
 
-        // Job de ejemplo: limpieza de datos
-        this.agenda.define('cleanup old data', async (job: Job) => {
-            console.log('Ejecutando limpieza de datos antiguos...');
-            // Aquí iría la lógica de limpieza
-        });
-
-        // Job de ejemplo: generación de reportes
-        this.agenda.define('generate report', async (job: Job) => {
-            const { reportType, userId } = job.attrs.data as { reportType: string; userId: string };
-            console.log(`Generando reporte ${reportType} para usuario ${userId}`);
-            // Aquí iría la lógica de generación de reportes
-        });
-
-        // Job de ejemplo: notificaciones
-        this.agenda.define('send notification', async (job: Job) => {
-            const { userId, message, type } = job.attrs.data as { userId: string; message: string; type: string };
-            console.log(`Enviando notificación ${type} a usuario ${userId}: ${message}`);
-            // Aquí iría la lógica de notificaciones
-        });
+        
     }
 
     async config() {
@@ -97,14 +78,7 @@ class AgendaUIServer {
     }
 
     async scheduleExampleJobs() {
-        // Ejemplo: programar limpieza diaria
-        await this.agenda.every('0 2 * * *', 'cleanup old data'); // A las 2 AM todos los días
         
-        // Ejemplo: programar generación de reportes semanales
-        await this.agenda.every('0 8 * * 1', 'generate report', { 
-            reportType: 'weekly', 
-            userId: 'system' 
-        }); // Lunes a las 8 AM
     }
 
     async start() {
