@@ -5,6 +5,7 @@ import needle from 'needle';
 import PrescriptionAndes from '../models/prescriptionAndes.model';
 import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
+import prescriptionController from './prescription.controller';
 
 
 class AndesPrescriptionController implements BaseController {
@@ -31,10 +32,44 @@ class AndesPrescriptionController implements BaseController {
       if (!req.params.id) return res.status(400).json({mensaje: 'Missing required params!'});
       
       const id = req.params.id;
+      const op = req.query.op ? req.query.op : '';
       const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({ id });
-      if (!prescriptionAndes) return res.status(404).json({mensaje: 'Prescription not found!'});
-      console.log('index', PrescriptionAndes);
-      return res.status(200).json(prescriptionAndes);
+      if (!prescriptionAndes) return res.status(200).json({
+        mensaje: 'Prescription not found!',
+        recetaId: id,
+        dispensas: [],
+        estado: 'sin-dispensa'
+      });
+
+      if (op === 'andes') {
+        const response = {
+          recetaId: prescriptionAndes._id.toString(),
+          dispensas: prescriptionAndes.dispensa.map((dispensa: IDispensa) => ({
+            recetaId: prescriptionAndes._id.toString(),
+            dispensa: {
+              id: dispensa._id.toString(),
+              fecha: prescriptionAndes.estadoDispensaActual.tipo === 'dispensada' ? prescriptionAndes.estadoDispensaActual.fecha : '',
+              medicamentos: [{
+                cantidad: prescriptionAndes.medicamento.cantidad,
+                presentacion: prescriptionAndes.medicamento.presentacion,
+                unidades: prescriptionAndes.medicamento.unidades,
+                medicamento: prescriptionAndes.medicamento.concepto,
+                descripcion: '',
+                cantidadEnvases: prescriptionAndes.medicamento.cantEnvases
+              }],
+              organizacion: {
+                id: prescriptionAndes.organizacion.id.toString(),
+                nombre: prescriptionAndes.organizacion.nombre
+              }
+            }
+          })),
+          estado: prescriptionAndes.estadoDispensaActual.tipo
+        }
+        return res.status(200).json(response);
+      } else {
+
+        return res.status(200).json(prescriptionAndes);
+      }
     } catch(e) {
       return res.status(500).json({mensaje: 'Error', error: e});
     }
