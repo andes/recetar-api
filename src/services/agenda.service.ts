@@ -71,9 +71,38 @@ class AgendaService {
             } else {
                 console.log(`Enviando ${recetasPublicasPendientes.length} recetas pendientes a Andes...`);
                 recetasPublicasPendientes.forEach(async (receta: IPrescription) => {                    
+                    
+                    const body = {
+                        idPrestacion: '',
+                        idRegistro: '',
+                        paciente: paicente,
+                        profesional: profesional,
+                        organizacion: organizacion,
+                        medicamntos: [{
+                            diagnostico: '',
+                            concepto: '',
+                            unidades: '',
+                            cantidad: '',
+                            cantEnvases: '',
+                            dosisDiaria: {
+                                dosis: '',
+                                intervalo: '',
+                                dias: '',
+                                notaMedica: ''
+                            },
+                            tratamientoProlongado: '',
+                            timepoTratamiento: '',
+                            tipoReceta: '',
+                        }],
+                        orgienExterno: ''
+                    }
+                    
                     console.log(`Enviando receta ${receta._id} a Andes...`);
-                    const resp = await needle('post', `${process.env.ANDES_ENDPOINT}/recetas`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
-
+                    const resp = await needle('post', `${process.env.ANDES_ENDPOINT}/modules/recetas`, body, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
+                    if (resp.statusCode !== 200) {
+                        console.error(`Error al enviar receta ${receta._id} a Andes: ${resp.statusCode}`);
+                        return job.fail(`Error al enviar receta ${receta._id} a Andes: ${resp.statusCode}`);
+                    }
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     console.log(`Receta ${receta._id} enviada exitosamente a Andes.`);
                 });
