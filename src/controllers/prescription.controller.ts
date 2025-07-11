@@ -22,7 +22,7 @@ class PrescriptionController implements BaseController {
   }
 
   public create = async (req: Request, res: Response): Promise<Response> => {
-    const { professional, patient, date, supplies, triple } = req.body;
+    const { professional, patient, date, supplies, trimestral } = req.body;
     const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
     const myProfessional: IUser | null = await User.findOne({ _id: professional });
     try {
@@ -44,7 +44,7 @@ class PrescriptionController implements BaseController {
         });
         await newPrescription.save();
         allPrescription.push(newPrescription);
-        if (triple) {
+        if (trimestral) {
           let newPrescription2: IPrescription = new Prescription({
             patient: myPatient,
             professional: {
