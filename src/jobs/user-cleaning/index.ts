@@ -36,7 +36,7 @@ async function userCleaning(){
     if (users) {
       for (const user of users) {
         console.log(`>> ELIMINANDO USUARIO: ${user._id}`);
-        // await User.deleteOne({ _id: user._id });
+        await User.deleteOne({ _id: user._id });
       }
     }else{
       console.log(">> NO SE ENCONTRARON USUARIOS PARA LIMPIAR");
