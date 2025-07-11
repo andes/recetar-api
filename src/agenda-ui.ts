@@ -1,49 +1,17 @@
 import express from 'express';
-import Agenda, { Job } from 'agenda';
-import { env } from './config/config';
+import AgendaService from './services/agenda.service';
 
 // Importación dinámica de Agendash
 const Agendash = require('agendash');
 
 class AgendaUIServer {
     protected app: express.Application;
-    protected agenda: Agenda;
+    private agendaService: AgendaService;
 
     constructor() {
         this.app = express();
-        this.agenda = new Agenda();
-        this.setupAgenda();
+        this.agendaService = AgendaService.getInstance();
         this.config();
-    }
-
-    setupAgenda() {
-        // Configuración de Agenda usando la misma conexión de MongoDB
-        const mongoConnectionString = process.env.MONGO_URI || env.MONGODB_CONNECTION || 'mongodb://localhost/recetar';
-        
-        this.agenda = new Agenda({
-            db: { 
-                address: mongoConnectionString,
-                collection: 'agendaJobs'
-            },
-            processEvery: '30 seconds',
-            maxConcurrency: 20,
-            defaultConcurrency: 5,
-            defaultLockLifetime: 10000
-        });
-
-        // Definir algunos jobs de ejemplo
-        this.defineExampleJobs();
-    }
-
-    defineExampleJobs() {
-        // Job de ejemplo: envío de email
-        this.agenda.define('send email', { concurrency: 10 }, async (job: Job) => {
-            const { to, subject, body } = job.attrs.data as { to: string; subject: string; body: string };
-            console.log(`Enviando email a: ${to}, Asunto: ${subject}`);
-            // lógica del envío de email
-        });
-
-        
     }
 
     async config() {
@@ -54,8 +22,9 @@ class AgendaUIServer {
         // Middleware básico
         this.app.use(express.json());
         
-        // Montar Agendash en la ruta raíz
-        this.app.use('/', Agendash(this.agenda));
+        // Obtener la instancia de agenda del servicio y montarla en Agendash
+        const agendaInstance = await this.agendaService.getAgendaInstance();
+        this.app.use('/', Agendash(agendaInstance));
 
         // Ruta de información
         this.app.get('/info', (req, res) => {
@@ -69,17 +38,8 @@ class AgendaUIServer {
                 }
             });
         });
-
-        // Inicializar agenda
-        await this.agenda.start();
-        
-        // Programar algunos jobs de ejemplo (opcional)
-        await this.scheduleExampleJobs();
     }
 
-    async scheduleExampleJobs() {
-        
-    }
 
     async start() {
         this.app.listen(this.app.get('port'), () => {
@@ -90,7 +50,9 @@ class AgendaUIServer {
 
     async gracefulShutdown() {
         console.log('Cerrando Agenda.js UI...');
-        await this.agenda.stop();
+        // No necesitamos parar agenda aquí ya que es una instancia compartida
+        // El servicio principal se encarga del shutdown
+        await this.agendaService.gracefulShutdown();
         process.exit(0);
     }
 }

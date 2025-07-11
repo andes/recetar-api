@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import AgendaService from '../services/agenda.service';
 
+
 class JobsController {
     private agendaService: AgendaService;
 
@@ -37,6 +38,27 @@ class JobsController {
             });
         } catch (error) {
             console.error('Error programando email:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor'
+            });
+        }
+    };
+
+    public programarEnvioRecetas = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            const { when } = req.body;
+
+            // Programar el trabajo de envío de recetas
+            await this.agendaService.schedulePrescriptionJob({ when });
+
+            return res.status(200).json({
+                success: true,
+                message: when ? `Recetas programadas para envío en ${when}` : 'Recetas programadas para envío inmediato',
+                data: { when }
+            });
+        } catch (error) {
+            console.error('Error programando envio de recetas:', error);
             return res.status(500).json({
                 success: false,
                 message: 'Error interno del servidor'

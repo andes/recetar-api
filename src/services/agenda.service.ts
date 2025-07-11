@@ -1,5 +1,8 @@
 import Agenda, { Job } from 'agenda';
 import { env } from '../config/config';
+import Prescription from '../models/prescription.model';
+import IPrescription, { PrescriptionSupply } from '../interfaces/prescription.interface';
+import needle from 'needle';
 
 class AgendaService {
     private static instance: AgendaService;
@@ -58,6 +61,25 @@ class AgendaService {
             console.log(`✅ Email enviado exitosamente a: ${to}`);
         });
 
+        // Job para envio de recetas a andes
+        this.agenda.define('send prescription', { concurrency: 10 }, async (job: Job) => {
+            console.log('Enviando receta a Andes...');
+            const recetasPublicasPendientes = await Prescription.find({ status: 'Pendiente', ambito: 'publico' }).populate('obraSocial');
+            if (recetasPublicasPendientes.length === 0) {
+                console.log('No hay recetas pendientes para enviar a Andes.');
+                return;
+            } else {
+                console.log(`Enviando ${recetasPublicasPendientes.length} recetas pendientes a Andes...`);
+                recetasPublicasPendientes.forEach(async (receta: IPrescription) => {                    
+                    console.log(`Enviando receta ${receta._id} a Andes...`);
+                    const resp = await needle('post', `${process.env.ANDES_ENDPOINT}/recetas`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
+
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    console.log(`Receta ${receta._id} enviada exitosamente a Andes.`);
+                });
+            }
+        })
+
     }
 
     // Métodos públicos para programar jobs
@@ -111,7 +133,18 @@ class AgendaService {
         await this.scheduleJob('send email', data, when);
     }
 
+    // programar envío de recetas
+    public async schedulePrescriptionJob(prescriptionData: {
+        when?: string | Date;
+    }): Promise<void> {
+        const { when } = prescriptionData;
+        await this.scheduleJob('send prescription', when);
+    }
 
+    public async getAgendaInstance(): Promise<Agenda> {
+        await this.initialize();
+        return this.agenda;
+    }
 
     public async setupAutomaticTasks(): Promise<void> {
         await this.initialize();
