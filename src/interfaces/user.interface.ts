@@ -11,6 +11,8 @@ export default interface IUser extends Document{
     roles: IRole[];
     refreshToken?: string;
     authenticationToken?: string;
+    passwordChangeTokenExpiry?: Date;
+    passwordCreatedAt?: Date;
     createdAt?: Date;
     updatedAt?: Date;
     isActive: Boolean;
