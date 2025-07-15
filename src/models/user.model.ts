@@ -63,6 +63,13 @@ export const userSchema = new Schema({
     authenticationToken: {
         type: String,
     },
+    passwordChangeTokenExpiry: {
+        type: Date,
+    },
+    passwordCreatedAt: {
+        type: Date,
+        default: Date.now
+    },
     createdAt: {
         type: Date,
         default: Date.now
