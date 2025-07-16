@@ -42,9 +42,22 @@ class CertificateController implements BaseController {
 
     public getByUserId = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const { userId } = req.params;
-            const prescriptions: ICertificate[] | null = await Certificate.find({ 'professional.userId': userId }).sort({ field: 'desc', date: -1 });
-            return res.status(200).json(prescriptions);
+            const { id } = req.params;
+            const { offset = 0, limit = 10 } = req.query;
+            
+            const certificates: ICertificate[] | null = await Certificate.find({ 'professional.userId': id })
+                .sort({ field: 'desc', date: -1 })
+                .skip(Number(offset))
+                .limit(Number(limit));
+                
+            const total = await Certificate.countDocuments({ 'professional.userId': id });
+            
+            return res.status(200).json({
+                certificates,
+                total,
+                offset: Number(offset),
+                limit: Number(limit)
+            });
         } catch (err) {
             return res.status(500).json('Server Error');
         }

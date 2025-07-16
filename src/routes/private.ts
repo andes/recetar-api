@@ -33,7 +33,7 @@ class PrivateRoutes {
     // prescriptions
     this.router.get('/prescriptions', prescriptionController.getPrescriptionsDispensed);
     this.router.get(`/prescriptions/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.index);
-    this.router.get('/prescriptions/get-by-user-id/:userId', prescriptionController.getByUserId);
+    this.router.get('/prescriptions/user/:id', prescriptionController.getByUserId);
     this.router.get('/prescriptions/find/:patient_id&:date?', prescriptionController.getPrescriptionsByDateOrPatientId);
     this.router.get(`/prescriptions/:id`, hasPermissionIn('readAny', 'prescription'), prescriptionController.show);
     this.router.post(`/prescriptions/`, hasPermissionIn('createAny', 'prescription'), prescriptionController.create);
@@ -43,32 +43,46 @@ class PrivateRoutes {
     this.router.patch(`/prescriptions/:id`, hasPermissionIn('updateOwn', 'prescription'), prescriptionController.update);
     this.router.delete(`/prescriptions/:id`, hasPermissionIn('deleteAny', 'prescription'), prescriptionController.delete);
 
-    // certificate
-    this.router.get(`/certificates/`, certificateController.index);
-    this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
-    this.router.post(`/certificates/`, certificateController.create);
+    // patients
+    this.router.get(`/patients/`, hasPermissionIn('readAny', 'patient'), patientController.index);
+    this.router.get('/patients/get-os', patientController.getObrasSociales);
+    this.router.get('/patients/get-os-by-dni', patientController.getObraSocial);
+    this.router.get(`/patients/:id`, hasPermissionIn('readAny', 'patient'), patientController.show);
+    // this.router.get('/patients/get-os-by-dni/', patientController.getObraSocial);
+    // this.router.get('/patients/get-os/', patientController.getObrasSociales);
+    this.router.get('/patients/get-by-dni/:dni', patientController.getByDni);
+    this.router.post(`/patients/`, hasPermissionIn('createAny', 'patient'), patientController.create);
+    this.router.put(`/patients/:id`, hasPermissionIn('updateAny', 'patient'), patientController.update);
+    this.router.patch('/patients/:id', hasPermissionIn('updateAny', 'patient'), patientController.updatePatient);
+    // this.router.delete(`/patients/:id`, hasPermissionIn('deleteAny','patient'), patientController.delete);
 
-    // prescriptions
-    this.router.get('/prescriptions', prescriptionController.getPrescriptionsDispensed);
-    this.router.get(`/prescriptions/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.index);
-    this.router.get('/prescriptions/get-by-user-id/:userId', prescriptionController.getByUserId);
-    this.router.get('/prescriptions/find/:patient_id&:date?', prescriptionController.getPrescriptionsByDateOrPatientId);
-    this.router.get(`/prescriptions/:id`, hasPermissionIn('readAny', 'prescription'), prescriptionController.show);
-    this.router.post(`/prescriptions/`, hasPermissionIn('createAny', 'prescription'), prescriptionController.create);
-    this.router.post(`/prescriptions/get-csv/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.getCsv);
-    this.router.patch(`/prescriptions/:id/dispense`, hasPermissionIn('updateAny', 'prescription'), prescriptionController.dispense);
-    this.router.patch(`/prescriptions/:id/cancel-dispense`, hasPermissionIn('updateAny', 'prescription'), prescriptionController.cancelDispense);
-    this.router.patch(`/prescriptions/:id`, hasPermissionIn('updateOwn', 'prescription'), prescriptionController.update);
-    this.router.delete(`/prescriptions/:id`, hasPermissionIn('deleteAny', 'prescription'), prescriptionController.delete);
+    // supply
+    this.router.get(`/supplies/`, hasPermissionIn('readAny', 'supplies'), supplyController.index);
+    this.router.get('/supplies', supplyController.get);
+    this.router.get('/supplies/get-by-name', supplyController.getByName);
+    this.router.post(`/supplies/`, hasPermissionIn('createAny', 'supplies'), supplyController.create);
+    this.router.patch('/supplies/:id', hasPermissionIn('updateAny', 'supplies'), supplyController.update);
+    // this.router.get(`/supplies/:id`, hasPermissionIn('readAny','patient'), supplyController.show);
+    // this.router.put(`/supplies/:id`, hasPermissionIn('updateAny','patient'), supplyController.update);
+    // this.router.delete(`/supplies/:id`, hasPermissionIn('deleteAny','patient'), supplyController.delete);
 
-    // practices
-    this.router.post('/practices', hasPermissionIn('createAny', 'prescription'), practiceController.create);
+    // SNOMED
+    this.router.get('/snomed/supplies/', hasPermissionIn('readAny', 'supplies'), snomedSupplyController.index);
 
-    // certificate
+    // Andes prescriptions
+    this.router.get('/andes-prescriptions/from-andes/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.getFromAndes);
+    this.router.get('/andes-prescriptions/:id', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);
+    this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
+
+    // certificates
     this.router.get(`/certificates/`, certificateController.index);
     this.router.get(`/certificates/:id`, certificateController.getById);
-    this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
+    this.router.get('/certificates/user/:id', certificateController.getByUserId);
     this.router.post(`/certificates/`, certificateController.create);
+
+    // practices
+    this.router.get('/practices/user/:id', hasPermissionIn('readAny', 'prescription'), practiceController.getByUserId);
+    this.router.post('/practices', hasPermissionIn('createAny', 'prescription'), practiceController.create);
 
     // patients
     this.router.get(`/patients/`, hasPermissionIn('readAny', 'patient'), patientController.index);
