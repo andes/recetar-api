@@ -138,10 +138,24 @@ class PrescriptionController implements BaseController {
 
   public getByUserId = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { userId } = req.params;
-      await this.updateStatuses(userId, '');
-      const prescriptions: IPrescription[] | null = await Prescription.find({ "professional.userId": userId }).sort({ field: 'desc', date: -1 });
-      return res.status(200).json(prescriptions);
+      const { id } = req.params;
+      const { offset = 0, limit = 10 } = req.query;
+      
+      await this.updateStatuses(id, '');
+      
+      const prescriptions: IPrescription[] | null = await Prescription.find({ "professional.userId": id })
+        .sort({ field: 'desc', date: -1 })
+        .skip(Number(offset))
+        .limit(Number(limit));
+        
+      const total = await Prescription.countDocuments({ "professional.userId": id });
+      
+      return res.status(200).json({
+        prescriptions,
+        total,
+        offset: Number(offset),
+        limit: Number(limit)
+      });
     } catch (err) {
       console.log(err);
       return res.status(500).json('Server Error');

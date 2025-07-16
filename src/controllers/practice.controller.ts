@@ -61,6 +61,29 @@ class PracticeController {
       return res.status(httpCodes.INTERNAL_SERVER_ERROR).json('Error interno del servidor al crear la práctica');
     }
   }
+
+  public getByUserId = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { id } = req.params;
+      const { offset = 0, limit = 10 } = req.query;
+      
+      const practices: IPractice[] | null = await Practice.find({ 'professional.userId': id })
+        .sort({ field: 'desc', date: -1 })
+        .skip(Number(offset))
+        .limit(Number(limit));
+        
+      const total = await Practice.countDocuments({ 'professional.userId': id });
+      
+      return res.status(200).json({
+        practices,
+        total,
+        offset: Number(offset),
+        limit: Number(limit)
+      });
+    } catch (err) {
+      return res.status(500).json('Server Error');
+    }
+  }
 }
 
 export default new PracticeController();
