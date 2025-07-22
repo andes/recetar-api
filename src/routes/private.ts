@@ -16,12 +16,12 @@ import authController from '../controllers/auth.controller';
 import usersController from '../controllers/users.controller';
 import snomedSupplyController from '../controllers/snomed.controller';
 import andesPrescriptionController from '../controllers/andesPrescription.controller';
+import certificateController from '../controllers/certificate.controller';
 class PrivateRoutes {
 
   constructor(private router: Router = Router()) { }
 
   public routes(): Router {
-
     // Auth
     this.router.get('/user/get-token', hasPermissionIn('readAny', 'user'), authController.getToken);
     this.router.get('/auth/user/find', hasPermissionIn('readAny', 'user'), authController.getUser);
@@ -41,6 +41,11 @@ class PrivateRoutes {
     this.router.patch(`/prescriptions/:id/cancel-dispense`, hasPermissionIn('updateAny', 'prescription'), prescriptionController.cancelDispense);
     this.router.patch(`/prescriptions/:id`, hasPermissionIn('updateOwn', 'prescription'), prescriptionController.update);
     this.router.delete(`/prescriptions/:id`, hasPermissionIn('deleteAny', 'prescription'), prescriptionController.delete);
+
+    // certificate
+    this.router.get(`/certificates/`, certificateController.index);
+    this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
+    this.router.post(`/certificates/`, certificateController.create);
 
     // patients
     this.router.get(`/patients/`, hasPermissionIn('readAny', 'patient'), patientController.index);
@@ -118,7 +123,6 @@ class PrivateRoutes {
     // this.router.get(`/professionals/:id`, hasPermissionIn('readAny','patient'), professionalController.show);
     // this.router.put(`/professionals/:id`, hasPermissionIn('updateAny','patient'), professionalController.update);
     // this.router.delete(`/professionals/:id`, hasPermissionIn('deleteAny','patient'), professionalController.delete);
-
 
     return this.router;
   }
