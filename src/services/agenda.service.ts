@@ -3,6 +3,8 @@ import { env } from '../config/config';
 import Prescription from '../models/prescription.model';
 import IPrescription, { PrescriptionSupply } from '../interfaces/prescription.interface';
 import needle from 'needle';
+import Professional from '../models/professional.model';
+import User from '../models/user.model';
 
 class AgendaService {
     private static instance: AgendaService;
@@ -70,31 +72,54 @@ class AgendaService {
                 return;
             } else {
                 console.log(`Enviando ${recetasPublicasPendientes.length} recetas pendientes a Andes...`);
-                recetasPublicasPendientes.forEach(async (receta: IPrescription) => {                    
-                    
+                recetasPublicasPendientes.forEach(async (receta: IPrescription) => {
+                    const professional = await User.findById(receta.professional.userId);
+                    if (!professional) {
+                        console.error(`Profesional no encontrado para la receta ${receta._id}`);
+                        return job.fail(`Profesional no encontrado para la receta ${receta._id}`);
+                    }
                     const body = {
-                        idPrestacion: '',
-                        idRegistro: '',
-                        paciente: paicente,
-                        profesional: profesional,
-                        organizacion: organizacion,
-                        medicamntos: [{
-                            diagnostico: '',
-                            concepto: '',
-                            unidades: '',
-                            cantidad: '',
-                            cantEnvases: '',
+                        op: 'crearRecetar',
+                        //idPrestacion: 'no se',
+                        //idRegistro: 'no se',
+                        paciente: {
+                            id: receta.patient.idMPI? receta.patient.idMPI : receta.patient._id.toString(),
+                            nombre: receta.patient.firstName,
+                            apellido: receta.patient.lastName,
+                            documento: receta.patient.dni,
+                            sexo: receta.patient.sex.toLowerCase(),
+                        },
+                        profesional: {
+                            id: receta.professional.userId,
+                            nombreCompleto: professional.businessName,
+                            matricula: receta.professional.enrollment,
+                            username: professional.username,
+                            cuil: receta.professional.cuil,
+                        },
+                        organizacion: {
+                            nombre: 'RecetAR',
+                        },
+                        medicamentos: [{
+                            diagnostico: receta.supplies[0].diagnostic || '',
+                            concepto: receta.supplies[0].supply.snomedConcept,
+                            // unidades: ,
+                            cantidad: receta.supplies[0].quantityPresentation || 1,
+                            cantEnvases: receta.supplies[0].quantity || 1,
                             dosisDiaria: {
-                                dosis: '',
-                                intervalo: '',
-                                dias: '',
-                                notaMedica: ''
+                                // dosis: '',
+                                // intervalo: '',
+                                // dias: '',
+                                notaMedica: receta.supplies[0].indication || ''
                             },
-                            tratamientoProlongado: '',
-                            timepoTratamiento: '',
-                            tipoReceta: '',
+                            tratamientoProlongado: receta.triple ? true : false,
+                            tiempoTratamiento: receta.triple ? '90 días' : null,
+                            tipoReceta: receta.supplies[0].triplicate ? 'triplicado' : (receta.supplies[0].duplicate ? 'duplicado' : 'simple'),
                         }],
-                        orgienExterno: ''
+                        origenExterno: {
+                            id: receta._id.toString(),
+                            app: 'RecetAR',
+                            fecha: new Date().toISOString(),
+                        }
                     }
                     
                     console.log(`Enviando receta ${receta._id} a Andes...`);
