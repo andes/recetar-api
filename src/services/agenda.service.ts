@@ -45,7 +45,7 @@ class AgendaService {
     }
 
     private defineJobs() {
-        // Job para envío de emails
+        // Job para envío de emails. JOB Ejemplo para testear el funcionamiento
         this.agenda.define('send email', { concurrency: 10 }, async (job: Job) => {
             const { to, subject, body, template } = job.attrs.data as { 
                 to: string; 
@@ -79,9 +79,8 @@ class AgendaService {
                         return job.fail(`Profesional no encontrado para la receta ${receta._id}`);
                     }
                     const body = {
-                        op: 'crearRecetar',
-                        //idPrestacion: 'no se',
-                        //idRegistro: 'no se',
+                        idPrestacion: receta._id.toString(),
+                        idRegistro: receta._id.toString(),
                         paciente: {
                             id: receta.patient.idMPI? receta.patient.idMPI : receta.patient._id.toString(),
                             nombre: receta.patient.firstName,
@@ -102,13 +101,13 @@ class AgendaService {
                         medicamentos: [{
                             diagnostico: receta.supplies[0].diagnostic || '',
                             concepto: receta.supplies[0].supply.snomedConcept,
-                            // unidades: ,
+                            unidades: '',
                             cantidad: receta.supplies[0].quantityPresentation || 1,
                             cantEnvases: receta.supplies[0].quantity || 1,
                             dosisDiaria: {
-                                // dosis: '',
-                                // intervalo: '',
-                                // dias: '',
+                                dosis: '',
+                                intervalo: '',
+                                dias: '',
                                 notaMedica: receta.supplies[0].indication || ''
                             },
                             tratamientoProlongado: receta.triple ? true : false,
