@@ -8,6 +8,7 @@ import authRoutes from './auth';
 import pbulicRoutes from './public';
 import privateRoutes from './private';
 import andesRoutes from './andes';
+import jobsRoutes from './jobs';
 
 class Routes {
 
@@ -20,6 +21,8 @@ class Routes {
     this.router.use('', pbulicRoutes);
     // andes specific routes
     this.router.use('/andes', andesRoutes);
+    // jobs routes (protected)
+    this.router.use('/jobs', checkAuth, jobsRoutes);
     // private: requires authentication
     this.router.all('*', checkAuth, privateRoutes);
 
