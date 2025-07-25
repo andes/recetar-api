@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { BaseController } from '../interfaces/classes/base-controllers.interface';
 import ICertificate from '../interfaces/certificate.interface';
 import Certificate from '../models/certificate.model';
 import IPatient from '../interfaces/patient.interface';
@@ -7,7 +6,7 @@ import Patient from '../models/patient.model';
 import IUser from '../interfaces/user.interface';
 import User from '../models/user.model';
 
-class CertificateController implements BaseController {
+class CertificateController {
 
     public index = async (req: Request, res: Response): Promise<Response> => {
         const certificates: ICertificate[] = await Certificate.find();
@@ -40,39 +39,12 @@ class CertificateController implements BaseController {
         }
     }
 
-    public show = async (req: Request, res: Response): Promise<Response> => {
-        // Implementation for showing a certificate by ID
-        // const certificate = await Certificate.findById(req.params.id);
-        // if (!certificate) {
-        //     return res.status(404).json({ message: 'Certificate not found' });
-        // }
-        return res.status(201);
-    }
-
-    public update = async (req: Request, res: Response): Promise<Response> => {
-        // const updatedCertificate = await Certificate.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        // if (!updatedCertificate) {
-        //     return res.status(404).json({ message: 'Certificate not found' });
-        // }
-        return res.status(201);
-    }
-
-    public delete = async (req: Request, res: Response): Promise<Response> => {
-        // const deletedCertificate = await Certificate.findByIdAndDelete(req.params.id);
-        // if (!deletedCertificate) {
-        //     return res.status(404).json({ message: 'Certificate not found' });
-        // }
-        // return res.status(200).json({ message: 'Certificate deleted successfully' });
-        return res.status(201);
-    }
-
     public getByUserId = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { userId } = req.params;
-            const prescriptions: ICertificate[] | null = await Certificate.find({ "professional.userId": userId }).sort({ field: 'desc', date: -1 });
+            const prescriptions: ICertificate[] | null = await Certificate.find({ 'professional.userId': userId }).sort({ field: 'desc', date: -1 });
             return res.status(200).json(prescriptions);
         } catch (err) {
-            console.log(err);
             return res.status(500).json('Server Error');
         }
     }

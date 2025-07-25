@@ -1,5 +1,4 @@
 import { Schema, Model, model } from "mongoose";
-import { supplySchema } from '../models/supply.model';
 import { patientSchema } from "./patient.model";
 import ICertificate from "../interfaces/certificate.interface";
 
