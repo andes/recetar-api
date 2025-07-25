@@ -15,6 +15,7 @@ import { Types } from 'mongoose';
 import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
 const csv = require('fast-csv');
 import needle from 'needle';
+import { NOMEM } from 'dns';
 
 class PrescriptionController implements BaseController {
 
@@ -47,14 +48,57 @@ class PrescriptionController implements BaseController {
         });
         await newPrescription.save();
         allPrescription.push(newPrescription);
-        // if (ambito === 'publico') {
-        //   const prescriptionAndes: IPrescriptionAndes = mapToAndes(newPrescription, myProfessional, myPatient);
-        //   try {
-        //     await this.enviarRecetaAndes(prescriptionAndes);
-        //   } catch (e) {
-        //     console.error('Error al enviar receta a ANDES:', e);
-        //   }
-        // }
+        if (ambito === 'publico') {
+          const prescriptionAndes: any = {
+            idPrestacion: newPrescription._id.toString(),
+            idRegistro: newPrescription._id.toString(),
+            paciente: {
+              id: myPatient.idMPI,
+              nombre: myPatient.firstName,
+              apellido: myPatient.lastName,
+              documento: myPatient.dni? myPatient.dni : '',
+              sexo: myPatient.sex.toLowerCase()
+            },
+            profesional: {
+                id: myProfessional?._id.toString(),
+                nombre: myProfessional?.businessName ? myProfessional.businessName : '',
+                apellido: '',
+                cuil: myProfessional?.cuil ? myProfessional.cuil : '',
+                matricula: myProfessional?.enrollment ? myProfessional.enrollment : ''
+            },
+            organizacion: {
+                nombre: 'RecetAr',
+            },
+            medicamentos: [
+              {
+                diagnostico: newPrescription.supplies[0].diagnostic,
+                concepto: newPrescription.supplies[0].supply.snomedConcept,
+                unidades: '',
+                cantidad: newPrescription.supplies[0].quantityPresentation ? newPrescription.supplies[0].quantityPresentation : 1,
+                cantEnvases: newPrescription.supplies[0].quantity || 1,
+                dosisDiaria: {
+                    dosis: '',
+                    intervalo: '',
+                    dias: '',
+                    notaMedica: newPrescription.supplies[0].indication ? newPrescription.supplies[0].indication : ''
+                },
+                tratamientoProlongado: newPrescription.triple ? true : false,
+                tiempoTratamiento: newPrescription.triple ? 90 : null,
+                tipoReceta: newPrescription.supplies[0].triplicate ? 'triplicado' : (newPrescription.supplies[0].duplicate ? 'duplicado' : 'simple'),
+              }
+            ],
+            origenExterno: {
+                id: newPrescription._id.toString(),
+                nombre: 'RecetAr',
+                fecha: newPrescription.date.toString()
+            }
+          };
+          try {
+            await this.enviarRecetaAndes(prescriptionAndes);
+          } catch (e) {
+            console.error('Error al enviar receta a ANDES:', e);
+          }
+        }
         if (triple) {
           let newPrescription2: IPrescription = new Prescription({
             patient: myPatient,
@@ -64,7 +108,7 @@ class PrescriptionController implements BaseController {
               cuil: myProfessional?.cuil,
               enrollment: myProfessional?.enrollment,
             },
-            date: moment(date).add(30, 'days'),
+            date: moment(date).add(30, 'days').toDate(),
             supplies: [sup],
             ambito
           });
@@ -78,7 +122,7 @@ class PrescriptionController implements BaseController {
               cuil: myProfessional?.cuil,
               enrollment: myProfessional?.enrollment,
             },
-            date: moment(date).add(60, 'days'),
+            date: moment(date).add(60, 'days').toDate(),
             supplies: [sup],
             ambito
           });
@@ -436,7 +480,6 @@ class PrescriptionController implements BaseController {
     try {
       const resp = await needle('post', `${process.env.ANDES_ENDPOINT}/modules/recetas`, prescription, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
     } catch (e) {
-      console.error('Error al enviar receta a ANDES:', e);
       throw new Error('Error al enviar receta a ANDES');
     }
   } 
