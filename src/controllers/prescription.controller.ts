@@ -29,7 +29,7 @@ class PrescriptionController implements BaseController {
         const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
         try {
-            let allPrescription: IPrescription[] = [];
+            const allPrescription: IPrescription[] = [];
             if (patient?.os.nombre) {
                 myPatient.obraSocial = patient.os;
             }
@@ -96,11 +96,12 @@ class PrescriptionController implements BaseController {
                     try {
                         await this.enviarRecetaAndes(prescriptionAndes);
                     } catch (e) {
+                        // eslint-disable-next-line no-console
                         console.error('Error al enviar receta a ANDES:', e);
                     }
                 }
                 if (triple) {
-                    let newPrescription2: IPrescription = new Prescription({
+                    const newPrescription2: IPrescription = new Prescription({
                         patient: myPatient,
                         professional: {
                             userId: myProfessional?._id,
@@ -114,7 +115,7 @@ class PrescriptionController implements BaseController {
                     });
                     await newPrescription2.save();
                     allPrescription.push(newPrescription2);
-                    let newPrescription3: IPrescription = new Prescription({
+                    const newPrescription3: IPrescription = new Prescription({
                         patient: myPatient,
                         professional: {
                             userId: myProfessional?._id,
@@ -146,6 +147,7 @@ class PrescriptionController implements BaseController {
             const prescription: IPrescription | null = await Prescription.findOne({ _id: id });
             return res.status(200).json(prescription);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -173,9 +175,9 @@ class PrescriptionController implements BaseController {
                 date: { $gte: startDate, $lt: endDate }
             }).sort({ field: 'desc', date: -1 });
 
-            console.log(prescriptions);
             return res.status(200).json(prescriptions);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -259,6 +261,7 @@ class PrescriptionController implements BaseController {
             }).sort({ field: 'desc', date: -1 });
             return res.status(200).json(prescriptions);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -271,7 +274,7 @@ class PrescriptionController implements BaseController {
             const { pharmacistId } = req.body;
 
             const dispensedBy: IUser | null = await User.findOne({ _id: pharmacistId });
-            if (!dispensedBy) return res.status(4000).json('Farmacia no encontrada');
+            if (!dispensedBy) { return res.status(4000).json('Farmacia no encontrada'); }
 
             const opts: any = { new: true };
             const dispensedAt = moment();
@@ -283,13 +286,14 @@ class PrescriptionController implements BaseController {
                     businessName: dispensedBy?.businessName,
                     cuil: dispensedBy?.cuil,
                 },
-                dispensedAt: dispensedAt
+                dispensedAt
             }, opts);
 
-            if (!prescription) return res.status(422).json('La receta ya había sido dispensada.');
+            if (!prescription) { return res.status(422).json('La receta ya había sido dispensada.'); }
 
             return res.status(200).json(prescription);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -302,18 +306,18 @@ class PrescriptionController implements BaseController {
 
             const dispensedBy: IUser | null = await User.findOne({ _id: pharmacistId });
 
-            if (!dispensedBy) return res.status(400).json('Farmacia no encontrada');
+            if (!dispensedBy) { return res.status(400).json('Farmacia no encontrada'); }
 
             const userRole: IRole | null = await Role.findOne({ role: 'admin', _id: { $in: dispensedBy.roles } }); // checkeamos el rol del usuario no sea admin
 
             const controlPrescription: IPrescription | null = await Prescription.findOne({ _id: id, status: 'Dispensada' });
-            if (!controlPrescription) return res.status(404).json('La receta no se encontró.');
+            if (!controlPrescription) { return res.status(404).json('La receta no se encontró.'); }
 
             const limitTime = moment(controlPrescription.dispensedAt).add(2, 'hours'); // plus 2 hours to dispensedBy
             const timeNow = moment();
 
             /* Si ya pasó el tiempo valido para cancelar y no tiene rol admin, entonces cancelamos la accion */
-            if (timeNow.isAfter(limitTime) && userRole?.role !== 'admin') return res.status(422).json('Ya no se puede anular la dispensa de la receta.');
+            if (timeNow.isAfter(limitTime) && userRole?.role !== 'admin') { return res.status(422).json('Ya no se puede anular la dispensa de la receta.'); }
 
             const opts: any = { new: true };
             const prescription: IPrescription | null = await Prescription.findOneAndUpdate({ _id: id, status: 'Dispensada' }, {
@@ -324,6 +328,7 @@ class PrescriptionController implements BaseController {
 
             return res.status(200).json(prescription);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -337,7 +342,7 @@ class PrescriptionController implements BaseController {
 
             const prescription: IPrescription | null = await Prescription.findOne({ _id: id, status: 'Pendiente' });
 
-            if (!prescription) return res.status(400).json('No se encontró la prescripción, se encuentra dispensada o vencida');
+            if (!prescription) { return res.status(400).json('No se encontró la prescripción, se encuentra dispensada o vencida'); }
 
 
             const errors: any[] = [];
@@ -371,6 +376,7 @@ class PrescriptionController implements BaseController {
             }, opts);
             return res.status(200).json(updatedPrescription);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -387,11 +393,11 @@ class PrescriptionController implements BaseController {
                 return res.status(422).json('La receta ya se ha dispensado y no puede ser eliminada.');
             }
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
     };
-
 
     public getCsv = async (req: Request, res: Response) => {
         const fechaDesde = moment(req.body.fechaDesde, 'YYYY-MM-DD').startOf('day').toDate();
@@ -424,6 +430,14 @@ class PrescriptionController implements BaseController {
                             timezone: 'America/Argentina/Buenos_Aires'
                         }
                     },
+                    Fecha_dispensa: {
+                        $dateToString: {
+                            date: '$dispensedAt',
+                            format: '%d/%m/%Y',
+                            timezone: 'America/Argentina/Buenos_Aires'
+                        }
+                    }
+
                 }
             }];
         const listado = await Prescription.aggregate(pipeline);
@@ -446,8 +460,8 @@ class PrescriptionController implements BaseController {
         }).pipe(res);
     };
 
-    private updateStatuses = async (professionalId: string = '', filterPatient: string = ''): Promise<void> => {
-        let limitDate: Date = moment().subtract(30, 'day').startOf('day').toDate(); // expired control date
+    private updateStatuses = async (professionalId = '', filterPatient = ''): Promise<void> => {
+        const limitDate: Date = moment().subtract(30, 'day').startOf('day').toDate(); // expired control date
         // before search: update expired prescriptions, with status "Pendiente"
         await Prescription.updateMany({
             status: 'Pendiente',
