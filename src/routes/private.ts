@@ -55,6 +55,12 @@ class PrivateRoutes {
     // practices
     this.router.post('/practices', hasPermissionIn('createAny', 'prescription'), practiceController.create);
 
+    // certificate
+    this.router.get(`/certificates/`, certificateController.index);
+    this.router.get(`/certificates/:id`, certificateController.getById);
+    this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
+    this.router.post(`/certificates/`, certificateController.create);
+
     // patients
     this.router.get(`/patients/`, hasPermissionIn('readAny', 'patient'), patientController.index);
     this.router.get('/patients/get-os', patientController.getObrasSociales);
