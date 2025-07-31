@@ -15,7 +15,7 @@ import { Types } from 'mongoose';
 import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
 const csv = require('fast-csv');
 import needle from 'needle';
-import { NOMEM } from 'dns';
+import axios from 'axios';
 
 class PrescriptionController implements BaseController {
 
@@ -49,6 +49,12 @@ class PrescriptionController implements BaseController {
                 await newPrescription.save();
                 allPrescription.push(newPrescription);
                 if (ambito === 'publico') {
+                    const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
+                    if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
+                        // eslint-disable-next-line no-console
+                        console.log('No se encuentra el profesional.');
+                    }
+                    const professionalAndes = resp.body[0];
                     const prescriptionAndes: any = {
                         idPrestacion: newPrescription._id.toString(),
                         idRegistro: newPrescription._id.toString(),
@@ -61,13 +67,14 @@ class PrescriptionController implements BaseController {
                         },
                         profesional: {
                             id: myProfessional?._id.toString(),
-                            nombre: myProfessional?.businessName ? myProfessional.businessName : '',
-                            apellido: '',
+                            nombre: professionalAndes?.nombre ? professionalAndes.nombre : '',
+                            apellido: professionalAndes?.apellido ? professionalAndes.apellido : '',
                             cuil: myProfessional?.cuil ? myProfessional.cuil : '',
-                            matricula: myProfessional?.enrollment ? myProfessional.enrollment : ''
+                            matricula: myProfessional?.enrollment ? myProfessional.enrollment : '',
+                            documento: myProfessional?.username ? myProfessional.username : '',
                         },
                         organizacion: {
-                            nombre: 'RecetAr',
+                            nombre: 'recetar',
                         },
                         medicamentos: [
                             {
@@ -94,7 +101,10 @@ class PrescriptionController implements BaseController {
                         }
                     };
                     try {
-                        await this.enviarRecetaAndes(prescriptionAndes);
+                        const payload = JSON.parse(JSON.stringify(prescriptionAndes));
+                        const respAndes = await axios.post(`${process.env.ANDES_ENDPOINT}/modules/recetas`,
+                            payload,
+                            { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
                     } catch (e) {
                         // eslint-disable-next-line no-console
                         console.error('Error al enviar receta a ANDES:', e);
@@ -482,13 +492,6 @@ class PrescriptionController implements BaseController {
             drogs += `${sup.supply.name} - `;
         });
         return drogs;
-    };
-    private enviarRecetaAndes = async (prescription: IPrescriptionAndes) => {
-        try {
-            const resp = await needle('post', `${process.env.ANDES_ENDPOINT}/modules/recetas`, prescription, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
-        } catch (e) {
-            throw new Error('Error al enviar receta a ANDES');
-        }
     };
 
 }
