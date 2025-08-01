@@ -36,6 +36,7 @@ class PrivateRoutes {
     this.router.get('/prescriptions', prescriptionController.getPrescriptionsDispensed);
     this.router.get(`/prescriptions/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.index);
     this.router.get('/prescriptions/user/:id', prescriptionController.getByUserId);
+    this.router.get('/prescriptions/user/:id/search', prescriptionController.searchByTerm);
     this.router.get('/prescriptions/find/:patient_id&:date?', prescriptionController.getPrescriptionsByDateOrPatientId);
     this.router.get(`/prescriptions/:id`, hasPermissionIn('readAny', 'prescription'), prescriptionController.show);
     this.router.post(`/prescriptions/`, hasPermissionIn('createAny', 'prescription'), prescriptionController.create);
@@ -60,8 +61,17 @@ class PrivateRoutes {
     this.router.get('/andes-prescriptions/:id', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);
     this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
 
+    // certificates
+    this.router.get(`/certificates/`, certificateController.index);
+    this.router.get(`/certificates/:id`, certificateController.getById);
+    this.router.get('/certificates/user/:id', certificateController.getByUserId);
+    this.router.get('/certificates/user/:id/search', certificateController.searchByTerm);
+    this.router.post(`/certificates/`, certificateController.create);
+
     // practices
+    this.router.get(`/practices/:id`, hasPermissionIn('readAny', 'prescription'), practiceController.getById);
     this.router.get('/practices/user/:id', hasPermissionIn('readAny', 'prescription'), practiceController.getByUserId);
+    this.router.get('/practices/user/:id/search', hasPermissionIn('readAny', 'prescription'), practiceController.searchByTerm);
     this.router.post('/practices', hasPermissionIn('createAny', 'prescription'), practiceController.create);
 
     // patients

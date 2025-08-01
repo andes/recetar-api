@@ -15,7 +15,7 @@ class CertificateController implements BaseController {
     }
 
     public create = async (req: Request, res: Response): Promise<Response> => {
-        const { professional, patient, certificate, date } = req.body;
+        const { professional, patient, certificate, startDate, endDate } = req.body;
         const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
         try {
@@ -31,7 +31,8 @@ class CertificateController implements BaseController {
                     enrollment: myProfessional?.enrollment,
                 },
                 certificate,
-                date,
+                startDate,
+                endDate,
             });
             await newCertificate.save();
             return res.status(200).json(newCertificate);
@@ -65,11 +66,50 @@ class CertificateController implements BaseController {
             const { offset = 0, limit = 10 } = req.query;
             
             const certificates: ICertificate[] | null = await Certificate.find({ 'professional.userId': id })
-                .sort({ field: 'desc', date: -1 })
+                .sort({ startDate: -1 })
                 .skip(Number(offset))
                 .limit(Number(limit));
                 
             const total = await Certificate.countDocuments({ 'professional.userId': id });
+            
+            return res.status(200).json({
+                certificates,
+                total,
+                offset: Number(offset),
+                limit: Number(limit)
+            });
+        } catch (err) {
+            return res.status(500).json('Server Error');
+        }
+    }
+
+    public searchByTerm = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            const { id } = req.params; // professional userId
+            const { searchTerm } = req.query;
+            const { offset = 0, limit = 10 } = req.query;
+            
+            if (!searchTerm) {
+                return res.status(400).json('Término de búsqueda requerido');
+            }
+            
+            // Crear query para buscar por DNI o nombre del paciente
+            const searchQuery = {
+                'professional.userId': id,
+                $or: [
+                    { 'patient.dni': { $regex: searchTerm, $options: 'i' } },
+                    { 'patient.firstName': { $regex: searchTerm, $options: 'i' } },
+                    { 'patient.lastName': { $regex: searchTerm, $options: 'i' } },
+                    { 'patient.nombreAutopercibido': { $regex: searchTerm, $options: 'i' } }
+                ]
+            };
+            
+            const certificates: ICertificate[] | null = await Certificate.find(searchQuery)
+                .sort({ createdAt: -1 })
+                .skip(Number(offset))
+                .limit(Number(limit));
+                
+            const total = await Certificate.countDocuments(searchQuery);
             
             return res.status(200).json({
                 certificates,
