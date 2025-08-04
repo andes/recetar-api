@@ -46,6 +46,7 @@ class PrivateRoutes {
         this.router.get(`/certificates/`, certificateController.index);
         this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
         this.router.post(`/certificates/`, certificateController.create);
+        this.router.patch(`/certificates/:id`, certificateController.update);
 
         // patients
         this.router.get(`/patients/`, hasPermissionIn('readAny', 'patient'), patientController.index);

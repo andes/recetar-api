@@ -16,7 +16,12 @@ const certificateSchema = new Schema({
         type: Date,
         default: Date.now
     },
-    updatedAt: Date
+    status: { type: String },
+    anulateReason: { type: String },
+    anulateDate: {
+        type: Date,
+        default: Date.now
+    }
 });
 
 const Certificate: Model<ICertificate> = model<ICertificate>('Certificate', certificateSchema);
