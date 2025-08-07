@@ -10,6 +10,8 @@ export default interface ICertificate extends Document {
         businessName: string,
     };
     certificate: string;
+    status?: string;
+    anulateReason?: string;
+    anulateDate?: Date;
     createdAt: Date;
-    updatedAt?: Date;
 }

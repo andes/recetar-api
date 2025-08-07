@@ -39,6 +39,25 @@ class CertificateController {
         }
     }
 
+    public update = async (req: Request, res: Response): Promise<Response> => {
+        const { id } = req.params;
+        try {
+            const certificate: ICertificate | null = await Certificate.findById(id);
+            if (!certificate) {
+                return res.status(404).json('Certificado no encontrado');
+            }
+            const updatedCertificate: ICertificate | null = await Certificate.findOneAndUpdate({ _id: id }, {
+                anulateReason: req.body.anulateReason,
+                anulateDate: req.body.anulateDate,
+                status: 'anulado',
+            });
+
+            return res.status(200).json(updatedCertificate);
+        } catch (error) {
+            return res.status(500).json('Server Error');
+        }
+    }
+
     public getByUserId = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { userId } = req.params;
