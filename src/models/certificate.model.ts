@@ -13,7 +13,7 @@ const certificateSchema = new Schema({
     },
     certificate: { type: String },
     startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
+    cantDias: { type: Number, required: true },
     createdAt: {
         type: Date,
         default: Date.now
@@ -21,9 +21,21 @@ const certificateSchema = new Schema({
     status: { type: String },
     anulateReason: { type: String },
     anulateDate: {
-        type: Date,
-        default: Date.now
+        type: Date
     }
+}, {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+});
+
+certificateSchema.virtual('endDate').get(function () {
+    if (!this.startDate || !this.cantDias) {
+        return null;
+    }
+    const endDate = new Date(this.startDate);
+    endDate.setDate(endDate.getDate() + this.cantDias - 1);
+    endDate.setHours(23, 59, 59, 999); 
+    return endDate;
 });
 
 const Certificate: Model<ICertificate> = model<ICertificate>('Certificate', certificateSchema);

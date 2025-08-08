@@ -14,6 +14,7 @@ export default interface ICertificate extends Document {
     anulateReason?: string;
     anulateDate?: Date;
     startDate: Date;
-    endDate: Date;
+    endDate?: Date;
+    cantDias: number;
     createdAt: Date;
 }

@@ -15,13 +15,10 @@ class CertificateController implements BaseController {
     }
 
     public create = async (req: Request, res: Response): Promise<Response> => {
-        const { professional, patient, certificate, startDate, endDate } = req.body;
+        const { professional, patient, certificate, startDate, cantDias } = req.body;
         const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
         try {
-            if (patient?.obraSocial.nombre) {
-                myPatient.obraSocial = patient.obraSocial;
-            }
             const newCertificate = new Certificate({
                 patient: myPatient,
                 professional: {
@@ -32,7 +29,7 @@ class CertificateController implements BaseController {
                 },
                 certificate,
                 startDate,
-                endDate,
+                cantDias,
             });
             await newCertificate.save();
             return res.status(200).json(newCertificate);
@@ -130,13 +127,6 @@ class CertificateController implements BaseController {
         return res.status(201);
     }
 
-    public update = async (req: Request, res: Response): Promise<Response> => {
-        // const updatedCertificate = await Certificate.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        // if (!updatedCertificate) {
-        //     return res.status(404).json({ message: 'Certificate not found' });
-        // }
-        return res.status(201);
-    }
 
     public delete = async (req: Request, res: Response): Promise<Response> => {
         // const deletedCertificate = await Certificate.findByIdAndDelete(req.params.id);

@@ -1,12 +1,11 @@
 import { Router } from 'express';
+import certificateController from '../controllers/certificate.controller';
 
 class PublicRoutes{
 
   constructor(private router: Router = Router()){}
-
-  // deefine your public routes inside of routes function
   public routes(): Router{
-    // this.router.get('home', (req: Request, res: Response): Response => { return res.send('Welcome home') } ) // example
+    this.router.get('/certificates/:id', certificateController.getById);
     return this.router;
   }
 }
