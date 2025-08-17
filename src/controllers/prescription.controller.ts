@@ -12,7 +12,6 @@ import IUser from '../interfaces/user.interface';
 import moment = require('moment');
 import IRole from '../interfaces/role.interface';
 import { Types } from 'mongoose';
-import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
 const csv = require('fast-csv');
 import needle from 'needle';
 import axios from 'axios';
@@ -28,125 +27,83 @@ class PrescriptionController implements BaseController {
         const { professional, patient, date, supplies, triple, ambito } = req.body;
         const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
-        try {
-            const allPrescription: IPrescription[] = [];
-            if (patient?.os.nombre) {
-                myPatient.obraSocial = patient.os;
-            }
-            for (const sup of supplies) {
-                const newPrescription = new Prescription({
-                    patient: myPatient,
-                    professional: {
-                        userId: myProfessional?._id,
-                        businessName: myProfessional?.businessName,
-                        cuil: myProfessional?.cuil,
-                        enrollment: myProfessional?.enrollment,
-                    },
-                    date,
-                    supplies: [sup],
-                    ambito
-                });
-                await newPrescription.save();
-                allPrescription.push(newPrescription);
-                if (ambito === 'publico') {
-                    const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
-                    if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
-                        // eslint-disable-next-line no-console
-                        console.log('No se encuentra el profesional.');
-                    }
-                    const professionalAndes = resp.body[0];
-                    const prescriptionAndes: any = {
-                        idPrestacion: newPrescription._id.toString(),
-                        idRegistro: newPrescription._id.toString(),
-                        paciente: {
-                            id: myPatient.idMPI,
-                            nombre: myPatient.firstName,
-                            apellido: myPatient.lastName,
-                            documento: myPatient.dni ? myPatient.dni : '',
-                            sexo: myPatient.sex.toLowerCase()
+        if (myProfessional && patient) {
+            try {
+                const allPrescription: IPrescription[] = [];
+                if (patient.os.nombre) {
+                    patient.os.otraOS = patient.otraOS || false;
+                    myPatient.obraSocial = patient.os;
+                }
+                for (const sup of supplies) {
+                    const newPrescription = new Prescription({
+                        patient: myPatient,
+                        professional: {
+                            userId: myProfessional?._id,
+                            businessName: myProfessional?.businessName,
+                            cuil: myProfessional?.cuil,
+                            enrollment: myProfessional?.enrollment,
                         },
-                        profesional: {
-                            id: myProfessional?._id.toString(),
-                            nombre: professionalAndes?.nombre ? professionalAndes.nombre : '',
-                            apellido: professionalAndes?.apellido ? professionalAndes.apellido : '',
-                            cuil: myProfessional?.cuil ? myProfessional.cuil : '',
-                            matricula: myProfessional?.enrollment ? myProfessional.enrollment : '',
-                            documento: myProfessional?.username ? myProfessional.username : '',
-                        },
-                        organizacion: {
-                            nombre: 'recetar',
-                        },
-                        medicamentos: [
-                            {
-                                diagnostico: newPrescription.supplies[0].diagnostic,
-                                concepto: newPrescription.supplies[0].supply.snomedConcept,
-                                unidades: '',
-                                cantidad: newPrescription.supplies[0].quantityPresentation ? newPrescription.supplies[0].quantityPresentation : 1,
-                                cantEnvases: newPrescription.supplies[0].quantity || 1,
-                                dosisDiaria: {
-                                    dosis: '',
-                                    intervalo: '',
-                                    dias: '',
-                                    notaMedica: newPrescription.supplies[0].indication ? newPrescription.supplies[0].indication : ''
-                                },
-                                tratamientoProlongado: newPrescription.triple ? true : false,
-                                tiempoTratamiento: newPrescription.triple ? 90 : null,
-                                tipoReceta: newPrescription.supplies[0].triplicate ? 'triplicado' : (newPrescription.supplies[0].duplicate ? 'duplicado' : 'simple'),
-                            }
-                        ],
-                        origenExterno: {
-                            id: newPrescription._id.toString(),
-                            nombre: 'RecetAr',
-                            fecha: newPrescription.date.toString()
+                        date,
+                        supplies: [sup],
+                        ambito,
+                        triple
+                    });
+                    let createAndes = false;
+                    if (ambito === 'publico') {
+                        const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
+                        if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
+                            // eslint-disable-next-line no-console
+                            console.log('No se encuentra el profesional.');
                         }
-                    };
-                    try {
-                        const payload = JSON.parse(JSON.stringify(prescriptionAndes));
-                        const respAndes = await axios.post(`${process.env.ANDES_ENDPOINT}/modules/recetas`,
-                            payload,
-                            { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
-                    } catch (e) {
-                        // eslint-disable-next-line no-console
-                        console.error('Error al enviar receta a ANDES:', e);
+                        const professionalAndes = resp.body[0];
+                        createAndes = await this.createPrescriptionAndes(newPrescription, professionalAndes, myProfessional, myPatient);
+                        if (!createAndes) {
+                            await newPrescription.save();
+                            allPrescription.push(newPrescription);
+                        }
+                    }
+                    if (triple && !createAndes) {
+                        // solo guardar si no se crean en andes
+                        const newPrescription2: IPrescription = new Prescription({
+                            patient: myPatient,
+                            professional: {
+                                userId: myProfessional?._id,
+                                businessName: myProfessional?.businessName,
+                                cuil: myProfessional?.cuil,
+                                enrollment: myProfessional?.enrollment,
+                            },
+                            date: moment(date).add(30, 'days').toDate(),
+                            supplies: [sup],
+                            ambito,
+                            triple,
+                        });
+                        await newPrescription2.save();
+                        allPrescription.push(newPrescription2);
+                        const newPrescription3: IPrescription = new Prescription({
+                            patient: myPatient,
+                            professional: {
+                                userId: myProfessional?._id,
+                                businessName: myProfessional?.businessName,
+                                cuil: myProfessional?.cuil,
+                                enrollment: myProfessional?.enrollment,
+                            },
+                            date: moment(date).add(60, 'days').toDate(),
+                            supplies: [sup],
+                            ambito,
+                            triple,
+                        });
+                        await newPrescription3.save();
+                        allPrescription.push(newPrescription3);
                     }
                 }
-                if (triple) {
-                    const newPrescription2: IPrescription = new Prescription({
-                        patient: myPatient,
-                        professional: {
-                            userId: myProfessional?._id,
-                            businessName: myProfessional?.businessName,
-                            cuil: myProfessional?.cuil,
-                            enrollment: myProfessional?.enrollment,
-                        },
-                        date: moment(date).add(30, 'days').toDate(),
-                        supplies: [sup],
-                        ambito
-                    });
-                    await newPrescription2.save();
-                    allPrescription.push(newPrescription2);
-                    const newPrescription3: IPrescription = new Prescription({
-                        patient: myPatient,
-                        professional: {
-                            userId: myProfessional?._id,
-                            businessName: myProfessional?.businessName,
-                            cuil: myProfessional?.cuil,
-                            enrollment: myProfessional?.enrollment,
-                        },
-                        date: moment(date).add(60, 'days').toDate(),
-                        supplies: [sup],
-                        ambito
-                    });
-                    await newPrescription3.save();
-                    allPrescription.push(newPrescription3);
-                }
+                // Post of prescriptions to andes publico
+                return res.status(200).json(allPrescription);
+
+            } catch (err) {
+                return res.status(500).json('Error al cargar la prescripción');
             }
-            // Post of prescriptions to andes publico
-
-            return res.status(200).json(allPrescription);
-
-        } catch (err) {
-            return res.status(500).json('Error al cargar la prescripción');
+        } else {
+            return res.status(404).json('Profesional no encontrado');
         }
     };
 
@@ -161,6 +118,68 @@ class PrescriptionController implements BaseController {
             console.log(err);
             return res.status(500).json('Server Error');
         }
+    };
+    private createPrescriptionAndes = async (newPrescription: IPrescription, professionalAndes: any, profesional: IUser, patient: IPatient) => {
+        const prescriptionAndes = {
+            idPrestacion: newPrescription._id.toString(),
+            idRegistro: newPrescription._id.toString(),
+            fechaRegistro: newPrescription.date.toString(),
+            paciente: {
+                id: patient.idMPI,
+                nombre: patient.firstName,
+                apellido: patient.lastName,
+                documento: patient.dni ? patient.dni : '',
+                sexo: patient.sex.toLowerCase(),
+                obraSocial: patient.obraSocial || null,
+            },
+            profesional: {
+                id: professionalAndes.id,
+                nombre: professionalAndes.nombre,
+                apellido: professionalAndes.apellido ? professionalAndes.apellido : '',
+                cuil: profesional?.cuil ? profesional.cuil : '',
+                matricula: profesional?.enrollment ? profesional.enrollment : '',
+                documento: profesional?.username ? profesional.username : '',
+            },
+            organizacion: {
+                nombre: 'Recetar',
+            },
+            medicamento: {
+                diagnostico: newPrescription.supplies[0].diagnostic,
+                concepto: newPrescription.supplies[0].supply.snomedConcept,
+                presentacion: '',
+                unidades: '',
+                cantidad: newPrescription.supplies[0].quantityPresentation ? newPrescription.supplies[0].quantityPresentation : 1,
+                cantEnvases: newPrescription.supplies[0].quantity || 1,
+                dosisDiaria: {
+                    dosis: null,
+                    dias: null,
+                    notaMedica: newPrescription.supplies[0].indication ? newPrescription.supplies[0].indication : ''
+                },
+                tratamientoProlongado: newPrescription.triple ? true : false,
+                tiempoTratamiento: !newPrescription.triple ? null : { id: '3', nombre: '3 meses' },
+                tipoReceta: newPrescription.supplies[0].triplicate ? 'triplicado' : (newPrescription.supplies[0].duplicate ? 'duplicado' : 'simple'),
+            },
+            origenExterno: {
+                id: newPrescription._id.toString(),
+                nombre: 'RecetAr',
+                fecha: newPrescription.date.toString()
+            }
+        };
+        let sendToAndes = false;
+        try {
+            const payload = JSON.parse(JSON.stringify(prescriptionAndes));
+            const respAndes = await axios.post(`${process.env.ANDES_ENDPOINT}/modules/recetas`,
+                payload,
+                { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+            if (respAndes.statusText === 'OK') {
+                sendToAndes = true;
+            }
+
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('Error al enviar receta a ANDES:', e);
+        }
+        return sendToAndes;
     };
 
     public getPrescriptionsByDateOrPatientId = async (req: Request, res: Response): Promise<Response<IPrescription[]>> => {
