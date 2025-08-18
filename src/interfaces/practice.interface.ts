@@ -7,7 +7,7 @@ export default interface IPractice extends Document {
     sex: string;
     lastName: string;
     firstName: string;
-    os?: {
+    obraSocial?: {
       nombre: string;
       codigoPuco: string;
       numeroAfiliado: string;
