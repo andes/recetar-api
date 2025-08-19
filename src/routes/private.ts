@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/quotes */
+/* eslint-disable @typescript-eslint/indent */
 import { Router, Request, Response } from 'express';
 
 import { hasPermissionIn } from '../middlewares/roles.middleware';
@@ -16,12 +18,13 @@ import authController from '../controllers/auth.controller';
 import usersController from '../controllers/users.controller';
 import snomedSupplyController from '../controllers/snomed.controller';
 import andesPrescriptionController from '../controllers/andesPrescription.controller';
+import certificateController from '../controllers/certificate.controller';
+import practiceController from '../controllers/practice.controller';
 class PrivateRoutes {
 
   constructor(private router: Router = Router()) { }
 
   public routes(): Router {
-
     // Auth
     this.router.get('/user/get-token', hasPermissionIn('readAny', 'user'), authController.getToken);
     this.router.get('/auth/user/find', hasPermissionIn('readAny', 'user'), authController.getUser);
@@ -32,7 +35,8 @@ class PrivateRoutes {
     // prescriptions
     this.router.get('/prescriptions', prescriptionController.getPrescriptionsDispensed);
     this.router.get(`/prescriptions/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.index);
-    this.router.get('/prescriptions/get-by-user-id/:userId', prescriptionController.getByUserId);
+    this.router.get('/prescriptions/user/:id', prescriptionController.getByUserId);
+    this.router.get('/prescriptions/user/:id/search', prescriptionController.searchByTerm);
     this.router.get('/prescriptions/find/:patient_id&:date?', prescriptionController.getPrescriptionsByDateOrPatientId);
     this.router.get(`/prescriptions/:id`, hasPermissionIn('readAny', 'prescription'), prescriptionController.show);
     this.router.post(`/prescriptions/`, hasPermissionIn('createAny', 'prescription'), prescriptionController.create);
@@ -41,6 +45,34 @@ class PrivateRoutes {
     this.router.patch(`/prescriptions/:id/cancel-dispense`, hasPermissionIn('updateAny', 'prescription'), prescriptionController.cancelDispense);
     this.router.patch(`/prescriptions/:id`, hasPermissionIn('updateOwn', 'prescription'), prescriptionController.update);
     this.router.delete(`/prescriptions/:id`, hasPermissionIn('deleteAny', 'prescription'), prescriptionController.delete);
+
+        // certificate
+        this.router.get(`/certificates/`, certificateController.index);
+        this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
+        this.router.post(`/certificates/`, certificateController.create);
+        this.router.patch(`/certificates/:id`, certificateController.update);
+
+
+    // SNOMED
+    this.router.get('/snomed/supplies/', hasPermissionIn('readAny', 'supplies'), snomedSupplyController.index);
+
+    // Andes prescriptions
+    this.router.get('/andes-prescriptions/from-andes/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.getFromAndes);
+    this.router.get('/andes-prescriptions/:id', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);
+    this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
+
+    // certificates
+    this.router.get(`/certificates/`, certificateController.index);
+    this.router.get(`/certificates/:id`, certificateController.getById);
+    this.router.get('/certificates/user/:id', certificateController.getByUserId);
+    this.router.get('/certificates/user/:id/search', certificateController.searchByTerm);
+    this.router.post(`/certificates/`, certificateController.create);
+
+    // practices
+    this.router.get(`/practices/:id`, hasPermissionIn('readAny', 'prescription'), practiceController.getById);
+    this.router.get('/practices/user/:id', hasPermissionIn('readAny', 'prescription'), practiceController.getByUserId);
+    this.router.get('/practices/user/:id/search', hasPermissionIn('readAny', 'prescription'), practiceController.searchByTerm);
+    this.router.post('/practices', hasPermissionIn('createAny', 'prescription'), practiceController.create);
 
     // patients
     this.router.get(`/patients/`, hasPermissionIn('readAny', 'patient'), patientController.index);
@@ -118,7 +150,6 @@ class PrivateRoutes {
     // this.router.get(`/professionals/:id`, hasPermissionIn('readAny','patient'), professionalController.show);
     // this.router.put(`/professionals/:id`, hasPermissionIn('updateAny','patient'), professionalController.update);
     // this.router.delete(`/professionals/:id`, hasPermissionIn('deleteAny','patient'), professionalController.delete);
-
 
     return this.router;
   }
