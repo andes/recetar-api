@@ -25,7 +25,7 @@ class PrescriptionController implements BaseController {
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         const { professional, patient, date, supplies, triple, ambito } = req.body;
-        const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
+        const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
         if (myProfessional && patient) {
             try {
