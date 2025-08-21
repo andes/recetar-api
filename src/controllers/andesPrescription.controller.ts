@@ -1,4 +1,4 @@
-import { Request, Response, response } from 'express';
+import { Request, Response } from 'express';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 import IPrescriptionAndes, { IDispensa } from '../interfaces/prescriptionAndes.interface';
 import needle from 'needle';
@@ -18,8 +18,6 @@ class AndesPrescriptionController implements BaseController {
     try{
       const body = req.body;
       const params = req.params;
-      console.log( body, params);
-    
       return res.status(200).json( { msg: "Success", body: req.body} );
     }catch(err){
       console.log(err);
@@ -163,7 +161,7 @@ class AndesPrescriptionController implements BaseController {
       if (!req.body) return res.status(400).json({mensaje: 'Missing body payload!'});
 
       const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({_id: req.body.prescription.id});
-      if (!prescriptionAndes) return res.status(404).json('Prescription not found!');
+      if (!prescriptionAndes) return res.status(404).json('Prescription not found!');    
 
       const pharmacist: IUser | null = await User.findOne({_id: req.body.pharmacistId.toString()});
       if (!pharmacist) return res.status(404).json('Pharmacist not found!');
@@ -184,9 +182,24 @@ class AndesPrescriptionController implements BaseController {
       const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, body, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN}});
       if (typeof(resp.statusCode) === 'number' && resp.statusCode !== 200) return res.status(resp.statusCode).json({mensaje: 'Error', error: resp.body});
       if (typeof(resp.statusCode) === 'number' && resp.statusCode === 200) {
-        await PrescriptionAndes.findByIdAndDelete(prescriptionAndes.id.toString());
+        await PrescriptionAndes.findByIdAndUpdate({_id: prescriptionAndes.id.toString(), status: 'Dispensada'}, {
+          status: 'Pendiente',
+          dispensedBy: {},
+          dispensedAt: ''
+        }, { new: true });
       }
       return res.status(200).json(resp.body);
+    } catch(e) {
+      return res.status(500).json({mensaje: 'Error', error: e});
+    }
+  }
+
+  public createPublic = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      if (!req.body) return res.status(400).json({mensaje: 'Missing body payload!'});
+      const receta: IPrescriptionAndes = new PrescriptionAndes(req.body.prescription);
+      receta.save();
+      return res.status(200).json(receta);
     } catch(e) {
       return res.status(500).json({mensaje: 'Error', error: e});
     }

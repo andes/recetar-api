@@ -14,12 +14,13 @@ class PatientController implements BaseController {
   }
 
   public create = async (req: Request, res: Response): Promise<Response> => {
-    const { dni, lastName, firstName, sex } = req.body;
+    const { dni, lastName, firstName, sex, fechaNac } = req.body;
     const newPatient: IPatient = new Patient({
       dni,
       lastName,
       firstName,
-      sex
+      sex,
+      fechaNac,
     });
     try {
       await newPatient.save();
@@ -66,7 +67,7 @@ class PatientController implements BaseController {
       const patients = await Patient.find({ dni: dni });
       // Si no encuentra, busca en MPI
       if (patients.length === 0) {
-        const resp = await needle("get", `${process.env.ANDES_MPI_ENDPOINT}?documento=${dni}&activo=true`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } })
+        const resp = await needle("get", `${process.env.ANDES_MPI_ENDPOINT}?documento=${dni}&activo=true`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
         resp.body.forEach(function (item: any) {
           patients.push(<IPatient>{
             dni: item.documento,
@@ -79,7 +80,8 @@ class PatientController implements BaseController {
             idMPI: item.id,
             tipoDocumentoExtranjero: item.tipoIdentificacion || '',
             nroDocumentoExtranjero: item.numeroIdentificacion || '',
-            estado: item.estado
+            estado: item.estado,
+            fechaNac: item.fechaNacimiento ? new Date(item.fechaNacimiento) : null,
           });
         });
       }
@@ -93,13 +95,14 @@ class PatientController implements BaseController {
   public update = async (req: Request, res: Response) => {
     try {
       const id: string = req.params.id;
-      const { dni, lastName, firstName, sex, image } = req.body;
+      const { dni, lastName, firstName, sex, image, fechaNac } = req.body;
       await Patient.findByIdAndUpdate(id, {
         dni,
         lastName,
         firstName,
         sex,
-        image
+        image,
+        fechaNac
       });
       const patient = await Patient.findOne({ _id: id });
       return res.status(200).json(patient);
