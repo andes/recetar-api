@@ -5,7 +5,7 @@ import IObraSocial from '../interfaces/obraSocial.interface';
 export const obraSocialSchema = new Schema({
     codigoPuco: {
         type: Number,
-        required: true
+        required: false
     },
     nombre: {
         type: String,
