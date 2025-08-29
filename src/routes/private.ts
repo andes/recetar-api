@@ -60,6 +60,7 @@ class PrivateRoutes {
     this.router.get('/andes-prescriptions/from-andes/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.getFromAndes);
     this.router.get('/andes-prescriptions/:id', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);
     this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
+    this.router.patch('/andes-prescriptions/cancel-dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.cancelDispense);
 
     // certificates
     this.router.get(`/certificates/`, certificateController.index);
@@ -99,11 +100,6 @@ class PrivateRoutes {
 
     // SNOMED
     this.router.get('/snomed/supplies/', hasPermissionIn('readAny', 'supplies'), snomedSupplyController.index);
-
-    // Andes prescriptions
-    this.router.get('/andes-prescriptions/from-andes/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.getFromAndes);
-    this.router.get('/andes-prescriptions/:id', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);
-    this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
 
     // Users
     this.router.get('/users/index', hasPermissionIn('readAny', 'user'), usersController.index);
