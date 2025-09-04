@@ -35,7 +35,7 @@ export default interface IPrescriptionAndes extends Document {
         conceptId: String;
         semanticTag: String;
     }
-    fechaResgistro: Date;
+    fechaRegistro: Date;
     fechaPrestacion: Date;
     idPrestacion: String;
     idRegistro: String;
