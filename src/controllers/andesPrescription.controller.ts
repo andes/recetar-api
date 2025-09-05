@@ -1,4 +1,4 @@
-import { Request, Response, response } from 'express';
+import { Request, Response } from 'express';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 import IPrescriptionAndes, { IDispensa } from '../interfaces/prescriptionAndes.interface';
 import needle from 'needle';
@@ -190,6 +190,17 @@ class AndesPrescriptionController implements BaseController {
             return res.status(500).json({ mensaje: 'Error', error: e });
         }
     };
+
+  public createPublic = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      if (!req.body) return res.status(400).json({mensaje: 'Missing body payload!'});
+      const receta: IPrescriptionAndes = new PrescriptionAndes(req.body.prescription);
+      receta.save();
+      return res.status(200).json(receta);
+    } catch(e) {
+      return res.status(500).json({mensaje: 'Error', error: e});
+    }
+  }
 
 }
 
