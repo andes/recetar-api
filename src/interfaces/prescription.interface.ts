@@ -18,6 +18,7 @@ export interface PrescriptionSupply {
 
 /* eslint no-extra-semi: "error"*/
 export default interface IPrescription extends Document {
+    prescriptionId?: number;
     patient: IPatient;
     professional: {
         userId: string;

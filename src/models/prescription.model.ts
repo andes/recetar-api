@@ -5,6 +5,11 @@ import { patientSchema } from '../models/patient.model';
 
 // Schema
 const prescriptionSchema = new Schema({
+    prescriptionId: {
+        type: Number,
+        unique: true,
+        sparse: true
+    },
     patient: patientSchema,
     professional: {
         userId: Schema.Types.ObjectId,
