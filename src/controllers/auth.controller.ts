@@ -87,10 +87,20 @@ class AuthController {
     try {
       const user: IUser | null = await User.findOne({ _id });
       if (!user) return res.status(404).json('No se ha encontrado el usuario');
+
       const isMatch: boolean = await User.schema.methods.isValidPassword(user, oldPassword);
       if (!isMatch) return res.status(401).json({ message: 'Su contraseña actual no coincide con nuestros registros' });
 
-      await user.update({ password: newPassword });
+      // Actualizar contraseña y fechas de vencimiento
+      const now = moment();
+
+      await user.update({
+        password: newPassword,
+        passwordCreatedAt: now,
+        authenticationToken: null,
+        passwordChangeTokenExpiry: null
+      });
+
       return res.status(200).json('Se ha modificado la contraseña correctamente!');
     } catch (err) {
       console.log(err);
@@ -101,14 +111,29 @@ class AuthController {
   public recoverPassword = async (req: Request, res: Response): Promise<Response> => {
     const { authenticationToken, newPassword } = req.body;
     try {
+      const errorMessage = "El link al que ha ingresado es inválido o ha expirado";
       const user: IUser | null = await User.findOne({ authenticationToken: authenticationToken });
-      if (!user) return res.status(404).json('No se ha encontrado el usuario');
 
-      await user.update({ password: newPassword });
-      return res.status(200).json('Se ha modificado la contraseña correctamente!');
+      if (!user) return res.status(404).json({ message: errorMessage });
+
+      if (!user || moment(user.passwordChangeTokenExpiry).isBefore(moment())) {
+        return res.status(400).json({ message: errorMessage });
+      }
+
+      // Actualizar contraseña y fechas de vencimiento
+      const now = moment();
+
+      await user.update({
+        password: newPassword,
+        passwordCreatedAt: now,
+        authenticationToken: null,
+        passwordChangeTokenExpiry: null
+      });
+
+      return res.status(200).json('Se ha modificado la contraseña correctamente.');
     } catch (err) {
       console.log(err);
-      return res.status(500).json('Server Error');
+      return res.status(500).json('No es posible modificar la contraseña.');
     }
   }
 
@@ -119,14 +144,27 @@ class AuthController {
       const user: IUser | null = await User.findOne({ _id }).populate({ path: 'roles', select: 'role' });
 
       if (user && user.isActive) {
+        // Verificar si la contraseña está vencida
+        const now = moment();
+        const passwordExpired = user.passwordCreatedAt && moment(user.passwordCreatedAt).add(3, 'months').isBefore(moment());
+
+        if (passwordExpired) {
+          // Enviar correo de cambio de contraseña
+          await this.sendPasswordExpiryNotification(user.username);
+
+          return res.status(401).json({
+            message: 'Su contraseña ha vencido. Se ha enviado un correo electrónico con instrucciones para cambiarla.',
+            passwordExpired: true,
+          });
+        }
+
         const roles: string | string[] = [];
         await Promise.all(user.roles.map(async (role) => {
           roles.push(role.role);
         }));
         const token = this.signInToken(user._id, user.username, user.businessName, roles);
-
         const refreshToken = uuidv4();
-        const now = Date.now();
+
         await User.updateOne({ _id: user._id }, { refreshToken: refreshToken, lastLogin: now });
         return res.status(200).json({
           jwt: token,
@@ -134,7 +172,7 @@ class AuthController {
         });
       }
 
-      return res.status(httpCodes.EXPECTATION_FAILED).json('Debe iniciar sesión');//in the case that not found user
+      return res.status(httpCodes.EXPECTATION_FAILED).json('Debe iniciar sesión');
     } catch (err) {
       console.log(err);
       return res.status(500).json('Server Error');
@@ -176,7 +214,6 @@ class AuthController {
       }
 
       return res.status(httpCodes.EXPECTATION_FAILED).json('Debe iniciar sesión');//in the case that not found user
-
     } catch (err) {
       console.log(err);
       return res.status(500).json('Server error');
@@ -282,14 +319,15 @@ class AuthController {
   }
 
   private signInToken = (userId: string, username: string, businessName: string, role: string | string[]): any => {
+    const now = moment().unix();
     const token = JWT.sign({
       iss: "recetar.andes",
       sub: userId,
       usrn: username,
       bsname: businessName,
       rl: role,
-      iat: new Date().getTime(),
-      exp: new Date().setDate(new Date().getDate() + env.TOKEN_LIFETIME)
+      iat: now,
+      exp: now + moment.duration(env.TOKEN_LIFETIME, 'hours').asSeconds()
     }, (process.env.JWT_SECRET || env.JWT_SECRET), {
       algorithm: 'HS256'
     });
@@ -305,11 +343,14 @@ class AuthController {
       let usuario: any = await User.findOne({ username });
       if (usuario) {
         usuario.authenticationToken = uuidv4();
+        usuario.passwordChangeTokenExpiry = null;
+
         await usuario.save();
 
         const extras: any = {
           titulo: 'Recuperación de contraseña',
           usuario,
+          nombre: usuario.businessName || usuario.username,
           url: `${process.env.APP_DOMAIN}/auth/recovery-password/${usuario.authenticationToken}`,
         };
         const htmlToSend = await renderHTML('emails/recover-password.html', extras);
@@ -327,8 +368,49 @@ class AuthController {
       } else {
         return null;
       }
-    } catch (error) {
-      throw error;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
+  }
+
+  public sendPasswordExpiryNotification = async (username: string) => {
+    try {
+      let usuario: any = await User.findOne({ username });
+      if (usuario) {
+        // Generar token de cambio de contraseña con vencimiento de 24 horas
+        const authenticationToken = uuidv4();
+        const tokenExpiry = moment().endOf('day').add(72, 'hours').toDate();
+
+        usuario.authenticationToken = authenticationToken;
+        usuario.passwordChangeTokenExpiry = tokenExpiry;
+        await usuario.save();
+
+        const extras: any = {
+          titulo: 'Contraseña Vencida - Cambio Requerido',
+          nombre: usuario.businessName || usuario.username,
+          url: `${process.env.APP_DOMAIN}/auth/recovery-password/${authenticationToken}`,
+          expiryDate: moment(tokenExpiry).format('DD/MM/YYYY').toString()
+        };
+
+        const htmlToSend = await renderHTML('emails/password-expired.html', extras);
+        const options: MailOptions = {
+          from: `${process.env.EMAIL_USERNAME}`,
+          to: usuario.email.toString(),
+          subject: 'Contraseña Vencida - Cambio Requerido',
+          text: 'Su contraseña ha vencido y debe ser cambiada. Por favor, haga clic en el enlace proporcionado para cambiar su contraseña.',
+          html: htmlToSend,
+          attachments: null
+        };
+
+        await sendMail(options);
+        return usuario;
+      } else {
+        return null;
+      }
+    } catch (err) {
+      console.log(err)
+      throw err;
     }
   }
 
@@ -336,6 +418,8 @@ class AuthController {
     const extras: any = {
       titulo: 'Nuevo usuario',
       usuario: newUser,
+      nombre: newUser.businessName || newUser.username,
+      username: newUser.username,
     };
     const htmlToSend = await renderHTML('emails/new-user.html', extras);
     const options: MailOptions = {
@@ -359,8 +443,6 @@ class AuthController {
       return res.status(500).json('Server Error');
     }
   }
-
-
 
   private validateProfessional = (profesional: any, enrollment: string, cuil: string, graduationDate: string, enrollmentExpiration: string): boolean => {
     if (!profesional || !profesional.profesiones || profesional.profesiones.length === 0) {
@@ -403,9 +485,6 @@ class AuthController {
       return res.status(500).json({ message: 'Server Error' });
     }
   }
-
-
-
 }
 
 export default new AuthController();
