@@ -39,19 +39,16 @@ const prescriptionSchema = new Schema({
         },
         triplicate: {
             type: Boolean,
-        }
+        },
+        triplicateData: {
+            serie: { type: String },
+            numero: { type: Number },
+        },
     }],
     status: {
         type: String,
         enum: ['Pendiente', 'Dispensada', 'Vencida'],
         default: 'Pendiente'
-    },
-    triplicate: {
-        type: Boolean,
-    },
-    triplicateData: {
-        serie: { type: String },
-        numero: { type: Number },
     },
     date: {
         type: Date,
