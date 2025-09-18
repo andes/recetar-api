@@ -171,9 +171,10 @@ class PrescriptionController implements BaseController {
         let sendToAndes = false;
         try {
             const payload = JSON.parse(JSON.stringify(prescriptionAndes));
+            const Authorization = process.env.JWT_MPI_TOKEN || '';
             const respAndes = await axios.post(`${process.env.ANDES_ENDPOINT}/modules/recetas`,
                 payload,
-                { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+                { headers: { Authorization } });
             if (respAndes.statusText === 'OK') {
                 sendToAndes = true;
             }
@@ -185,7 +186,7 @@ class PrescriptionController implements BaseController {
         return sendToAndes;
     };
 
-    public getPrescriptionsByDateOrPatientId = async (req: Request, res: Response): Promise<Response<IPrescription[]>> => {
+    public getPrescriptionsByDateOrPatientId = async (req: Request, res: Response): Promise<Response> => {
         try {
             const filterPatient = req.params.patient_id;
             const filterDate: string | null = req.params.date;

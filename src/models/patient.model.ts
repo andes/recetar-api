@@ -72,7 +72,9 @@ const Patient: Model<IPatient> = model<IPatient>('Patient', patientSchema);
 const searchPatientInAndesMPI = async (dni: string, sexo: string): Promise<any[]> => {
     try {
         const url = `${process.env.ANDES_MPI_ENDPOINT}?search=${dni}&sexo=${sexo}&activo=true&estado=validado`;
-        const resp = await needle('get', url, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+        const Authorization = process.env.JWT_MPI_TOKEN || '';
+
+        const resp = await needle('get', url, { headers: { Authorization } });
 
         if (resp.statusCode !== 200) {
             throw new Error(`Error al buscar paciente en Andes MPI: ${resp.statusCode}`);
@@ -87,6 +89,7 @@ const searchPatientInAndesMPI = async (dni: string, sexo: string): Promise<any[]
 // Obtener sugerencias de pacientes desde Andes MPI
 const getSuggestedPatientsFromAndes = async (patient: IPatient): Promise<any[]> => {
     try {
+        const Authorization = process.env.JWT_MPI_TOKEN || '';
         const response = await axios.post(`${process.env.ANDES_MPI_ENDPOINT}`, {
             nombre: patient.firstName,
             apellido: patient.lastName,
@@ -95,7 +98,7 @@ const getSuggestedPatientsFromAndes = async (patient: IPatient): Promise<any[]> 
             genero: patient.sex.toLowerCase(),
             fechaNacimiento: patient.fechaNac,
             ignoreSuggestions: false
-        }, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+        }, { headers: { Authorization } });
 
         if (response.status !== 200) {
             throw new Error(`Error al obtener sugerencias de Andes MPI: ${response.status}`);
@@ -111,6 +114,7 @@ const getSuggestedPatientsFromAndes = async (patient: IPatient): Promise<any[]> 
 // Crear paciente en Andes MPI
 const createPatientInAndesMPI = async (patient: IPatient): Promise<any> => {
     try {
+        const Authorization = process.env.JWT_MPI_TOKEN || '';
         const response = await axios.post(`${process.env.ANDES_MPI_ENDPOINT}`, {
             nombre: patient.firstName,
             apellido: patient.lastName,
@@ -119,7 +123,7 @@ const createPatientInAndesMPI = async (patient: IPatient): Promise<any> => {
             genero: patient.sex.toLowerCase(),
             fechaNacimiento: patient.fechaNac,
             ignoreSuggestions: true
-        }, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+        }, { headers: { Authorization } });
 
         if (response.status !== 200) {
             throw new Error(`Error al crear paciente en Andes MPI: ${response.status}`);
