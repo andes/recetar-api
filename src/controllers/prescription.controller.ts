@@ -16,6 +16,20 @@ const csv = require('fast-csv');
 import needle from 'needle';
 import axios from 'axios';
 
+function generarIdDesdeFecha(fecha = new Date()) {
+    const pad = (num: number, size: number) => num.toString().padStart(size, '0');
+
+    return Number(
+        fecha.getFullYear().toString() +
+        pad(fecha.getMonth() + 1, 2) +
+        pad(fecha.getDate(), 2) +
+        pad(fecha.getHours(), 2) +
+        pad(fecha.getMinutes(), 2) +
+        pad(fecha.getSeconds(), 2) +
+        pad(fecha.getMilliseconds(), 3)
+    );
+}
+
 class PrescriptionController implements BaseController {
 
     public index = async (req: Request, res: Response): Promise<Response> => {
@@ -36,6 +50,7 @@ class PrescriptionController implements BaseController {
                 }
                 for (const sup of supplies) {
                     const newPrescription = new Prescription({
+                        prescriptionId: generarIdDesdeFecha(),
                         patient: myPatient,
                         professional: {
                             userId: myProfessional?._id,
@@ -68,6 +83,7 @@ class PrescriptionController implements BaseController {
                     if (trimestral && !createAndes) {
                         // solo guardar si no se crean en andes
                         const newPrescription2: IPrescription = new Prescription({
+                            prescriptionId: generarIdDesdeFecha(),
                             patient: myPatient,
                             professional: {
                                 userId: myProfessional?._id,
@@ -83,6 +99,7 @@ class PrescriptionController implements BaseController {
                         await newPrescription2.save();
                         allPrescription.push(newPrescription2);
                         const newPrescription3: IPrescription = new Prescription({
+                            prescriptionId: generarIdDesdeFecha(),
                             patient: myPatient,
                             professional: {
                                 userId: myProfessional?._id,
@@ -208,6 +225,10 @@ class PrescriptionController implements BaseController {
                 date: { $gte: startDate, $lt: endDate }
             }).sort({ field: 'desc', date: -1 });
 
+            if (prescriptions) {
+                await this.ensurePrescriptionIds(prescriptions);
+            }
+
             return res.status(200).json(prescriptions);
         } catch (err) {
             // eslint-disable-next-line no-console
@@ -228,6 +249,10 @@ class PrescriptionController implements BaseController {
                 .sort({ date: -1 })
                 .skip(Number(offset))
                 .limit(Number(limit));
+
+            if (prescriptions) {
+                await this.ensurePrescriptionIds(prescriptions);
+            }
 
             const total = await Prescription.countDocuments({ 'professional.userId': id });
 
@@ -271,6 +296,10 @@ class PrescriptionController implements BaseController {
                 .skip(Number(offset))
                 .limit(Number(limit));
 
+            if (prescriptions) {
+                await this.ensurePrescriptionIds(prescriptions);
+            }
+
             const total = await Prescription.countDocuments(searchQuery);
 
             return res.status(200).json({
@@ -292,6 +321,11 @@ class PrescriptionController implements BaseController {
                 status: 'Dispensada',
                 'dispensedBy.cuil': filterDispensedBy
             }).sort({ field: 'desc', date: -1 });
+
+            if (prescriptions) {
+                await this.ensurePrescriptionIds(prescriptions);
+            }
+
             return res.status(200).json(prescriptions);
         } catch (err) {
             // eslint-disable-next-line no-console
@@ -405,7 +439,7 @@ class PrescriptionController implements BaseController {
                 date,
                 observation,
                 diagnostic,
-                supplies: suppliesLoaded
+                supplies: suppliesLoaded,
             }, opts);
             return res.status(200).json(updatedPrescription);
         } catch (err) {
@@ -508,6 +542,16 @@ class PrescriptionController implements BaseController {
             status: 'Vencida'
         });
     };
+
+    private ensurePrescriptionIds = async (prescriptions: IPrescription[]): Promise<void> => {
+        for (const prescription of prescriptions) {
+            if (!prescription.prescriptionId) {
+                const prescriptionId = generarIdDesdeFecha(prescription.createdAt || prescription.date);
+                await Prescription.findByIdAndUpdate(prescription._id, { prescriptionId });
+                prescription.prescriptionId = prescriptionId;
+            }
+        }
+    }
 
     private getSupplies = (supplies: any[]) => {
         let drogs = '';
