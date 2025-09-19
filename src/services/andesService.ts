@@ -61,15 +61,26 @@ class AndesService {
         }
     }
 
-    public async suspendPrescription(prescriptionId: string, reason: string): Promise<void> {
+    public async suspendPrescription(prescriptions: [string] , motivo: string, observacion?: string, profesional?: any): Promise<any> {
         try {
             const url = `${this.baseURL}/modules/recetas`;
-            await axios.post(url, { reason }, {
+            const body = {
+                op: 'suspender',
+                recetas: prescriptions,
+                motivo,
+                observacion,
+                profesional,
+                fecha: new Date()
+            };
+
+            const response: AxiosResponse = await axios.patch(url, body, {
                 headers: {
                     Authorization: this.token,
                     'Content-Type': 'application/json'
                 }
             });
+
+            return response.data;
         } catch (error) {
             // eslint-disable-next-line no-console
             console.error('Error al suspender la prescripción en ANDES:', error);

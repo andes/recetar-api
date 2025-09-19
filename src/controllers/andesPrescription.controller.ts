@@ -6,6 +6,7 @@ import PrescriptionAndes from '../models/prescriptionAndes.model';
 import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
 import prescriptionController from './prescription.controller';
+import AndesService from '../services/andesService';
 
 
 class AndesPrescriptionController implements BaseController {
@@ -26,7 +27,7 @@ class AndesPrescriptionController implements BaseController {
 
     public show = async (req: Request, res: Response): Promise<Response> => {
         try {
-            if (!req.params.id) { return res.status(400).json({ mensaje: 'Missing required params!' });}
+            if (!req.params.id) { return res.status(400).json({ mensaje: 'Missing required params!' }); }
 
             const id = req.params.id;
             const op = req.query.op ? req.query.op : '';
@@ -84,13 +85,13 @@ class AndesPrescriptionController implements BaseController {
 
     public getFromAndes = async (req: Request, res: Response): Promise<Response> => {
         try {
-            if (!req.query.dni) {return res.status(400).json({ mensaje: 'Missing required params!' });}
+            if (!req.query.dni) { return res.status(400).json({ mensaje: 'Missing required params!' }); }
             const dni = req.query.dni;
             const sexo = req.query.sexo ? req.query.sexo : '';
             let prescriptions: IPrescriptionAndes[] | null = [];
 
             const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/modules/recetas?documento=${dni}&estado=vigente${sexo ? `&sexo=${sexo}` : ''}`, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
-            if (typeof (resp.statusCode) === 'number' && resp.statusCode !== 200) {return res.status(resp.statusCode).json({ mensaje: 'Error', error: resp.body });}
+            if (typeof (resp.statusCode) === 'number' && resp.statusCode !== 200) { return res.status(resp.statusCode).json({ mensaje: 'Error', error: resp.body }); }
             let andesPrescriptions: IPrescriptionAndes[] | null = resp.body;
 
             if (andesPrescriptions) {
@@ -113,7 +114,7 @@ class AndesPrescriptionController implements BaseController {
 
     public dispense = async (req: Request, res: Response): Promise<Response> => {
         try {
-            if (!req.body) {return res.status(400).json({ mensaje: 'Missing body payload!' });}
+            if (!req.body) { return res.status(400).json({ mensaje: 'Missing body payload!' }); }
 
             const prescriptionAndes: IPrescriptionAndes | null = await PrescriptionAndes.findOne({ _id: req.body.prescription.id });
             if (prescriptionAndes) {
@@ -142,7 +143,7 @@ class AndesPrescriptionController implements BaseController {
                 recetaId: receta.id.toString()
             };
             const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, body, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
-            if (typeof (resp.statusCode) === 'number' && resp.statusCode !== 200) {return res.status(resp.statusCode).json({ mensaje: 'Error', error: resp.body });}
+            if (typeof (resp.statusCode) === 'number' && resp.statusCode !== 200) { return res.status(resp.statusCode).json({ mensaje: 'Error', error: resp.body }); }
             if (typeof (resp.statusCode) === 'number' && resp.statusCode === 200) {
                 const prescriptionUpdated: IPrescriptionAndes = resp.body;
                 await PrescriptionAndes.findByIdAndUpdate(receta.id.toString(), prescriptionUpdated);
@@ -191,16 +192,63 @@ class AndesPrescriptionController implements BaseController {
         }
     };
 
-  public createPublic = async (req: Request, res: Response): Promise<Response> => {
-    try {
-      if (!req.body) return res.status(400).json({mensaje: 'Missing body payload!'});
-      const receta: IPrescriptionAndes = new PrescriptionAndes(req.body.prescription);
-      receta.save();
-      return res.status(200).json(receta);
-    } catch(e) {
-      return res.status(500).json({mensaje: 'Error', error: e});
-    }
-  }
+    public createPublic = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            if (!req.body) {
+                return res.status(400).json({ mensaje: 'Missing body payload!' });
+            }
+            const receta: IPrescriptionAndes = new PrescriptionAndes(req.body.prescription);
+            receta.save();
+            return res.status(200).json(receta);
+        } catch (e) {
+            return res.status(500).json({ mensaje: 'Error', error: e });
+        }
+    };
+
+    public suspend = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            console.log('Suspendiendo prescripción...', req.body);
+            if (!req.body) {
+                return res.status(400).json({ mensaje: 'Missing body payload!' });
+            }
+
+            const { recetaId, profesionalId } = req.body;
+            if (!recetaId || !profesionalId) {
+                return res.status(400).json({ mensaje: 'Missing required params: recetaId and profesionalId!' });
+            }
+
+
+            const prescription: IPrescriptionAndes | null = await PrescriptionAndes.findOne({ _id: recetaId });
+            if (prescription) {
+                // eliminar de la base local
+                await PrescriptionAndes.findByIdAndDelete(recetaId);
+                return res.status(200).json({ mensaje: 'Prescription suspended locally' });
+            } else {
+                const profesional: IUser | null = await User.findOne({ _id: profesionalId });
+                const profesionalAndes = {
+                    id: profesional?.idAndes ? profesional.idAndes : '',
+                    nombre: profesional?.businessName ? profesional.businessName.split(',')[1].trim() : '',
+                    apellido: profesional?.businessName ? profesional.businessName.split(',')[0].trim() : '',
+                    cuil: profesional?.cuil ? profesional.cuil : '',
+                    matricula: profesional?.enrollment ? profesional.enrollment : '',
+                    documento: profesional?.username ? profesional.username : '',
+                };
+
+                const motivo = 'suspension desde RecetAr';
+                const observacion = 'suspension desde RecetAr';
+                // Suspender en ANDES
+                const result = await AndesService.suspendPrescription([recetaId], motivo, observacion, profesionalAndes);
+
+                return res.status(200).json({
+                    result
+                });
+            }
+
+
+        } catch (e) {
+            return res.status(500).json({ mensaje: 'Error', error: e });
+        }
+    };
 
 }
 
