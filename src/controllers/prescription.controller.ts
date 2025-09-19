@@ -15,9 +15,131 @@ import { Types } from 'mongoose';
 const csv = require('fast-csv');
 import needle from 'needle';
 import axios from 'axios';
+import AndesService from '../services/andesService';
 
 
 class PrescriptionController implements BaseController {
+
+    /**
+     * Helper method para combinar prescripciones locales con prescripciones de ANDES
+     * cuando el profesional tiene ámbito público
+     */
+    private async combineLocalAndAndesPrescriptions(
+        professionalId: string,
+        localPrescriptions: IPrescription[],
+        localTotal: number,
+        ambito: string,
+        andesFilter?: (prescriptions: any[]) => any[]
+    ): Promise<{ combinedPrescriptions: any[]; totalPrescriptions: number }> {
+        let combinedPrescriptions: any[] = localPrescriptions || [];
+        let totalPrescriptions = localTotal;
+
+        // Si el profesional tiene ámbito público, también obtener prescripciones de ANDES
+        if (ambito === 'publico') {
+            const andesPrescriptions = await this.getAndTransformAndesPrescriptions(
+                professionalId,
+                andesFilter
+            );
+
+            if (andesPrescriptions.length > 0) {
+                // Combinar y ordenar todas las prescripciones por fecha
+                combinedPrescriptions = [...localPrescriptions, ...andesPrescriptions];
+                combinedPrescriptions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                totalPrescriptions = combinedPrescriptions.length;
+            }
+        }
+
+        return { combinedPrescriptions, totalPrescriptions };
+    }
+
+    /**
+     * Helper method para obtener y transformar prescripciones de ANDES
+     */
+    private async getAndTransformAndesPrescriptions(
+        professionalId: string,
+        filter?: (prescriptions: any[]) => any[]
+    ): Promise<any[]> {
+        try {
+            // Obtener el profesional para verificar si tiene idAndes
+            const professional: IUser | null = await User.findOne({ _id: professionalId });
+
+            if (!professional?.idAndes) {
+                return [];
+            }
+
+            // Obtener prescripciones de ANDES
+            const andesPrescriptions = await AndesService.getPrescriptionsByProfessional({
+                professionalId: professional.idAndes
+            });
+
+            // Aplicar filtro si se proporciona (para búsquedas por término)
+            const filteredPrescriptions = filter ? filter(andesPrescriptions) : andesPrescriptions;
+
+            // Transformar las prescripciones de ANDES al formato local
+            return filteredPrescriptions.map(andesPrescription => ({
+                ...andesPrescription,
+                _id: andesPrescription.id || andesPrescription._id,
+                isFromAndes: true, // Marcador para identificar origen
+                date: new Date(andesPrescription.fechaRegistro),
+                professional: {
+                    userId: professional._id,
+                    businessName: professional.businessName,
+                    cuil: professional.cuil,
+                    enrollment: professional.enrollment,
+                }
+            }));
+        } catch (andesError) {
+            // eslint-disable-next-line no-console
+            console.error('Error al obtener prescripciones de ANDES:', andesError);
+            // En caso de error con ANDES, retornar array vacío
+            return [];
+        }
+    }
+
+    /**
+     * Helper method para aplicar paginación y generar respuesta estándar
+     */
+    private generatePaginatedResponse(
+        combinedPrescriptions: any[],
+        totalPrescriptions: number,
+        localTotal: number,
+        offset: number,
+        limit: number,
+        ambito: string
+    ) {
+        // Aplicar paginación sobre el conjunto combinado
+        const startIndex = Number(offset);
+        const endIndex = startIndex + Number(limit);
+        const paginatedPrescriptions = combinedPrescriptions.slice(startIndex, endIndex);
+
+        return {
+            prescriptions: paginatedPrescriptions,
+            total: totalPrescriptions,
+            offset: Number(offset),
+            limit: Number(limit),
+            sources: {
+                local: localTotal,
+                andes: ambito === 'publico' ? totalPrescriptions - localTotal : 0
+            }
+        };
+    }
+
+    /**
+     * Helper method para filtrar prescripciones de ANDES por término de búsqueda
+     */
+    private filterAndesPrescriptionsByTerm(andesPrescriptions: any[], searchTerm: string): any[] {
+        const searchTermLower = searchTerm.toLowerCase();
+        return andesPrescriptions.filter(andesPrescription => {
+            const patient = andesPrescription.paciente;
+            return (
+                patient.documento?.toLowerCase().includes(searchTermLower) ||
+                patient.nombre?.toLowerCase().includes(searchTermLower) ||
+                patient.apellido?.toLowerCase().includes(searchTermLower) ||
+                patient.nombreCompleto?.toLowerCase().includes(searchTermLower)
+            );
+        });
+    }
 
     public index = async (req: Request, res: Response): Promise<Response> => {
         const prescriptions: IPrescription[] = await Prescription.find();
@@ -65,7 +187,18 @@ class PrescriptionController implements BaseController {
                     });
                     let createAndes = false;
                     if (ambito === 'publico') {
-                        createAndes = await this.createPrescriptionAndes(newPrescription, professionalAndes, myProfessional, myPatient);
+                        if (!myProfessional?.idAndes) {
+                            const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
+                            if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
+                                // eslint-disable-next-line no-console
+                                console.log('No se encuentra el profesional.');
+                            }
+                            myProfessional.idAndes = resp.body[0]?.id;
+                            myProfessional.businessName = `${resp.body[0]?.apellido}, ${resp.body[0]?.nombre}`;
+                            await myProfessional.save();
+                        }
+
+                        createAndes = await this.createPrescriptionAndes(newPrescription, myProfessional, myPatient);
                         if (!createAndes) {
                             await newPrescription.save();
                             allPrescription.push(newPrescription);
@@ -131,7 +264,7 @@ class PrescriptionController implements BaseController {
             return res.status(500).json('Server Error');
         }
     };
-    private createPrescriptionAndes = async (newPrescription: IPrescription, professionalAndes: any, profesional: IUser, patient: IPatient) => {
+    private createPrescriptionAndes = async (newPrescription: IPrescription, profesional: IUser, patient: IPatient) => {
         const prescriptionAndes = {
             idPrestacion: newPrescription._id.toString(),
             idRegistro: newPrescription._id.toString(),
@@ -145,9 +278,9 @@ class PrescriptionController implements BaseController {
                 obraSocial: patient.obraSocial || null,
             },
             profesional: {
-                id: professionalAndes.id,
-                nombre: professionalAndes.nombre,
-                apellido: professionalAndes.apellido ? professionalAndes.apellido : '',
+                id: profesional?.idAndes ? profesional.idAndes : '',
+                nombre: profesional?.businessName ? profesional.businessName.split(',')[1].trim() : '',
+                apellido: profesional?.businessName ? profesional.businessName.split(',')[0].trim() : '',
                 cuil: profesional?.cuil ? profesional.cuil : '',
                 matricula: profesional?.enrollment ? profesional.enrollment : '',
                 documento: profesional?.username ? profesional.username : '',
@@ -235,27 +368,39 @@ class PrescriptionController implements BaseController {
     public getByUserId = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { id } = req.params;
-            const { offset = 0, limit = 10 } = req.query;
+            const { offset = 0, limit = 10, ambito = 'privado' } = req.query;
 
             await this.updateStatuses(id, '');
 
-            const prescriptions: IPrescription[] | null = await Prescription.find({ 'professional.userId': id })
-                .sort({ date: -1 })
-                .skip(Number(offset))
-                .limit(Number(limit));
+            // Obtener prescripciones locales
+            const localPrescriptions: IPrescription[] | null = await Prescription.find({ 'professional.userId': id })
+                .sort({ date: -1 });
 
-            if (prescriptions) {
-                await this.ensurePrescriptionIds(prescriptions);
+            if (localPrescriptions) {
+                await this.ensurePrescriptionIds(localPrescriptions);
             }
 
-            const total = await Prescription.countDocuments({ 'professional.userId': id });
+            const localTotal = await Prescription.countDocuments({ 'professional.userId': id });
 
-            return res.status(200).json({
-                prescriptions,
-                total,
-                offset: Number(offset),
-                limit: Number(limit)
-            });
+            // Combinar con prescripciones de ANDES si es necesario
+            const { combinedPrescriptions, totalPrescriptions } = await this.combineLocalAndAndesPrescriptions(
+                id,
+                localPrescriptions || [],
+                localTotal,
+                ambito as string
+            );
+
+            // Generar respuesta paginada
+            const response = this.generatePaginatedResponse(
+                combinedPrescriptions,
+                totalPrescriptions,
+                localTotal,
+                Number(offset),
+                Number(limit),
+                ambito as string
+            );
+
+            return res.status(200).json(response);
         } catch (err) {
             console.log(err);
             return res.status(500).json('Server Error');
@@ -265,7 +410,7 @@ class PrescriptionController implements BaseController {
     public searchByTerm = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { id } = req.params; // professional userId
-            const { searchTerm } = req.query;
+            const { searchTerm, ambito = 'privado' } = req.query;
             const { offset = 0, limit = 10 } = req.query;
 
             if (!searchTerm) {
@@ -274,7 +419,7 @@ class PrescriptionController implements BaseController {
 
             await this.updateStatuses(id, '');
 
-            // Crear query para buscar por DNI o nombre del paciente
+            // Crear query para buscar por DNI o nombre del paciente en prescripciones locales
             const searchQuery = {
                 'professional.userId': id,
                 $or: [
@@ -285,23 +430,39 @@ class PrescriptionController implements BaseController {
                 ]
             };
 
-            const prescriptions: IPrescription[] | null = await Prescription.find(searchQuery)
-                .sort({ date: -1 })
-                .skip(Number(offset))
-                .limit(Number(limit));
+            const localPrescriptions: IPrescription[] | null = await Prescription.find(searchQuery)
+                .sort({ date: -1 });
 
-            if (prescriptions) {
-                await this.ensurePrescriptionIds(prescriptions);
+            if (localPrescriptions) {
+                await this.ensurePrescriptionIds(localPrescriptions);
             }
 
-            const total = await Prescription.countDocuments(searchQuery);
+            const localTotal = await Prescription.countDocuments(searchQuery);
 
-            return res.status(200).json({
-                prescriptions,
-                total,
-                offset: Number(offset),
-                limit: Number(limit)
-            });
+            // Crear filtro para prescripciones de ANDES
+            const andesFilter = (prescriptions: any[]) =>
+                this.filterAndesPrescriptionsByTerm(prescriptions, searchTerm as string);
+
+            // Combinar con prescripciones de ANDES si es necesario (aplicando filtro de búsqueda)
+            const { combinedPrescriptions, totalPrescriptions } = await this.combineLocalAndAndesPrescriptions(
+                id,
+                localPrescriptions || [],
+                localTotal,
+                ambito as string,
+                andesFilter
+            );
+
+            // Generar respuesta paginada
+            const response = this.generatePaginatedResponse(
+                combinedPrescriptions,
+                totalPrescriptions,
+                localTotal,
+                Number(offset),
+                Number(limit),
+                ambito as string
+            );
+
+            return res.status(200).json(response);
         } catch (err) {
             console.log(err);
             return res.status(500).json('Server Error');
