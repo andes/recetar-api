@@ -61,6 +61,7 @@ class PrivateRoutes {
     this.router.get('/andes-prescriptions/:id', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);
     this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
     this.router.patch('/andes-prescriptions/cancel-dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.cancelDispense);
+    this.router.patch('/andes-prescriptions/suspend', hasPermissionIn('updateOwn', 'prescription'), andesPrescriptionController.suspend);
 
     // certificates
     this.router.get(`/certificates/`, certificateController.index);
