@@ -39,12 +39,12 @@ class PrescriptionController implements BaseController {
                 professionalId,
                 andesFilter
             );
-            
+
             if (andesPrescriptions.length > 0) {
                 // Combinar y ordenar todas las prescripciones por fecha
                 combinedPrescriptions = [...localPrescriptions, ...andesPrescriptions];
                 combinedPrescriptions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                
+
                 totalPrescriptions = combinedPrescriptions.length;
             }
         }
@@ -62,7 +62,7 @@ class PrescriptionController implements BaseController {
         try {
             // Obtener el profesional para verificar si tiene idAndes
             const professional: IUser | null = await User.findOne({ _id: professionalId });
-            
+
             if (!professional?.idAndes) {
                 return [];
             }
