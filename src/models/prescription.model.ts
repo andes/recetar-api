@@ -6,7 +6,7 @@ import { patientSchema } from '../models/patient.model';
 // Schema
 const prescriptionSchema = new Schema({
     prescriptionId: {
-        type: Number,
+        type: String,
         unique: true,
         sparse: true
     },
@@ -77,6 +77,30 @@ const prescriptionSchema = new Schema({
     }
 });
 
+
+prescriptionSchema.post('save', async (prescription: IPrescription) => {
+    // genera id unico si no tiene
+    if (!prescription.prescriptionId) {
+        const id = generarIdDesdeFecha(prescription.createdAt);
+        await Prescription.updateOne({ _id: prescription._id }, { $set: { prescriptionId: id } });
+    }
+
+});
+
+export function generarIdDesdeFecha(fecha = new Date()) {
+    // genera id unico de acuerdo a una fecha
+    const pad = (num: number, size: number) => num.toString().padStart(size, '0');
+    return String(
+        fecha.getFullYear().toString() +
+        pad(fecha.getMonth() + 1, 2) +
+        pad(fecha.getDate(), 2) +
+        pad(fecha.getHours(), 2) +
+        pad(fecha.getMinutes(), 2) +
+        pad(fecha.getSeconds(), 2) +
+        pad(fecha.getMilliseconds(), 3) +
+        pad(Math.floor(Math.random() * 999), 3)
+    );
+}
 // Model
 const Prescription: Model<IPrescription> = model<IPrescription>('Prescription', prescriptionSchema);
 

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Prescription from '../models/prescription.model';
+import Prescription, { generarIdDesdeFecha } from '../models/prescription.model';
 import IPrescription, { PrescriptionSupply } from '../interfaces/prescription.interface';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 import ISupply from '../interfaces/supply.interface';
@@ -16,19 +16,6 @@ const csv = require('fast-csv');
 import needle from 'needle';
 import axios from 'axios';
 
-function generarIdDesdeFecha(fecha = new Date()) {
-    const pad = (num: number, size: number) => num.toString().padStart(size, '0');
-
-    return Number(
-        fecha.getFullYear().toString() +
-        pad(fecha.getMonth() + 1, 2) +
-        pad(fecha.getDate(), 2) +
-        pad(fecha.getHours(), 2) +
-        pad(fecha.getMinutes(), 2) +
-        pad(fecha.getSeconds(), 2) +
-        pad(fecha.getMilliseconds(), 3)
-    );
-}
 
 class PrescriptionController implements BaseController {
 
@@ -50,7 +37,6 @@ class PrescriptionController implements BaseController {
                 }
                 for (const sup of supplies) {
                     const newPrescription = new Prescription({
-                        prescriptionId: generarIdDesdeFecha(),
                         patient: myPatient,
                         professional: {
                             userId: myProfessional?._id,
@@ -83,7 +69,6 @@ class PrescriptionController implements BaseController {
                     if (trimestral && !createAndes) {
                         // solo guardar si no se crean en andes
                         const newPrescription2: IPrescription = new Prescription({
-                            prescriptionId: generarIdDesdeFecha(),
                             patient: myPatient,
                             professional: {
                                 userId: myProfessional?._id,
@@ -99,7 +84,6 @@ class PrescriptionController implements BaseController {
                         await newPrescription2.save();
                         allPrescription.push(newPrescription2);
                         const newPrescription3: IPrescription = new Prescription({
-                            prescriptionId: generarIdDesdeFecha(),
                             patient: myPatient,
                             professional: {
                                 userId: myProfessional?._id,
@@ -551,7 +535,7 @@ class PrescriptionController implements BaseController {
                 prescription.prescriptionId = prescriptionId;
             }
         }
-    }
+    };
 
     private getSupplies = (supplies: any[]) => {
         let drogs = '';
