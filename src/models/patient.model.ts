@@ -1,7 +1,6 @@
 import { Schema, Model, model } from 'mongoose';
 import IPatient from '../interfaces/patient.interface';
-import { env } from '../config/config';
-import needle, { post } from 'needle';
+import needle from 'needle';
 import { obraSocialSchema } from './obraSocial.model';
 import axios from 'axios';
 
@@ -63,6 +62,10 @@ export const patientSchema = new Schema({
         type: Date,
         default: null
     },
+    idLocalInMPI: {
+        type: Boolean,
+        default: false
+    }
 });
 
 // Model
@@ -71,7 +74,7 @@ const Patient: Model<IPatient> = model<IPatient>('Patient', patientSchema);
 // Buscar paciente en MPI de Andes
 const searchPatientInAndesMPI = async (dni: string, sexo: string): Promise<any[]> => {
     try {
-        const url = `${process.env.ANDES_MPI_ENDPOINT}?search=${dni}&sexo=${sexo}&activo=true&estado=validado`;
+        const url = `${process.env.ANDES_MPI_ENDPOINT}?search=${dni}&sexo=${sexo}&activo=true`;
         const Authorization = process.env.JWT_MPI_TOKEN || '';
 
         const resp = await needle('get', url, { headers: { Authorization } });
@@ -122,7 +125,8 @@ const createPatientInAndesMPI = async (patient: IPatient): Promise<any> => {
             sexo: patient.sex.toLowerCase(),
             genero: patient.sex.toLowerCase(),
             fechaNacimiento: patient.fechaNac,
-            ignoreSuggestions: true
+            ignoreSuggestions: true,
+            estado: 'temporal'
         }, { headers: { Authorization } });
 
         if (response.status !== 200) {
@@ -174,14 +178,35 @@ const createPatientForPublicScope = async (patientParam: IPatient): Promise<IPat
         // Primero buscar sugerencias
         const suggestions = await getSuggestedPatientsFromAndes(patientParam);
 
-        // Buscar paciente sugerido con _score >= 0.95 (tomar el primero si hay varios)
-        const highScorePatient = suggestions.find((item: any) => item._score >= 0.95);
+        // Filtrar pacientes con _score >= 0.95
+        const highScorePatients = suggestions.filter((item: any) => item._score >= 0.95);
+
+        let selectedPatient: any = null;
+
+        if (highScorePatients.length > 0) {
+            // Priorizar pacientes con estado 'validado' primero
+            selectedPatient = highScorePatients.find((item: any) =>
+                item.paciente?.estado === 'validado'
+            );
+
+            // Si no hay ninguno validado, buscar uno temporal
+            if (!selectedPatient) {
+                selectedPatient = highScorePatients.find((item: any) =>
+                    item.paciente?.estado === 'temporal'
+                );
+            }
+
+            // Si no hay ninguno con estado específico, tomar el primero con alto score
+            if (!selectedPatient) {
+                selectedPatient = highScorePatients[0];
+            }
+        }
 
         let patientData: any;
 
-        if (highScorePatient) {
-            // Usar paciente sugerido con alto score (usar los datos del paciente anidado)
-            patientData = highScorePatient.paciente;
+        if (selectedPatient) {
+            // Usar paciente sugerido seleccionado (usar los datos del paciente anidado)
+            patientData = selectedPatient.paciente;
         } else {
             // Crear nuevo paciente en Andes MPI (esto devuelve un objeto, no un array)
             patientData = await createPatientInAndesMPI(patientParam);
@@ -191,12 +216,47 @@ const createPatientForPublicScope = async (patientParam: IPatient): Promise<IPat
         const localPatientData = mapAndesPatientToLocal(patientData);
         const newPatient = new Patient(localPatientData);
         await newPatient.save();
+        updateAndes(newPatient);
 
         return newPatient;
     } catch (error) {
         throw new Error('Error al crear paciente para ámbito público');
     }
 };
+
+// Actualizar paciente en andes (id de recetar en arreglo de identificadores)
+const updateAndes = async (patient: IPatient): Promise<boolean> => {
+    try {
+        const respPatientMPI = await axios.get(`${process.env.ANDES_MPI_ENDPOINT}/${patient.idMPI}`, {
+            headers: { Authorization: process.env.JWT_MPI_TOKEN || '' }
+        });
+        if (respPatientMPI.status !== 200) {
+            throw new Error('Paciente no encontrado en Andes MPI');
+        }
+        const patientMPI = respPatientMPI.data;
+        if (patientMPI.identificadores?.some((id: any) => id.entidad === 'recetar' && id.valor === patient._id.toString())) {
+            // Ya tiene el ID de Recetar, no es necesario actualizar
+            if (!patient.idLocalInMPI) {
+                await Patient.updateOne({ _id: patient._id }, { idLocalInMPI: true });
+            }
+            return true;
+        }
+        patientMPI.identificadores.push({
+            entidad: 'recetar',
+            valor: patient._id.toString()
+        });
+        const resp = await axios.patch(`${process.env.ANDES_MPI_ENDPOINT}/${patient.idMPI}`, patientMPI, {
+            headers: { Authorization: process.env.JWT_MPI_TOKEN || '' }
+        });
+        if (resp.status !== 200) {
+            return false;
+        }
+        return true;
+    } catch (e) {
+        throw new Error('Error al actualizar paciente en Andes MPI');
+    }
+};
+
 Patient.schema.method('findOrCreate', async (patientParam: IPatient, ambito?: string): Promise<IPatient> => {
     try {
         // Validar que el DNI no sea undefined
@@ -215,13 +275,23 @@ Patient.schema.method('findOrCreate', async (patientParam: IPatient, ambito?: st
         // Si existe localmente, verificar si tiene idMPI y fechaNac
         if (patient) {
             // Si le faltan datos, buscar en MPI para completarlos
-            if (!patient.idMPI || !patient.fechaNac) {
+            if (!patient.idMPI) {
                 const mpiPatientsForUpdate = await searchPatientInAndesMPI(patientParam.dni, sexo);
 
                 if (mpiPatientsForUpdate.length > 0) {
                     // Actualizar paciente local con datos de MPI
                     patient = await updateLocalPatientWithMPIData(patient, mpiPatientsForUpdate);
+                } else if (ambito === 'publico') {
+                    // Si no existe en MPI y es ámbito público, crear en Andes y actualizar local
+                    const newAndesPatient = await createPatientInAndesMPI(patientParam);
+                    const updatedData = mapAndesPatientToLocal(newAndesPatient);
+                    await Patient.updateOne({ _id: patient._id }, updatedData);
+                    patient = await Patient.findById(patient._id) as IPatient;
                 }
+            }
+            if (ambito === 'publico' && !patient.idLocalInMPI) {
+                // Asegurarse de que el paciente tenga el ID de Recetar en Andes
+                await updateAndes(patient);
             }
             return patient;
         }
@@ -230,7 +300,7 @@ Patient.schema.method('findOrCreate', async (patientParam: IPatient, ambito?: st
         const mpiPatients = await searchPatientInAndesMPI(patientParam.dni, sexo);
 
         if (mpiPatients.length > 0) {
-            // 4. Si existe en MPI, crear paciente local con esos datos
+            // Si existe en MPI, crear paciente local con esos datos
             const matchingMPIPatient = mpiPatients.find((item: any) =>
                 item.sexo === patientParam.sex.toLowerCase()
             );
