@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Prescription from '../models/prescription.model';
+import Prescription, { generarIdDesdeFecha } from '../models/prescription.model';
 import IPrescription, { PrescriptionSupply } from '../interfaces/prescription.interface';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 import ISupply from '../interfaces/supply.interface';
@@ -15,6 +15,7 @@ import { Types } from 'mongoose';
 const csv = require('fast-csv');
 import needle from 'needle';
 import axios from 'axios';
+
 
 class PrescriptionController implements BaseController {
 
@@ -208,6 +209,10 @@ class PrescriptionController implements BaseController {
                 date: { $gte: startDate, $lt: endDate }
             }).sort({ field: 'desc', date: -1 });
 
+            if (prescriptions) {
+                await this.ensurePrescriptionIds(prescriptions);
+            }
+
             return res.status(200).json(prescriptions);
         } catch (err) {
             // eslint-disable-next-line no-console
@@ -228,6 +233,10 @@ class PrescriptionController implements BaseController {
                 .sort({ date: -1 })
                 .skip(Number(offset))
                 .limit(Number(limit));
+
+            if (prescriptions) {
+                await this.ensurePrescriptionIds(prescriptions);
+            }
 
             const total = await Prescription.countDocuments({ 'professional.userId': id });
 
@@ -271,6 +280,10 @@ class PrescriptionController implements BaseController {
                 .skip(Number(offset))
                 .limit(Number(limit));
 
+            if (prescriptions) {
+                await this.ensurePrescriptionIds(prescriptions);
+            }
+
             const total = await Prescription.countDocuments(searchQuery);
 
             return res.status(200).json({
@@ -292,6 +305,11 @@ class PrescriptionController implements BaseController {
                 status: 'Dispensada',
                 'dispensedBy.cuil': filterDispensedBy
             }).sort({ field: 'desc', date: -1 });
+
+            if (prescriptions) {
+                await this.ensurePrescriptionIds(prescriptions);
+            }
+
             return res.status(200).json(prescriptions);
         } catch (err) {
             // eslint-disable-next-line no-console
@@ -405,7 +423,7 @@ class PrescriptionController implements BaseController {
                 date,
                 observation,
                 diagnostic,
-                supplies: suppliesLoaded
+                supplies: suppliesLoaded,
             }, opts);
             return res.status(200).json(updatedPrescription);
         } catch (err) {
@@ -507,6 +525,16 @@ class PrescriptionController implements BaseController {
         }, {
             status: 'Vencida'
         });
+    };
+
+    private ensurePrescriptionIds = async (prescriptions: IPrescription[]): Promise<void> => {
+        for (const prescription of prescriptions) {
+            if (!prescription.prescriptionId) {
+                const prescriptionId = generarIdDesdeFecha(prescription.createdAt || prescription.date);
+                await Prescription.findByIdAndUpdate(prescription._id, { prescriptionId });
+                prescription.prescriptionId = prescriptionId;
+            }
+        }
     };
 
     private getSupplies = (supplies: any[]) => {
