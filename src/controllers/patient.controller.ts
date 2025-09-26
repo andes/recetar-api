@@ -11,7 +11,7 @@ class PatientController implements BaseController {
     public index = async (req: Request, res: Response): Promise<Response> => {
         const patients: IPatient[] = await Patient.find();
         return res.status(200).json({ patients });
-    }
+    };
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         const { dni, lastName, firstName, sex, fechaNac } = req.body;
@@ -29,7 +29,7 @@ class PatientController implements BaseController {
             console.log(err);
             return res.status(500).json('Server Error');
         }
-    }
+    };
 
     public show = async (req: Request, res: Response): Promise<Response> => {
         try {
@@ -40,35 +40,35 @@ class PatientController implements BaseController {
             console.log(err);
             return res.status(500).json('Server Error');
         }
-    }
+    };
 
     public getObraSocial = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { documento, sexo } = req.query;
-            const resp = await needle("get", `${process.env.ANDES_ENDPOINT}/modules/obraSocial/obraSocialPaciente?documento=${documento}&sexo=${sexo}`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } })
+            const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/modules/obraSocial/obraSocialPaciente?documento=${documento}&sexo=${sexo}`, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
             return res.status(200).json(resp.body);
         } catch (err) {
             return res.status(500).json('Server Error');
         }
-    }
+    };
     public getObrasSociales = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const resp = await needle("get", `${process.env.ANDES_ENDPOINT}/modules/obraSocial/obrasSociales`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } })
+            const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/modules/obraSocial/obrasSociales`, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
             return res.status(200).json(resp.body);
         } catch (err) {
             return res.status(500).json('Server Error');
         }
-    }
+    };
 
     public getByDni = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { dni } = req.params;
             // Primero busca en base de RecetAR
-            const patients = await Patient.find({ dni: dni });
+            const patients = await Patient.find({ dni });
             // Si no encuentra, busca en MPI
             if (patients.length === 0) {
-                const resp = await needle("get", `${process.env.ANDES_MPI_ENDPOINT}?documento=${dni}&activo=true&estado=validado`, { headers: { 'Authorization': process.env.JWT_MPI_TOKEN } });
-                resp.body.forEach(function (item: any) {
+                const resp = await needle('get', `${process.env.ANDES_MPI_ENDPOINT}?documento=${dni}&activo=true&estado=validado`, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+                resp.body.forEach((item: any) => {
                     patients.push(<IPatient>{
                         dni: item.documento,
                         firstName: item.nombre,
@@ -90,7 +90,7 @@ class PatientController implements BaseController {
             console.log(err);
             return res.status(500).json('Server Error');
         }
-    }
+    };
 
     public update = async (req: Request, res: Response) => {
         try {
@@ -110,7 +110,7 @@ class PatientController implements BaseController {
             console.log(err);
             return res.status(500).json('Server Error');
         }
-    }
+    };
 
     public updatePatient = async (req: Request, res: Response): Promise<Response> => {
         // "dni", "lastName", "firstName", "sex"
@@ -120,28 +120,27 @@ class PatientController implements BaseController {
         try {
 
             _(req.body).forEach((value: string, key: string) => {
-                if (!_.isEmpty(value) && _.includes(["dni", "lastName", "firstName", "sex"], key)) {
+                if (!_.isEmpty(value) && _.includes(['dni', 'lastName', 'firstName', 'sex'], key)) {
                     values[key] = value;
                 }
             });
             const opts: any = { runValidators: true, new: true, context: 'query' };
-            const patient: IPatient | null = await Patient.findOneAndUpdate({ _id: id }, values, opts).select("dni lastName firstName sex");
+            const patient: IPatient | null = await Patient.findOneAndUpdate({ _id: id }, values, opts).select('dni lastName firstName sex');
 
             return res.status(200).json(patient);
-        }
-        catch (e) {
+        } catch (e) {
             // formateamos los errores de validacion
             if (e.name !== 'undefined' && e.name === 'ValidationError') {
-                let errors: { [key: string]: string } = {};
+                const errors: { [key: string]: string } = {};
                 Object.keys(e.errors).forEach(prop => {
                     errors[prop] = e.errors[prop].message;
                 });
                 return res.status(422).json(errors);
             }
             console.log(e);
-            return res.status(500).json("Server Error");
+            return res.status(500).json('Server Error');
         }
-    }
+    };
 
     public delete = async (req: Request, res: Response): Promise<Response> => {
         try {
@@ -153,7 +152,7 @@ class PatientController implements BaseController {
             console.log(err);
             return res.status(500).json('Server Error');
         }
-    }
+    };
 }
 
 export default new PatientController();
