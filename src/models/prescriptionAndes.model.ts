@@ -1,6 +1,82 @@
-import { Schema, Model, model } from 'mongoose';
+import { Schema, Model, model, SchemaTypes } from 'mongoose';
 import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
 
+
+const sistemaSchema = {
+    type: String,
+    enum: ['sifaho', 'recetar']
+};
+
+const cancelarSchema = new Schema({
+    idDispensaApp: {
+        type: String,
+        required: false
+    },
+    motivo: {
+        type: String,
+        required: false
+    },
+    organizacion: {
+        id: String,
+        nombre: String
+    }
+});
+
+const ProfesionalSubSchema = new Schema({
+    id: SchemaTypes.ObjectId,
+    nombre: String,
+    apellido: String,
+    documento: String
+}, { _id: false });
+
+const estadosSchema = new Schema({
+    tipo: {
+        type: String,
+        enum: ['pendiente', 'vigente', 'finalizada', 'vencida', 'suspendida', 'rechazada'],
+        required: true,
+        default: 'vigente'
+    },
+    motivo: {
+        type: String,
+        required: false
+    },
+    observacion: {
+        type: String,
+        required: false
+    },
+    profesional: {
+        type: ProfesionalSubSchema,
+        required: false
+    },
+    organizacionExterna: {
+        id: {
+            type: String,
+            required: false
+        },
+        nombre: {
+            type: String,
+            required: false
+        }
+    }
+});
+
+const estadoDispensaSchema = new Schema({
+    tipo: {
+        type: String,
+        enum: ['sin-dispensa', 'dispensada', 'dispensa-parcial'],
+        required: true
+    },
+    idDispensaApp: {
+        type: String,
+        required: false
+    },
+    fecha: Date,
+    sistema: sistemaSchema,
+    cancelada: {
+        type: cancelarSchema,
+        required: false
+    }
+});
 
 // Schema
 const prescriptionAndesSchema = new Schema({
@@ -63,68 +139,16 @@ const prescriptionAndesSchema = new Schema({
             }
         }
     ],
-    estados: [
-        {   
-            id: Schema.Types.ObjectId,
-            tipo: {
-                type: String,
-                enum: ['vigente', 'finalizada', 'vencida', 'suspendida', 'rechazada'],
-                required: true
-            },
-            createdAt: Date,
-            createdBy: {
-                nombre: String,
-                apellido: String,
-                organizacion: {
-                    nombre: String
-                }
-            }
-        }
-    ],
-    estadosDispensa: [
-        {
-            id: Schema.Types.ObjectId,
-            tipo: {
-                type: String,
-                enum: ['sin-dispensa', 'dispensada', 'dispensa-parcial'],
-                required: true
-            },
-            fecha: Date,
-            sistema: {
-                type: String,
-                enum: ['sifaho', 'recetar']
-            }
-        }
-    ],
+    estados: [estadosSchema],
+    estadoActual: estadosSchema,
     appNotificada: [
         {
             id: Schema.Types.ObjectId,
             fecha: Date
         }
     ],
-    estadoActual: {
-        id: Schema.Types.ObjectId,
-        tipo: {
-            type: String,
-            enum: ['vigente', 'finalizada', 'vencida', 'suspendida', 'rechazada']
-        },
-        createdAt: Date,
-        createdBy: {
-            nombre: String,
-            apellido: String,
-            organizacion: {
-                nombre: String
-            }
-        }
-    },
-    estadoDispensaActual: {
-        tipo: {
-            type: String,
-            enum: ['sin-dispensa', 'dispensada', 'dispensa-parcial']
-        },
-        fecha: Date,
-        id: Schema.Types.ObjectId 
-    },
+    estadosDispensa: [estadoDispensaSchema],
+    estadoDispensaActual: estadoDispensaSchema,
     paciente: {
         carpetaEfectores: [],
         id: Schema.Types.ObjectId,
@@ -140,7 +164,7 @@ const prescriptionAndesSchema = new Schema({
             origen: String,
             fechaActualizacion: Date,
             prepaga: Boolean,
-            numeroAfiliado: String 
+            numeroAfiliado: String
         },
         genero: String,
         nombreCompleto: String,

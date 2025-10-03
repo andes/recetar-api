@@ -1,6 +1,6 @@
-import { ObjectId, ObjectID } from "mongodb";
-import { Document } from "mongoose";
-import { ISnomedConcept } from "./supply.interface";
+import { ObjectId, ObjectID } from 'mongodb';
+import { Document } from 'mongoose';
+import { ISnomedConcept } from './supply.interface';
 
 export interface IDispensa extends Document {
     descripcion: String;
@@ -12,14 +12,14 @@ export interface IDispensa extends Document {
     organizacion: {
         id: ObjectID;
         nombre: String;
-    }
+    };
 }
 export default interface IPrescriptionAndes extends Document {
     idAndes: ObjectID;
     organizacion: {
         id: ObjectID;
         nombre: String;
-    }
+    };
     profesional: {
         id: ObjectId;
         nombre: String;
@@ -28,13 +28,13 @@ export default interface IPrescriptionAndes extends Document {
         profesion: String;
         especialidad: String;
         matricula: Number;
-    }
+    };
     diagnostico: {
         term: String;
         fsn: String;
         conceptId: String;
         semanticTag: String;
-    }
+    };
     fechaRegistro: Date;
     fechaPrestacion: Date;
     idPrestacion: String;
@@ -49,64 +49,81 @@ export default interface IPrescriptionAndes extends Document {
                 nombre: String;
                 source: String;
                 type: String;
-            }
+            };
             dias: Number;
             notaMedica: String;
-        }
+        };
         presentacion: String;
         unidades: String;
         cantidad: Number;
         cantEnvases: Number;
         tratamientoProlongado: Boolean;
         tiempoTratamiento: any;
-    }
+    };
     dispensa: IDispensa[];
     estados: [
         {
             id?: ObjectID;
-            tipo: 'vigente' | 'finalizada' | 'vencida' | 'suspendida' | 'rechazada';
+            tipo: 'pendiente' | 'vigente' | 'finalizada' | 'vencida' | 'suspendida' | 'rechazada';
             createdAt: Date;
             createdBy: {
                 nombre: String;
                 apellido: String;
                 organizacion: {
                     nombre: String;
-                }
-            }
+                };
+            };
         }
-    ]
+    ];
     estadosDispensa: [
         {
             id?: ObjectID;
             tipo: 'sin dispensa' | 'dispensada' | 'dispensa-parcial';
             fecha: Date;
             sistema?: 'sifaho' | 'recetar';
+            cancelada: {
+                type: {
+                    idDispensaApp: {
+                        type: String;
+                        required: false;
+                    };
+                    motivo: {
+                        type: String;
+                        required: false;
+                    };
+                    organizacion: {
+                        id: String;
+                        nombre: String;
+                    };
+                };
+                required: false;
+            };
         }
-    ]
+    ];
     appNotificada: [
         {
-            id: ObjectID
-            fecha: Date
+            id: ObjectID;
+            fecha: Date;
         }
-    ]
+    ];
     estadoActual: {
         id?: ObjectId;
-        tipo: 'vigente' | 'finalizada' | 'vencida' | 'suspendida' | 'rechazada';
+        tipo: 'pendiente' | 'vigente' | 'finalizada' | 'vencida' | 'suspendida' | 'rechazada';
         createdAt: Date;
         createdBy: {
             nombre: String;
             apellido: String;
             organizacion: {
                 nombre: String;
-            }
-        }
+            };
+        };
 
     };
     estadoDispensaActual: {
         tipo: 'sin-dispensa' | 'dispensada' | 'dispensa-parcial';
         fecha: Date;
         id?: ObjectID;
-    }
+    };
     paciente: {
         carpetaEfectores: [];
         id: ObjectID;
@@ -122,29 +139,29 @@ export default interface IPrescriptionAndes extends Document {
             origen: String;
             fechaActualizacion: Date;
             prepaga: Boolean;
-        }
+        };
         genero: String;
-        nombreCompleto: String,
+        nombreCompleto: String;
         edad: Number;
         edadReal: {
             valor: Number;
             unidad: String;
-        }
-    }
+        };
+    };
     createdAt: Date;
     createdBy: {
         nombre: String;
         apellido: String;
         organizacion: {
             nombre: String;
-        }
-    }
+        };
+    };
     updatedAt: Date;
     updatedBy: {
         nombre: String;
         apellido: String;
         organizacion: {
             nombre: String;
-        }
-    }
+        };
+    };
 }
