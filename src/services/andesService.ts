@@ -26,6 +26,89 @@ class AndesService {
         }
     }
 
+    public async getPrescriptionsByPatient(params: GetPrescriptionsByPatientParams): Promise<IPrescriptionAndes[]> {
+        try {
+            const url = `${this.baseURL}/modules/recetas`;
+            const queryParams = new URLSearchParams();
+
+            queryParams.append('documento', params.documento);
+            if (params.estado) {
+                queryParams.append('estado', params.estado);
+            }
+            if (params.sexo) {
+                queryParams.append('sexo', params.sexo);
+            }
+
+            const fullUrl = queryParams.toString() ? `${url}?${queryParams.toString()}` : url;
+
+            const response: AxiosResponse<IPrescriptionAndes[]> = await axios.get(fullUrl, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al obtener prescripciones por paciente desde ANDES:', error);
+            throw error;
+        }
+    }
+
+    public async searchProfessionalsGuide(documento: string): Promise<any[]> {
+        try {
+            const url = `${this.baseURL}/core/tm/profesionales/guia?documento=${documento}`;
+            const response: AxiosResponse<any[]> = await axios.get(url, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al buscar profesionales guía en ANDES:', error);
+            throw error;
+        }
+    }
+
+    public async searchPharmaciesCore(cuit: string): Promise<any[]> {
+        try {
+            const url = `${this.baseURL}/core/tm/farmacias?cuit=${cuit}`;
+            const response: AxiosResponse<any[]> = await axios.get(url, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al buscar farmacias en ANDES:', error);
+            throw error;
+        }
+    }
+
+
+
+    public async patchPrescription(body: any): Promise<any> {
+        try {
+            const url = `${this.baseURL}/modules/recetas`;
+            const response: AxiosResponse = await axios.patch(url, body, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al realizar patch en recetas de ANDES:', error);
+            throw error;
+        }
+    }
+
     /**
      * Obtiene las prescripciones de un profesional desde ANDES
      */

@@ -1,5 +1,4 @@
 import { AccessControl } from 'accesscontrol';
-import Role from '../models/role.model';
 
 class AccessControlLoader {
 
@@ -12,20 +11,13 @@ class AccessControlLoader {
     };
 
     public init = async (): Promise<void> => {
-        // const roles = await Role.find().populate({path: 'permissions', select: ['resource', 'action', 'attributes']} ).select('role');
-        // await this.asyncForEach(roles, async (role: any) => {
-        //   this.accessControl.grant(role.role);
-        //   await this.asyncForEach(role.permissions, async (permission: any) => {
-        //     console.log('in permissions', permission);
-        //   });
-        // });
-
         const grantList = [
             // roles
             { role: 'owner', resource: 'role', action: 'create:any', attributes: '*, !views' },
             { role: 'owner', resource: 'role', action: 'read:any', attributes: '*' },
             { role: 'owner', resource: 'role', action: 'update:any', attributes: '*, !views' },
             { role: 'owner', resource: 'role', action: 'delete:any', attributes: '*' },
+
             // users
             { role: 'admin', resource: 'user', action: 'update:any', attributes: '*' },
             { role: 'admin', resource: 'user', action: 'read:any', attributes: '*' },
@@ -41,6 +33,7 @@ class AccessControlLoader {
 
             { role: 'profesionnal-public', resource: 'user', action: 'read:own', attributes: '*' },
             { role: 'profesionnal-public', resource: 'user', action: 'update:own', attributes: '*' },
+            { role: 'auditor', resource: 'user', action: 'create:any', attributes: '*' },
 
             // prescriptions
             { role: 'professional', resource: 'prescription', action: 'create:any', attributes: '*, !views' },
