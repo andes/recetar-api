@@ -7,7 +7,7 @@ import { hasPermissionIn } from '../middlewares/roles.middleware';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 
 // controllers
-// import roleController from '../controllers/role.controller';
+import roleController from '../controllers/role.controller';
 import prescriptionController from '../controllers/prescription.controller';
 import patientController from '../controllers/patient.controller';
 // import pharmacistController from '../controllers/pharmacist.controller';
@@ -46,11 +46,11 @@ class PrivateRoutes {
     this.router.patch(`/prescriptions/:id`, hasPermissionIn('updateOwn', 'prescription'), prescriptionController.update);
     this.router.delete(`/prescriptions/:id`, hasPermissionIn('deleteAny', 'prescription'), prescriptionController.delete);
 
-        // certificate
-        this.router.get(`/certificates/`, certificateController.index);
-        this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
-        this.router.post(`/certificates/`, certificateController.create);
-        this.router.patch(`/certificates/:id`, certificateController.update);
+    // certificate
+    this.router.get(`/certificates/`, certificateController.index);
+    this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
+    this.router.post(`/certificates/`, certificateController.create);
+    this.router.patch(`/certificates/:id`, certificateController.update);
 
 
     // SNOMED
@@ -62,6 +62,11 @@ class PrivateRoutes {
     this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
     this.router.patch('/andes-prescriptions/cancel-dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.cancelDispense);
     this.router.patch('/andes-prescriptions/suspend', hasPermissionIn('updateOwn', 'prescription'), andesPrescriptionController.suspend);
+
+    // Andes search
+    this.router.get('/andes/search', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchProfessionalsAndPharmacies);
+    this.router.get('/andes/professionals', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchProfessionals);
+    this.router.get('/andes/pharmacies', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchPharmacies);
 
     // certificates
     this.router.get(`/certificates/`, certificateController.index);
@@ -104,6 +109,8 @@ class PrivateRoutes {
 
     // Users
     this.router.get('/users/index', hasPermissionIn('readAny', 'user'), usersController.index);
+    this.router.get('/users/search', hasPermissionIn('readAny', 'user'), usersController.searchByTerm);
+    this.router.post('/users/create', hasPermissionIn('createAny', 'user'), usersController.create);
     this.router.post('/users/update', hasPermissionIn('updateAny', 'user'), usersController.update);
 
     // pharmacy
@@ -129,6 +136,7 @@ class PrivateRoutes {
 
     // roles
     // this.router.get(`/roles/`, hasPermissionIn('readAny','role'), roleController.index);
+    this.router.get(`/roles/types`, roleController.getRoleTypes);
     // this.router.post(`/roles/`, hasPermissionIn('createAny','role'), roleController.create);
     // this.router.get(`/roles/:id`, hasPermissionIn('readAny','role'), roleController.show);
     // this.router.put(`/roles/:id`, hasPermissionIn('updateAny','role'), roleController.update);
