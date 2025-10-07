@@ -15,4 +15,4 @@ export default interface IUser extends Document{
     isActive: Boolean;
     lastLogin?: Date;
     isValidPassword(thisUser: IUser, password: string): Promise<boolean>;
-}
+};;;;;;;;;;

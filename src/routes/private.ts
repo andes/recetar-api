@@ -7,7 +7,7 @@ import { hasPermissionIn } from '../middlewares/roles.middleware';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 
 // controllers
-// import roleController from '../controllers/role.controller';
+import roleController from '../controllers/role.controller';
 import prescriptionController from '../controllers/prescription.controller';
 import patientController from '../controllers/patient.controller';
 // import pharmacistController from '../controllers/pharmacist.controller';
@@ -128,6 +128,7 @@ class PrivateRoutes {
 
     // roles
     // this.router.get(`/roles/`, hasPermissionIn('readAny','role'), roleController.index);
+    this.router.get(`/roles/types`, roleController.getRoleTypes);
     // this.router.post(`/roles/`, hasPermissionIn('createAny','role'), roleController.create);
     // this.router.get(`/roles/:id`, hasPermissionIn('readAny','role'), roleController.show);
     // this.router.put(`/roles/:id`, hasPermissionIn('updateAny','role'), roleController.update);
