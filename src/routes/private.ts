@@ -7,7 +7,7 @@ import { hasPermissionIn } from '../middlewares/roles.middleware';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 
 // controllers
-// import roleController from '../controllers/role.controller';
+import roleController from '../controllers/role.controller';
 import prescriptionController from '../controllers/prescription.controller';
 import patientController from '../controllers/patient.controller';
 // import pharmacistController from '../controllers/pharmacist.controller';
@@ -49,9 +49,11 @@ class PrivateRoutes {
         // certificate
         this.router.get(`/certificates/`, certificateController.index);
         this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
+        this.router.get(`/certificates/:id`, certificateController.getById);
+        this.router.get('/certificates/user/:id', certificateController.getByUserId);
+        this.router.get('/certificates/user/:id/search', certificateController.searchByTerm);
         this.router.post(`/certificates/`, certificateController.create);
         this.router.patch(`/certificates/:id`, certificateController.update);
-
 
         // SNOMED
         this.router.get('/snomed/supplies/', hasPermissionIn('readAny', 'supplies'), snomedSupplyController.index);
@@ -63,12 +65,10 @@ class PrivateRoutes {
         this.router.patch('/andes-prescriptions/cancel-dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.cancelDispense);
         this.router.patch('/andes-prescriptions/suspend', hasPermissionIn('updateOwn', 'prescription'), andesPrescriptionController.suspend);
 
-        // certificates
-        this.router.get(`/certificates/`, certificateController.index);
-        this.router.get(`/certificates/:id`, certificateController.getById);
-        this.router.get('/certificates/user/:id', certificateController.getByUserId);
-        this.router.get('/certificates/user/:id/search', certificateController.searchByTerm);
-        this.router.post(`/certificates/`, certificateController.create);
+        // Andes search
+        this.router.get('/andes/search', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchProfessionalsAndPharmacies);
+        this.router.get('/andes/professionals', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchProfessionals);
+        this.router.get('/andes/pharmacies', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchPharmacies);
 
         // practices
         this.router.get(`/practices/:id`, hasPermissionIn('readAny', 'prescription'), practiceController.getById);
@@ -104,8 +104,12 @@ class PrivateRoutes {
 
         // Users
         this.router.get('/users/index', hasPermissionIn('readAny', 'user'), usersController.index);
-        this.router.post('/users/update', hasPermissionIn('updateOwn', 'user'), usersController.update);
+
+        this.router.get('/users/search', hasPermissionIn('readAny', 'user'), usersController.searchByTerm);
         this.router.get('/users/:id', hasPermissionIn('updateOwn', 'user'), usersController.getUserInfo);
+        // this.router.post('/users/update', hasPermissionIn('updateOwn', 'user'), usersController.update);
+        this.router.post('/users/create', hasPermissionIn('createAny', 'user'), usersController.create);
+        this.router.post('/users/update', hasPermissionIn('updateAny', 'user'), usersController.update);
 
         // pharmacy
         // this.router.get(`/pharmacies/`, hasPermissionIn('readAny','patient'), pharmacyController.index);
@@ -130,6 +134,7 @@ class PrivateRoutes {
 
         // roles
         // this.router.get(`/roles/`, hasPermissionIn('readAny','role'), roleController.index);
+        this.router.get(`/roles/types`, roleController.getRoleTypes);
         // this.router.post(`/roles/`, hasPermissionIn('createAny','role'), roleController.create);
         // this.router.get(`/roles/:id`, hasPermissionIn('readAny','role'), roleController.show);
         // this.router.put(`/roles/:id`, hasPermissionIn('updateAny','role'), roleController.update);
