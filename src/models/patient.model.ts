@@ -89,33 +89,9 @@ const searchPatientInAndesMPI = async (dni: string, sexo: string): Promise<any[]
     }
 };
 
-// Obtener sugerencias de pacientes desde Andes MPI
-const getSuggestedPatientsFromAndes = async (patient: IPatient): Promise<any[]> => {
-    try {
-        const Authorization = process.env.JWT_MPI_TOKEN || '';
-        const response = await axios.post(`${process.env.ANDES_MPI_ENDPOINT}`, {
-            nombre: patient.firstName,
-            apellido: patient.lastName,
-            documento: patient.dni,
-            sexo: patient.sex.toLowerCase(),
-            genero: patient.sex.toLowerCase(),
-            fechaNacimiento: patient.fechaNac,
-            ignoreSuggestions: false
-        }, { headers: { Authorization } });
-
-        if (response.status !== 200) {
-            throw new Error(`Error al obtener sugerencias de Andes MPI: ${response.status}`);
-        }
-
-        // La API devuelve un objeto con la propiedad "sugeridos" que contiene el array
-        return response.data?.sugeridos || [];
-    } catch (error) {
-        throw new Error('Error al obtener sugerencias de Andes MPI');
-    }
-};
 
 // Crear paciente en Andes MPI
-const createPatientInAndesMPI = async (patient: IPatient): Promise<any> => {
+const createPatientInAndesMPI = async (patient: IPatient, ignoreSuggestions = false): Promise<any> => {
     try {
         const Authorization = process.env.JWT_MPI_TOKEN || '';
         const response = await axios.post(`${process.env.ANDES_MPI_ENDPOINT}`, {
@@ -125,7 +101,7 @@ const createPatientInAndesMPI = async (patient: IPatient): Promise<any> => {
             sexo: patient.sex.toLowerCase(),
             genero: patient.sex.toLowerCase(),
             fechaNacimiento: patient.fechaNac,
-            ignoreSuggestions: true,
+            ignoreSuggestions,
             estado: 'temporal'
         }, { headers: { Authorization } });
 
@@ -175,43 +151,36 @@ const updateLocalPatientWithMPIData = async (localPatient: IPatient, mpiPatients
 // Crear paciente cuando no existe localmente ni en MPI (ámbito público)
 const createPatientForPublicScope = async (patientParam: IPatient): Promise<IPatient> => {
     try {
-        // Primero buscar sugerencias
-        const suggestions = await getSuggestedPatientsFromAndes(patientParam);
-
-        // Filtrar pacientes con _score >= 0.95
-        const highScorePatients = suggestions.filter((item: any) => item._score >= 0.95);
-
-        let selectedPatient: any = null;
-
-        if (highScorePatients.length > 0) {
-            // Priorizar pacientes con estado 'validado' primero
-            selectedPatient = highScorePatients.find((item: any) =>
-                item.paciente?.estado === 'validado'
-            );
-
-            // Si no hay ninguno validado, buscar uno temporal
-            if (!selectedPatient) {
-                selectedPatient = highScorePatients.find((item: any) =>
-                    item.paciente?.estado === 'temporal'
-                );
-            }
-
-            // Si no hay ninguno con estado específico, tomar el primero con alto score
-            if (!selectedPatient) {
-                selectedPatient = highScorePatients[0];
-            }
-        }
-
+        // Primero crea el paciente, puede traer sugerencias por similitudes
+        const cotaMaxima = 0.95;
+        const responseAndes = await createPatientInAndesMPI(patientParam, false);
         let patientData: any;
+        if (!responseAndes?.sugeridos) {
+            patientData = responseAndes;
 
-        if (selectedPatient) {
-            // Usar paciente sugerido seleccionado (usar los datos del paciente anidado)
-            patientData = selectedPatient.paciente;
         } else {
-            // Crear nuevo paciente en Andes MPI (esto devuelve un objeto, no un array)
-            patientData = await createPatientInAndesMPI(patientParam);
-        }
+            const suggestions = responseAndes.sugeridos || [];
+            // Filtrar pacientes con _score >= 0.95 (mismo paciente)
+            const highScorePatients = suggestions.filter((item: any) => item._score >= cotaMaxima);
 
+            let selectedPatient: any = null;
+
+            if (highScorePatients.length > 0) {
+                // Priorizar pacientes con estado 'validado' primero, si no hay entonces 'temporal'
+                // Si no hay ninguno con estado específico, tomar el primero con alto score (no pasa en andes, siempre tienen estado)
+                const validado = highScorePatients.find((item: any) => item.paciente?.estado === 'validado');
+                const temporal = highScorePatients.find((item: any) => item.paciente?.estado === 'temporal');
+                selectedPatient = validado || temporal || highScorePatients[0];
+            }
+
+            if (selectedPatient) {
+                // Usar paciente sugerido seleccionado (usar los datos del paciente anidado)
+                patientData = selectedPatient.paciente;
+            } else {
+                // Crear nuevo paciente en Andes MPI (esto devuelve un objeto, no un array)
+                patientData = await createPatientInAndesMPI(patientParam, true);
+            }
+        }
         // Convertir a formato local y guardar
         const localPatientData = mapAndesPatientToLocal(patientData);
         const newPatient = new Patient(localPatientData);
