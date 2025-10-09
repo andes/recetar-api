@@ -26,9 +26,23 @@ class PrescriptionController implements BaseController {
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         const { professional, patient, date, supplies, trimestral, ambito } = req.body;
-        const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
+        let professionalAndes = null;
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
-        if (myProfessional && patient) {
+        let myPatient: IPatient | null;
+        if (ambito === 'publico') {
+            const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
+            if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
+                // eslint-disable-next-line no-console
+                console.log('No se encuentra el profesional.');
+                // Se le pasa ambito privado para que solo cree el paciente en local
+                myPatient = await Patient.schema.methods.findOrCreate(patient, 'privado');
+            }
+            professionalAndes = resp.body[0];
+            myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
+        } else {
+            myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
+        }
+        if (myProfessional && patient && myPatient) {
             try {
                 const allPrescription: IPrescription[] = [];
                 if (patient.os.nombre) {
@@ -51,12 +65,6 @@ class PrescriptionController implements BaseController {
                     });
                     let createAndes = false;
                     if (ambito === 'publico') {
-                        const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
-                        if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
-                            // eslint-disable-next-line no-console
-                            console.log('No se encuentra el profesional.');
-                        }
-                        const professionalAndes = resp.body[0];
                         createAndes = await this.createPrescriptionAndes(newPrescription, professionalAndes, myProfessional, myPatient);
                         if (!createAndes) {
                             await newPrescription.save();
