@@ -28,6 +28,9 @@ export function sendMail(options: MailOptions) {
                 user: `${process.env.EMAIL_USERNAME}`,
                 pass: `${process.env.EMAIL_PASSWORD}`
             },
+            tls: {
+                rejectUnauthorized: false // ⚠️ solo para desarrollo
+              }
         });
 
         const mailOptions = {
@@ -60,7 +63,7 @@ export function renderHTML(templateName: string, extras: any): Promise<string> {
             }
             try {
                 const template = Handlebars.compile(html);
-                const htmlToSend = template({ nombre: extras.usuario.businessName, url: extras.url, username: extras.usuario.username });
+                const htmlToSend = template(extras);
                 return resolve(htmlToSend);
             } catch (exp) {
                 return reject(exp);
