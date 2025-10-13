@@ -170,6 +170,8 @@ class PrescriptionController implements BaseController {
                 tratamientoProlongado: newPrescription.trimestral ? true : false,
                 tiempoTratamiento: !newPrescription.trimestral ? null : { id: '3', nombre: '3 meses' },
                 tipoReceta: newPrescription.supplies[0].triplicate ? 'triplicado' : (newPrescription.supplies[0].duplicate ? 'duplicado' : 'simple'),
+                serie: newPrescription.supplies[0].triplicateData?.serie ? newPrescription.supplies[0].triplicateData?.serie.toString() : '',
+                numero: newPrescription.supplies[0].triplicateData?.numero ? newPrescription.supplies[0].triplicateData?.numero.toString() : ''
             },
             origenExterno: {
                 id: newPrescription._id.toString(),
