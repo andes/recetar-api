@@ -148,19 +148,24 @@ class PrescriptionController implements BaseController {
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         const { professional, patient, date, supplies, trimestral, ambito } = req.body;
-        let professionalAndes = null;
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
         let myPatient: IPatient | null;
         if (ambito === 'publico') {
             const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
-            if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
+            if ((resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
+                // Actualización del profesional
+                if (myProfessional && !myProfessional?.idAndes) {
+                    myProfessional.idAndes = resp.body[0]?.id;
+                    myProfessional.businessName = `${resp.body[0]?.apellido}, ${resp.body[0]?.nombre}`;
+                    await myProfessional.save();
+                }
+                myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
+            } else {
                 // eslint-disable-next-line no-console
                 console.log('No se encuentra el profesional.');
                 // Se le pasa ambito privado para que solo cree el paciente en local
                 myPatient = await Patient.schema.methods.findOrCreate(patient, 'privado');
             }
-            professionalAndes = resp.body[0];
-            myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
         } else {
             myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
         }
@@ -187,18 +192,11 @@ class PrescriptionController implements BaseController {
                     });
                     let createAndes = false;
                     if (ambito === 'publico') {
-                        if (!myProfessional?.idAndes) {
-                            const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
-                            if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
-                                // eslint-disable-next-line no-console
-                                console.log('No se encuentra el profesional.');
-                            }
-                            myProfessional.idAndes = resp.body[0]?.id;
-                            myProfessional.businessName = `${resp.body[0]?.apellido}, ${resp.body[0]?.nombre}`;
-                            await myProfessional.save();
+                        // Solo crear en andes si el profesional tiene idAndes
+                        if (myProfessional?.idAndes) {
+                            createAndes = await this.createPrescriptionAndes(newPrescription, myProfessional, myPatient);
                         }
-
-                        createAndes = await this.createPrescriptionAndes(newPrescription, myProfessional, myPatient);
+                        // En caso de que no se haya podido crear en andes, se guarda localmente
                         if (!createAndes) {
                             await newPrescription.save();
                             allPrescription.push(newPrescription);
@@ -402,6 +400,7 @@ class PrescriptionController implements BaseController {
 
             return res.status(200).json(response);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -464,6 +463,7 @@ class PrescriptionController implements BaseController {
 
             return res.status(200).json(response);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
