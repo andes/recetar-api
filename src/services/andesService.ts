@@ -43,6 +43,8 @@ class AndesService {
             if (params.hasta) {
                 queryParams.append('hasta', params.hasta);
             }
+            queryParams.append('origenExternoApp', 'recetar');
+            queryParams.append('excluirEstado', 'pendiente');
 
             const fullUrl = queryParams.toString() ? `${url}?${queryParams.toString()}` : url;
 
