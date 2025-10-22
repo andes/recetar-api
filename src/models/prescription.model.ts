@@ -20,7 +20,12 @@ const prescriptionSchema = new Schema({
             profesion: { type: String },
             codigoProfesion: { type: String },
             numeroMatricula: { type: String }
-        }]
+        }],
+        efector: {
+            _id: { type: Schema.Types.ObjectId },
+            nombre: { type: String },
+            direccion: { type: String }
+        }
     },
     dispensedBy: {
         userId: Schema.Types.ObjectId,

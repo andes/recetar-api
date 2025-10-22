@@ -65,6 +65,10 @@ export const patientSchema = new Schema({
     idLocalInMPI: {
         type: Boolean,
         default: false
+    },
+    cuil: {
+        type: String,
+        default: null
     }
 });
 
@@ -130,7 +134,8 @@ const mapAndesPatientToLocal = (andesPatient: any): Partial<IPatient> => {
         idMPI: andesPatient.id || andesPatient._id,
         tipoDocumentoExtranjero: andesPatient.tipoIdentificacion || '',
         nroDocumentoExtranjero: andesPatient.numeroIdentificacion || '',
-        estado: andesPatient.estado
+        estado: andesPatient.estado,
+        cuil: andesPatient.cuil || null
     };
 };
 
