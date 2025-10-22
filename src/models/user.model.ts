@@ -1,4 +1,5 @@
 import { Schema, Model, model } from 'mongoose';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import IUser from '../interfaces/user.interface';
 import IProfesionAutorizada from '../interfaces/profesionAutorizada.interface';
@@ -111,7 +112,17 @@ export const userSchema = new Schema({
             type: String,
             required: '{PATH} is required'
         },
-    }]
+    }],
+    efectores: [
+        {
+            _id: {
+                type: Schema.Types.ObjectId,
+                default: () => new mongoose.Types.ObjectId()
+            },
+            nombre: String,
+            direccion: String,
+        }
+    ]
 });
 
 // Model

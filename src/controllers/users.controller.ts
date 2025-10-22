@@ -4,6 +4,8 @@ import User from '../models/user.model';
 import { renderHTML, MailOptions, sendMail } from '../utils/roboSender/sendEmail';
 import Role from '../models/role.model';
 import IRole from '../interfaces/role.interface';
+import axios from 'axios';
+
 class UsersController {
     public index = async (req: Request, res: Response): Promise<Response> => {
         try {
@@ -80,7 +82,8 @@ class UsersController {
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt,
                 lastLogin: user.lastLogin,
-                isActive: user.isActive
+                isActive: user.isActive,
+                efectores: user.efectores
             });
 
         } catch (err) {
@@ -409,6 +412,24 @@ class UsersController {
             // eslint-disable-next-line no-console
             console.error('[UsersController.create] Error al crear usuario:', e);
             return res.status(500).json({ mensaje: 'Error interno del servidor' });
+        }
+    };
+
+    /**
+     * Busca en la coleccion Organizaciones TM en Andes por nombre
+     * @param req - nombre en params
+     * @param res - response con el listado de efectores que machea con el nombre buscado
+     * @returns lista de efectores
+     */
+    public efectoresAndes = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            if (!req.query.nombre) { return res.status(400).json('Parámetro nombre es requerido'); }
+            const resp = await axios.get(`${process.env.ANDES_ENDPOINT}/core/tm/organizaciones?nombre=${req.query.nombre}`, { headers: { Authorization: `${process.env.JWT_MPI_TOKEN}` } });
+            return res.status(200).json(resp.data);
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.log(err);
+            return res.status(500).json('Server Error');
         }
     };
 };
