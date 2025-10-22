@@ -32,10 +32,10 @@ class UsersController {
                 }
 
                 const result = await User.findOneAndUpdate({ _id: req.body._id }, req.body, { new: true, projection: { password: 0, refreshToken: 0, authenticationToken: 0 } }).populate('roles', 'role');
-
                 if (oldEmail && req.body.email && oldEmail !== req.body.email && result) {
                     // Ejecutar el envío de email de forma asíncrona para no bloquear la respuesta
                     this.sendEmailChangeNotification(result, oldEmail, req.body.email).catch(error => {
+                        // eslint-disable-next-line no-console
                         console.error('Error enviando notificación de cambio de email:', error);
                     });
                 }
@@ -103,7 +103,8 @@ class UsersController {
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt,
                 lastLogin: user.lastLogin,
-                isActive: user.isActive
+                isActive: user.isActive,
+                efectores: user.efectores
             });
 
         } catch (err) {
