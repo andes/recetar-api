@@ -1,4 +1,5 @@
 import { Schema, Model, model } from 'mongoose';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import IUser from '../interfaces/user.interface';
 
@@ -80,7 +81,17 @@ export const userSchema = new Schema({
     idAndes: {
         type: String,
         default: ''
-    }
+    },
+    efectores: [
+        {
+            _id: {
+                type: Schema.Types.ObjectId,
+                default: () => new mongoose.Types.ObjectId()
+            },
+            nombre: String,
+            direccion: String,
+        }
+    ]
 });
 
 // Model
