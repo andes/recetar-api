@@ -60,7 +60,14 @@ export function renderHTML(templateName: string, extras: any): Promise<string> {
             }
             try {
                 const template = Handlebars.compile(html);
-                const htmlToSend = template({ nombre: extras.usuario.businessName, url: extras.url, username: extras.usuario.username });
+                // Crear objeto con todas las propiedades de extras más las propiedades específicas para compatibilidad
+                const templateData = {
+                    ...extras,
+                    nombre: extras.usuario?.businessName || extras.usuario?.username || '',
+                    username: extras.usuario?.username || '',
+                    url: extras.url || ''
+                };
+                const htmlToSend = template(templateData);
                 return resolve(htmlToSend);
             } catch (exp) {
                 return reject(exp);
