@@ -331,24 +331,48 @@ class PrescriptionController implements BaseController {
     public getPrescriptionsByDateOrPatientId = async (req: Request, res: Response): Promise<Response> => {
         try {
             const filterPatient = req.params.patient_id;
-            const filterDate: string | null = req.params.date;
+            const { status, dateFrom, dateTo } = req.query;
 
-            // define a default date for retrieve all the documents if the date its not provided
-            const defaultStart = '1900-01-01';
-            let startDate: Date = moment(defaultStart, 'YYYY-MM-DD').startOf('day').toDate();
+            let startDate: Date = moment().subtract(1, 'month').toDate();
             let endDate: Date = moment(new Date()).endOf('day').toDate();
 
-            if (typeof (filterDate) !== 'undefined') {
-                startDate = moment(filterDate, 'YYYY-MM-DD').startOf('day').toDate();
-                endDate = moment(filterDate, 'YYYY-MM-DD').endOf('day').toDate();
+            if (dateFrom) {
+                startDate = moment(dateFrom, 'DD-MM-YYYY').startOf('day').toDate();
+            }
+
+            if (dateTo) {
+                endDate = moment(dateTo, 'DD-MM-YYYY').endOf('day').toDate();
             }
 
             await this.updateStatuses('', filterPatient);
 
-            const prescriptions: IPrescription[] | null = await Prescription.find({
+            const filters: any = {
                 'patient.dni': filterPatient,
                 date: { $gte: startDate, $lt: endDate }
-            }).sort({ field: 'desc', date: -1 });
+            };
+
+            if (status) {
+                if (status !== 'todas') {
+                    const validStatuses: Record<string, string> = {
+                        vigente: 'Vigente',
+                        pendiente: 'Pendiente',
+                        rechazada: 'Rechazada',
+                        dispensada: 'Dispensada',
+                        vencida: 'Vencida',
+                        finalizada: 'Finalizada',
+                        suspendida: 'Suspendida'
+                    };
+
+                    if (Object.keys(validStatuses).includes(status)) {
+                        filters.status = validStatuses[status];
+                    }
+                }
+            } else {
+                filters.status = 'Vigente';
+            }
+
+            const prescriptions: IPrescription[] | null = await Prescription.find(filters)
+                .sort({ field: 'desc', date: -1 });
 
             if (prescriptions) {
                 await this.ensurePrescriptionIds(prescriptions);
