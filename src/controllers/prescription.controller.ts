@@ -202,22 +202,47 @@ class PrescriptionController implements BaseController {
             const filterPatient = req.params.patient_id;
             const filterDate: string | null = req.params.date;
 
+            // Filtros opcionales desde query parameters
+            const { status, dateFrom, dateTo } = req.query;
+
             // define a default date for retrieve all the documents if the date its not provided
             const defaultStart = '1900-01-01';
             let startDate: Date = moment(defaultStart, 'YYYY-MM-DD').startOf('day').toDate();
             let endDate: Date = moment(new Date()).endOf('day').toDate();
 
+            // Si se proporciona filterDate (parámetro de ruta), tiene prioridad
             if (typeof (filterDate) !== 'undefined') {
                 startDate = moment(filterDate, 'YYYY-MM-DD').startOf('day').toDate();
                 endDate = moment(filterDate, 'YYYY-MM-DD').endOf('day').toDate();
+            } else {
+                // Si no hay filterDate, usar dateFrom y dateTo si están disponibles
+                if (dateFrom && typeof dateFrom === 'string') {
+                    startDate = moment(dateFrom, 'YYYY-MM-DD').startOf('day').toDate();
+                }
+                if (dateTo && typeof dateTo === 'string') {
+                    endDate = moment(dateTo, 'YYYY-MM-DD').endOf('day').toDate();
+                }
             }
 
             await this.updateStatuses('', filterPatient);
 
-            const prescriptions: IPrescription[] | null = await Prescription.find({
+            // Construir el objeto de filtros dinámicamente
+            const filters: any = {
                 'patient.dni': filterPatient,
                 date: { $gte: startDate, $lt: endDate }
-            }).sort({ field: 'desc', date: -1 });
+            };
+
+            // Agregar filtro de status si se proporciona
+            if (status && typeof status === 'string') {
+                // Validar que el status sea uno de los valores permitidos
+                const validStatuses = ['Vigente', 'Pendiente', 'Dispensada', 'Vencida', 'Finalizada'];
+                if (validStatuses.includes(status)) {
+                    filters.status = status;
+                }
+            }
+
+            const prescriptions: IPrescription[] | null = await Prescription.find(filters)
+                .sort({ field: 'desc', date: -1 });
 
             if (prescriptions) {
                 await this.ensurePrescriptionIds(prescriptions);

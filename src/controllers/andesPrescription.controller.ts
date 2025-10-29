@@ -5,7 +5,7 @@ import needle from 'needle';
 import PrescriptionAndes from '../models/prescriptionAndes.model';
 import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
-import prescriptionController from './prescription.controller';
+import moment = require('moment');
 
 
 class AndesPrescriptionController implements BaseController {
@@ -87,9 +87,24 @@ class AndesPrescriptionController implements BaseController {
             if (!req.query.dni) {return res.status(400).json({ mensaje: 'Missing required params!' });}
             const dni = req.query.dni;
             const sexo = req.query.sexo ? req.query.sexo : '';
+
+            // Filtros opcionales desde query parameters
+            const { status, dateFrom, dateTo } = req.query;
+
             let prescriptions: IPrescriptionAndes[] | null = [];
 
-            const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/modules/recetas?documento=${dni}&estado=vigente${sexo ? `&sexo=${sexo}` : ''}`, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+            // Construir URL para Andes con filtros opcionales
+            let andesUrl = `${process.env.ANDES_ENDPOINT}/modules/recetas?documento=${dni}`;
+
+            // Aplicar filtro de estado si se proporciona, sino usar 'vigente' por defecto
+            const estadoFiltro = status && typeof status === 'string' ? status : 'vigente';
+            andesUrl += `&estado=${estadoFiltro}`;
+
+            if (sexo) {
+                andesUrl += `&sexo=${sexo}`;
+            }
+
+            const resp = await needle('get', andesUrl, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
             if (typeof (resp.statusCode) === 'number' && resp.statusCode !== 200) {return res.status(resp.statusCode).json({ mensaje: 'Error', error: resp.body });}
             let andesPrescriptions: IPrescriptionAndes[] | null = resp.body;
 
@@ -101,10 +116,39 @@ class AndesPrescriptionController implements BaseController {
                 prescriptions = [...prescriptions, ...andesPrescriptions];
             }
 
-            const savedPrescriptions: IPrescriptionAndes[] | null = await PrescriptionAndes.find({ 'paciente.documento': dni });
+            // Construir filtros para la consulta local
+            const localFilters: any = { 'paciente.documento': dni };
+
+            // Agregar filtro de estado si se proporciona
+            if (status && typeof status === 'string') {
+                const validEstados = ['pendiente', 'vigente', 'finalizada', 'vencida', 'suspendida', 'rechazada'];
+                if (validEstados.includes(status)) {
+                    localFilters['estadoActual.tipo'] = status;
+                }
+            }
+
+            // Agregar filtros de fecha si se proporcionan
+            if (dateFrom || dateTo) {
+                const dateFilter: any = {};
+
+                if (dateFrom && typeof dateFrom === 'string') {
+                    dateFilter.$gte = moment(dateFrom, 'YYYY-MM-DD').startOf('day').toDate();
+                }
+
+                if (dateTo && typeof dateTo === 'string') {
+                    dateFilter.$lte = moment(dateTo, 'YYYY-MM-DD').endOf('day').toDate();
+                }
+
+                if (Object.keys(dateFilter).length > 0) {
+                    localFilters.fechaRegistro = dateFilter;
+                }
+            }
+
+            const savedPrescriptions: IPrescriptionAndes[] | null = await PrescriptionAndes.find(localFilters);
             if (savedPrescriptions) {
                 prescriptions = [...prescriptions, ...savedPrescriptions];
             }
+
             return res.status(200).json(prescriptions);
         } catch (e) {
             return res.status(500).json({ error: e });
@@ -191,16 +235,16 @@ class AndesPrescriptionController implements BaseController {
         }
     };
 
-  public createPublic = async (req: Request, res: Response): Promise<Response> => {
-    try {
-      if (!req.body) return res.status(400).json({mensaje: 'Missing body payload!'});
-      const receta: IPrescriptionAndes = new PrescriptionAndes(req.body.prescription);
-      receta.save();
-      return res.status(200).json(receta);
-    } catch(e) {
-      return res.status(500).json({mensaje: 'Error', error: e});
-    }
-  }
+    public createPublic = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            if (!req.body) {return res.status(400).json({ mensaje: 'Missing body payload!' });}
+            const receta: IPrescriptionAndes = new PrescriptionAndes(req.body.prescription);
+            receta.save();
+            return res.status(200).json(receta);
+        } catch (e) {
+            return res.status(500).json({ mensaje: 'Error', error: e });
+        }
+    };
 
 }
 
