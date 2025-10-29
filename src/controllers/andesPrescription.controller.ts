@@ -7,6 +7,7 @@ import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
 import prescriptionController from './prescription.controller';
 import AndesService from '../services/andesService';
+import moment = require('moment');
 
 
 class AndesPrescriptionController implements BaseController {
@@ -88,9 +89,31 @@ class AndesPrescriptionController implements BaseController {
             if (!req.query.dni) { return res.status(400).json({ mensaje: 'Missing required params!' }); }
             const dni = req.query.dni;
             const sexo = req.query.sexo ? req.query.sexo : '';
+
+            // Filtros opcionales desde query parameters
+            const { status, dateFrom, dateTo } = req.query;
+
             let prescriptions: IPrescriptionAndes[] | null = [];
 
-            const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/modules/recetas?documento=${dni}&estado=vigente${sexo ? `&sexo=${sexo}` : ''}`, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+            // Construir URL para Andes con filtros opcionales
+            let andesUrl = `${process.env.ANDES_ENDPOINT}/modules/recetas/filtros?documento=${dni}&sexo=${sexo.toLowerCase()}`;
+
+            let estadoFiltro = 'vigente';
+            const validEstados = ['pendiente', 'vigente', 'finalizada', 'vencida', 'suspendida', 'rechazada', 'dispensada', 'todas'];
+
+            // Aplicar filtro de estado si se proporciona, sino usar 'vigente' por defecto
+            if (status && validEstados.includes(status)) {
+                estadoFiltro = status;
+            }
+
+            if (dateFrom) { andesUrl += `&fechaInicio=${dateFrom || ''}`; }
+
+            if (dateTo) { andesUrl += `&fechaFin=${dateTo || ''}`; }
+
+            andesUrl += `&estado=${estadoFiltro}`;
+
+            const resp = await needle('get', andesUrl, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+
             if (typeof (resp.statusCode) === 'number' && resp.statusCode !== 200) { return res.status(resp.statusCode).json({ mensaje: 'Error', error: resp.body }); }
             let andesPrescriptions: IPrescriptionAndes[] | null = resp.body;
 
@@ -102,10 +125,7 @@ class AndesPrescriptionController implements BaseController {
                 prescriptions = [...prescriptions, ...andesPrescriptions];
             }
 
-            const savedPrescriptions: IPrescriptionAndes[] | null = await PrescriptionAndes.find({ 'paciente.documento': dni });
-            if (savedPrescriptions) {
-                prescriptions = [...prescriptions, ...savedPrescriptions];
-            }
+
             return res.status(200).json(prescriptions);
         } catch (e) {
             return res.status(500).json({ error: e });
