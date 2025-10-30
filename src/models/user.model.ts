@@ -1,6 +1,7 @@
 import { Schema, Model, model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import IUser from '../interfaces/user.interface';
+import IProfesionAutorizada from '../interfaces/profesionAutorizada.interface';
 
 
 // Validation callbacks
@@ -80,7 +81,21 @@ export const userSchema = new Schema({
     idAndes: {
         type: String,
         default: ''
-    }
+    },
+    profesionGrado: [{
+        profesion: {
+          type: String,
+          required: '{PATH} is required'
+        },
+        codigoProfesion: {
+          type: String,
+          required: '{PATH} is required'
+        },
+        numeroMatricula: {
+          type: String,
+          required: '{PATH} is required'
+        },
+  }]
 });
 
 // Model
