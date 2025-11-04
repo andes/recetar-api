@@ -196,6 +196,7 @@ const createPatientForPublicScope = async (patientParam: IPatient): Promise<IPat
 // Actualizar paciente en andes (id de recetar en arreglo de identificadores)
 const updateAndes = async (patient: IPatient): Promise<boolean> => {
     try {
+        let patientUpdated = false;
         const respPatientMPI = await axios.get(`${process.env.ANDES_MPI_ENDPOINT}/${patient.idMPI}`, {
             headers: { Authorization: process.env.JWT_MPI_TOKEN || '' }
         });
@@ -203,26 +204,33 @@ const updateAndes = async (patient: IPatient): Promise<boolean> => {
             throw new Error('Paciente no encontrado en Andes MPI');
         }
         const patientMPI = respPatientMPI.data;
-        if (patientMPI.identificadores?.some((id: any) => id.entidad === 'recetar' && id.valor === patient._id.toString())) {
+        const encontradoMPI = patientMPI.identificadores?.some((id: any) => id.entidad === 'recetar' && id.valor === patient._id.toString());
+        if (encontradoMPI) {
             // Ya tiene el ID de Recetar, no es necesario actualizar
-            if (!patient.idLocalInMPI) {
-                await Patient.updateOne({ _id: patient._id }, { idLocalInMPI: true });
+            patientUpdated = true;
+        } else {
+
+            if (!patientMPI.identificadores) {
+                patientMPI.identificadores = [];
             }
-            return true;
+            patientMPI.identificadores.push({
+                entidad: 'recetar',
+                valor: patient._id.toString()
+            });
+
+            const resp = await axios.patch(`${process.env.ANDES_MPI_ENDPOINT}/${patient.idMPI}`, patientMPI, {
+                headers: { Authorization: process.env.JWT_MPI_TOKEN || '' }
+            });
+            if (resp.status === 200) {
+                patientUpdated = true;
+            }
         }
-        patientMPI.identificadores.push({
-            entidad: 'recetar',
-            valor: patient._id.toString()
-        });
-        const resp = await axios.patch(`${process.env.ANDES_MPI_ENDPOINT}/${patient.idMPI}`, patientMPI, {
-            headers: { Authorization: process.env.JWT_MPI_TOKEN || '' }
-        });
-        if (resp.status !== 200) {
-            return false;
+        if (!patient.idLocalInMPI && patientUpdated) {
+            await Patient.updateOne({ _id: patient._id }, { idLocalInMPI: true });
         }
-        return true;
+        return patientUpdated;
     } catch (e) {
-        throw new Error('Error al actualizar paciente en Andes MPI');
+        return false;
     }
 };
 
