@@ -2,8 +2,6 @@ import { Request, Response } from 'express';
 import Patient from '../models/patient.model';
 import IPatient from '../interfaces/patient.interface';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
-import _ from 'lodash';
-import { env } from '../config/config';
 import needle from 'needle';
 
 class PatientController implements BaseController {
@@ -26,6 +24,7 @@ class PatientController implements BaseController {
             await newPatient.save();
             return res.status(200).json({ newPatient });
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -37,6 +36,7 @@ class PatientController implements BaseController {
             const patient: IPatient | null = await Patient.findOne({ _id: id });
             return res.status(200).json(patient);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -87,6 +87,7 @@ class PatientController implements BaseController {
             }
             return res.status(200).json(patients);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -107,6 +108,7 @@ class PatientController implements BaseController {
             const patient = await Patient.findOne({ _id: id });
             return res.status(200).json(patient);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -118,12 +120,10 @@ class PatientController implements BaseController {
         const { id } = req.params;
         const values: any = {};
         try {
-
-            _(req.body).forEach((value: string, key: string) => {
-                if (!_.isEmpty(value) && _.includes(['dni', 'lastName', 'firstName', 'sex'], key)) {
-                    values[key] = value;
-                }
-            });
+            if (typeof req.body.dni !== 'undefined') { values.dni = req.body.dni; }
+            if (typeof req.body.lastName !== 'undefined') { values.lastName = req.body.lastName; }
+            if (typeof req.body.firstName !== 'undefined') { values.firstName = req.body.firstName; }
+            if (typeof req.body.sex !== 'undefined') { values.sex = req.body.sex; }
             const opts: any = { runValidators: true, new: true, context: 'query' };
             const patient: IPatient | null = await Patient.findOneAndUpdate({ _id: id }, values, opts).select('dni lastName firstName sex');
 
@@ -137,6 +137,7 @@ class PatientController implements BaseController {
                 });
                 return res.status(422).json(errors);
             }
+            // eslint-disable-next-line no-console
             console.log(e);
             return res.status(500).json('Server Error');
         }
@@ -149,6 +150,7 @@ class PatientController implements BaseController {
             await Patient.findByIdAndDelete(id);
             return res.status(200).json('deleted');
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
