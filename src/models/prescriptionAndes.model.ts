@@ -172,7 +172,8 @@ const prescriptionAndesSchema = new Schema({
         edadReal: {
             valor: Number,
             unidad: String
-        }
+        },
+        cuil: String
     },
     createdAt: Date,
     createdBy: {
