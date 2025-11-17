@@ -276,12 +276,7 @@ class PrescriptionController implements BaseController {
                 obraSocial: patient.obraSocial || null,
             },
             profesional: {
-                id: profesional?.idAndes ? profesional.idAndes : '',
-                nombre: profesional?.businessName ? profesional.businessName.split(',')[1].trim() : '',
-                apellido: profesional?.businessName ? profesional.businessName.split(',')[0].trim() : '',
-                cuil: profesional?.cuil ? profesional.cuil : '',
-                matricula: profesional?.enrollment ? profesional.enrollment : '',
-                documento: profesional?.username ? profesional.username : '',
+                id: profesional?.idAndes ? profesional.idAndes : ''
             },
             organizacion: {
                 nombre: 'Recetar',
