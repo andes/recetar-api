@@ -73,21 +73,26 @@ export const userSchema = new Schema({
         default: true,
         required: [true, '{PATH} is required']
     },
+    activation: {
+        updatedAt: {
+            type: Date
+        },
+        updatedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        }
+    },
     lastLogin: {
         type: Date,
         default: new Date('2020-04-02T00:00:00.000Z')
     },
-    idAndes: {
-        type: String,
-        default: ''
-    }
 });
 
 // Model
 const User: Model<IUser> = model<IUser>('User', userSchema);
 
 // Model methods
-User.schema.method('isValidPassword', async (thisUser: IUser, password: string): Promise<boolean> => {
+User.schema.method('isValidPassword', async (thisUser: IUser, password: string): Promise<boolean>=> {
     try {
         return await bcrypt.compare(password, thisUser.password);
     } catch (err) {

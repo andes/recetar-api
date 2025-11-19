@@ -112,6 +112,155 @@ class AndesPrescriptionController implements BaseController {
         }
     };
 
+    public searchProfessionals = async (req: Request, res: Response): Promise<Response> => {
+        const { documento } = req.query;
+
+        if (!documento) {
+            return res.status(400).json({
+                ok: false,
+                message: 'El parámetro "documento" es requerido'
+            });
+        }
+
+        try {
+            const professionalsResponse = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${documento}`, {
+                headers: {
+                    Authorization: process.env.JWT_MPI_TOKEN
+                },
+                json: true
+            });
+
+            if (professionalsResponse.statusCode === 200 && professionalsResponse.body && professionalsResponse.body.length > 0) {
+                return res.status(200).json({
+                    ok: true,
+                    message: 'Profesionales encontrados',
+                    data: professionalsResponse.body,
+                    total: professionalsResponse.body.length
+                });
+            } else {
+                return res.status(200).json({
+                    ok: false,
+                    message: 'No se encontraron profesionales con el documento proporcionado',
+                    data: [],
+                    total: 0
+                });
+            }
+        } catch (error) {
+            return res.status(500).json({
+                ok: false,
+                message: 'Error al buscar profesionales en Andes',
+                error
+            });
+        }
+    };
+
+    public searchPharmacies = async (req: Request, res: Response): Promise<Response> => {
+        const { cuit } = req.query;
+
+        if (!cuit) {
+            return res.status(400).json({
+                ok: false,
+                message: 'El parámetro "cuit" es requerido'
+            });
+        }
+
+        try {
+            const pharmaciesResponse = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/farmacias?cuit=${cuit}`, {
+                headers: {
+                    Authorization: process.env.JWT_MPI_TOKEN
+                },
+                json: true
+            });
+
+            if (pharmaciesResponse.statusCode === 200 && pharmaciesResponse.body && pharmaciesResponse.body.length > 0) {
+                return res.status(200).json({
+                    ok: true,
+                    message: 'Farmacias encontradas',
+                    data: pharmaciesResponse.body,
+                    total: pharmaciesResponse.body.length
+                });
+            } else {
+                return res.status(200).json({
+                    ok: false,
+                    message: 'No se encontraron farmacias con el CUIT proporcionado',
+                    data: [],
+                    total: 0
+                });
+            }
+        } catch (error) {
+            return res.status(500).json({
+                ok: false,
+                message: 'Error al buscar farmacias en Andes',
+                error
+            });
+        }
+    };
+
+    public searchProfessionalsAndPharmacies = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            if (!req.query.documento && !req.query.cuil) {
+                return res.status(400).json({ mensaje: 'Se requiere número de documento o CUIL' });
+            }
+
+            const documento = req.query.documento;
+            const cuil = req.query.cuil;
+            const searchParam = documento || cuil;
+
+            // Buscar profesionales en Andes
+            const professionalsResp = await needle('get',
+                `${process.env.ANDES_ENDPOINT}/core/tm/profesionales?documento=${searchParam}`,
+                { headers: { Authorization: process.env.JWT_MPI_TOKEN }, json: true }
+            );
+
+            // Buscar farmacias en Andes
+            const pharmaciesResp = await needle('get',
+                `${process.env.ANDES_ENDPOINT}/modules/farmacias?documento=${searchParam}`,
+                { headers: { Authorization: process.env.JWT_MPI_TOKEN }, json: true }
+            );
+
+            let professionals = [];
+            let pharmacies = [];
+
+            // Procesar respuesta de profesionales
+            if (professionalsResp.statusCode === 200 && professionalsResp.body && professionalsResp.body.length > 0) {
+                professionals = professionalsResp.body;
+            }
+
+            // Procesar respuesta de farmacias
+            if (pharmaciesResp.statusCode === 200 && pharmaciesResp.body && pharmaciesResp.body.length > 0) {
+                pharmacies = pharmaciesResp.body;
+            }
+
+            // Si no se encontró nada
+            if (professionals.length === 0 && pharmacies.length === 0) {
+                return res.status(200).json({
+                    ok: false,
+                    mensaje: 'No se encontraron profesionales ni farmacias con el documento/CUIL proporcionado',
+                    documento: searchParam,
+                    profesionales: [],
+                    farmacias: [],
+                    total: 0
+                });
+            }
+
+            // Retornar los datos encontrados
+            return res.status(200).json({
+                ok: true,
+                mensaje: 'Búsqueda exitosa',
+                documento: searchParam,
+                profesionales: professionals,
+                farmacias: pharmacies,
+                total: professionals.length + pharmacies.length
+            });
+
+        } catch (error) {
+            return res.status(500).json({
+                mensaje: 'Error interno del servidor',
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            });
+        }
+    };
+
     public dispense = async (req: Request, res: Response): Promise<Response> => {
         try {
             if (!req.body) { return res.status(400).json({ mensaje: 'Missing body payload!' }); }
