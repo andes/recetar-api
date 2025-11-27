@@ -8,6 +8,8 @@ import IUser from '../interfaces/user.interface';
 import User from '../models/user.model';
 import IRole from '../interfaces/role.interface';
 import Role from '../models/role.model';
+import IProfesionAutorizada from '../interfaces/profesionAutorizada.interface';
+import ProfesionAutorizada from '../models/profesionAutorizada.model';
 import { renderHTML, MailOptions, sendMail } from '../utils/roboSender/sendEmail';
 import needle from 'needle';
 import moment from 'moment';
@@ -17,7 +19,7 @@ class AuthController {
 
   public register = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { username, email, enrollment, cuil, businessName, password, roleType, captcha } = req.body;
+      const { username, email, enrollment, cuil, businessName, password, roleType, captcha ,profesion,fechaEgreso,fechaMatVencimiento} = req.body;
 
       // Verificación Token captcha
       if (!captcha) return res.status(403).json({ message: 'Body incompleto' });
@@ -39,10 +41,34 @@ class AuthController {
         }
         const professionalAndes = resp.body[0];
         const { profesiones } = professionalAndes;
-        const lastProfesion = profesiones.find((p: any) => p.profesion.codigo == '1' || p.profesion.codigo == '23' || p.profesion.codigo == '2');
-        const lastMatriculacion = lastProfesion.matriculacion[lastProfesion.matriculacion.length - 1];
-        if (lastMatriculacion && (moment(lastMatriculacion.fin)) > moment() && lastMatriculacion.matriculaNumero.toString() === enrollment && cuil === professionalAndes.cuit) {
-          const newUser = new User({ username, email, password, enrollment, cuil, businessName });
+        const profAut = profesiones.filter((p: any) => {
+          const validCodes = [1, 2, 23];
+          if (!validCodes.includes(p.profesion.codigo)) return false;
+          const lastMatriculacion = p.matriculacion[p.matriculacion.length - 1];
+          return lastMatriculacion && moment(lastMatriculacion.fin) > moment();
+        });
+        
+        const matchesProfesional = profAut.some((p: any) => {
+          const lastMat = p.matriculacion && p.matriculacion.length
+            ? p.matriculacion[p.matriculacion.length - 1]
+            : null;
+          const codigoMatches = p.profesion && profesion && p.profesion.codigo.toString() === profesion.codigoProfesion;
+          const fechaEgresoMatches = moment(fechaEgreso).utcOffset(-180).isSame(moment(p.fechaEgreso).utcOffset(-180), 'day');
+          const fechaMatVencimientoMatches = lastMat && moment(fechaMatVencimiento).isSame(moment(lastMat.fin), 'day');
+          const matriculaMatches = lastMat && lastMat.matriculaNumero && enrollment
+            ? lastMat.matriculaNumero.toString() === enrollment.toString()
+            : false;
+          return codigoMatches && matriculaMatches && fechaEgresoMatches && fechaMatVencimientoMatches;
+        });
+
+        if (!matchesProfesional) {
+          return res.status(400).json({ message: 'No es posible registrar, los datos del profesional no coinciden' });
+        }
+
+        if (profAut && cuil === professionalAndes.cuit) {
+          const apellidoYNombre = `${professionalAndes.apellido} ${professionalAndes.nombre}`;
+          const profesionG = profAut.map((p: any) => ({ profesion: p.profesion.nombre, codigoProfesion: p.profesion.codigo, numeroMatricula: p.matriculacion[p.matriculacion.length - 1].matriculaNumero }));
+          const newUser = new User({ username, email, password, enrollment, cuil, businessName: apellidoYNombre, profesionGrado: profesionG });
           newUser.roles.push(role);
           role.users.push(newUser);
           await newUser.save();
@@ -51,6 +77,8 @@ class AuthController {
           return res.status(200).json({
             newUser
           });
+        }else{
+          return res.status(400).json({ message: 'No es posible registrar, el CUIT/CUIL del profesional no coincide' });
         }
       } else if (roleType === "pharmacist") {
         const { disposicionHabilitacion, vencimientoHabilitacion } = req.body;
@@ -362,12 +390,12 @@ class AuthController {
 
 
 
-  private validateProfessional = (profesional: any, enrollment: string, cuil: string, graduationDate: string, enrollmentExpiration: string): boolean => {
-    if (!profesional || !profesional.profesiones || profesional.profesiones.length === 0) {
+  private validateProfessional = (profesional: any, enrollment: string, cuil: string, graduationDate: string, enrollmentExpiration: string, profesionCodigo:string): boolean => {
+    if (!profesional || !profesional.profesiones || profesional.profesiones.length === 0|| !profesionCodigo) {
       return false;
     }
     try {
-      const lastProfesion = profesional.profesiones.find((p: any) => p.profesion.codigo == '1' || p.profesion.codigo == '23' || p.profesion.codigo == '2');
+      const lastProfesion = profesional.profesiones.find((p: any) => p.profesion.codigo == profesionCodigo);
       const lastMatriculacion = lastProfesion && lastProfesion.matriculacion && lastProfesion.matriculacion.length ? lastProfesion.matriculacion[lastProfesion.matriculacion.length - 1] : null;
       if (lastMatriculacion) {
         let res = (moment(lastMatriculacion.fin) > moment());
@@ -391,16 +419,28 @@ class AuthController {
       const cuil = req.query.cuil;
       const graduationDate = req.query.fechaEgreso;
       const enrollmentExpiration = req.query.fechaMatVencimiento;
+      const profesionNombre=req.query.profesionNombre;
+      const profesionCodigo=req.query.profesionCodigo;
       const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${dni}`);
       if (!resp.body || resp.body.length === 0) {
         return res.status(404).json({ message: 'No se encuentra el profesional.' });
       }
-      if (!this.validateProfessional(resp.body[0], enrollment, cuil, graduationDate, enrollmentExpiration)) {
+      if (!this.validateProfessional(resp.body[0], enrollment, cuil, graduationDate, enrollmentExpiration,profesionCodigo)) {
         return res.status(500).json({ message: 'No se encuentra el profesional.' });
       }
       return res.status(200).json(resp.body);
     } catch (err) {
       return res.status(500).json({ message: 'Server Error' });
+    }
+  }
+
+  public getAuthorizedProfessions = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const profesionesAutorizadas: IProfesionAutorizada[] = await ProfesionAutorizada.find();
+      return res.status(200).json(profesionesAutorizadas);
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json('Server Error');
     }
   }
 
