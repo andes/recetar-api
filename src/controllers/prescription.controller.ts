@@ -183,7 +183,11 @@ class PrescriptionController implements BaseController {
                             userId: myProfessional?._id,
                             businessName: myProfessional?.businessName,
                             cuil: myProfessional?.cuil,
-                            enrollment: myProfessional?.enrollment,
+                            profesionGrado: myProfessional?.profesionGrado ? myProfessional.profesionGrado.map((pg: any) => ({
+                                    profesion: pg.profesion,
+                                    codigoProfesion: pg.codigoProfesion,
+                                    numeroMatricula: pg.numeroMatricula
+                                })) : []
                         },
                         date,
                         supplies: [sup],
