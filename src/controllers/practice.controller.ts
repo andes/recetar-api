@@ -36,8 +36,9 @@ class PracticeController {
         });
       }
 
-      if (patient?.obraSocial.nombre) {
-        myPatient.obraSocial = patient.obraSocial;
+      if (patient?.os.nombre) {
+        patient.os.otraOS = patient.otraOS || false;
+        myPatient.obraSocial = patient.os;
       }
 
       const newPractice = new Practice({
@@ -66,14 +67,14 @@ class PracticeController {
     try {
       const { id } = req.params;
       const { offset = 0, limit = 10 } = req.query;
-      
+
       const practices: IPractice[] | null = await Practice.find({ 'professional.userId': id })
         .sort({ createdAt: -1 })
         .skip(Number(offset))
         .limit(Number(limit));
-        
+
       const total = await Practice.countDocuments({ 'professional.userId': id });
-      
+
       return res.status(200).json({
         practices,
         total,
@@ -90,11 +91,11 @@ class PracticeController {
       const { id } = req.params; // professional userId
       const { searchTerm } = req.query;
       const { offset = 0, limit = 10 } = req.query;
-      
+
       if (!searchTerm) {
         return res.status(400).json('Término de búsqueda requerido');
       }
-      
+
       // Crear query para buscar por DNI o nombre del paciente
       const searchQuery = {
         'professional.userId': id,
@@ -105,14 +106,14 @@ class PracticeController {
           { 'patient.nombreAutopercibido': { $regex: searchTerm, $options: 'i' } }
         ]
       };
-      
+
       const practices: IPractice[] | null = await Practice.find(searchQuery)
         .sort({ date: -1 })
         .skip(Number(offset))
         .limit(Number(limit));
-        
+
       const total = await Practice.countDocuments(searchQuery);
-      
+
       return res.status(200).json({
         practices,
         total,
