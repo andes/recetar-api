@@ -148,7 +148,8 @@ class PrescriptionController implements BaseController {
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         const { professional, patient, date, supplies, trimestral, ambito } = req.body;
-        const myProfessional: IUser | null = await User.findOne({ _id: professional });
+        const professionalId = professional.userId ? professional.userId : professional;
+        const myProfessional: IUser | null = await User.findOne({ _id: professionalId });
         let myPatient: IPatient | null;
         if (ambito === 'publico') {
             const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
@@ -248,6 +249,8 @@ class PrescriptionController implements BaseController {
                 return res.status(200).json(allPrescription);
 
             } catch (err) {
+                // eslint-disable-next-line no-console
+                console.log(err);
                 return res.status(500).json('Error al cargar la prescripción');
             }
         } else {
@@ -366,19 +369,24 @@ class PrescriptionController implements BaseController {
     public getByUserId = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { id } = req.params;
-            const { offset = 0, limit = 10, ambito = 'privado' } = req.query;
+            const { offset = 0, limit = 10, ambito = 'privado', insumos = 'false' } = req.query;
 
             await this.updateStatuses(id, '');
 
+            const query: any = { 'professional.userId': id };
+            if (insumos === 'false') {
+                query['supplies.supply.type'] = { $exists: false };
+            }
+
             // Obtener prescripciones locales
-            const localPrescriptions: IPrescription[] | null = await Prescription.find({ 'professional.userId': id })
+            const localPrescriptions: IPrescription[] | null = await Prescription.find(query)
                 .sort({ date: -1 });
 
             if (localPrescriptions) {
                 await this.ensurePrescriptionIds(localPrescriptions);
             }
 
-            const localTotal = await Prescription.countDocuments({ 'professional.userId': id });
+            const localTotal = await Prescription.countDocuments(query);
 
             // Combinar con prescripciones de ANDES si es necesario
             const { combinedPrescriptions, totalPrescriptions } = await this.combineLocalAndAndesPrescriptions(
