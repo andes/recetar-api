@@ -1,5 +1,6 @@
 import { Document } from 'mongoose';
 import IRole from './role.interface';
+import IProfesionAutorizada from './profesionAutorizada.interface';
 export default interface IUser extends Document{
     username: string;
     email: string;
@@ -14,6 +15,7 @@ export default interface IUser extends Document{
     updatedAt?: Date;
     isActive: Boolean;
     lastLogin?: Date;
+    profesionGrado?: IProfesionAutorizada[];
     isValidPassword(thisUser: IUser, password: string): Promise<boolean>;
     idAndes?: string;
 }
