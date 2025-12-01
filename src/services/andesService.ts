@@ -110,6 +110,57 @@ class AndesService {
     }
 
     /**
+     * Busca stock de un insumo específico desde ANDES
+     */
+    public async searchStock(params: { insumo: string, tipos?: string }): Promise<any[]> {
+        try {
+            let url = `${this.baseURL}/modules/insumos?nombre=^${params.insumo}`;
+
+            if (params.tipos) {
+                const tipos = params.tipos.split(',');
+                tipos.forEach(tipo => {
+                    url += `&tipo=${tipo.trim()}`;
+                });
+            }
+
+            const response: AxiosResponse = await axios.get(url, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return Array.isArray(response.data) ? response.data : [response.data];
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al buscar stock desde ANDES:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Obtiene todo el stock de insumos desde ANDES
+     */
+    public async getAllStock(): Promise<any> {
+        try {
+            const url = `${this.baseURL}/modules/insumos`;
+
+            const response: AxiosResponse = await axios.get(url, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al obtener todo el stock desde ANDES:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Obtiene las prescripciones de un profesional desde ANDES
      */
     public async getPrescriptionsByProfessional(params: GetPrescriptionsParams): Promise<IPrescriptionAndes[]> {
