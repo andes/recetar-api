@@ -16,6 +16,11 @@ const prescriptionSchema = new Schema({
         businessName: { type: String, required: true },
         cuil: { type: String },
         enrollment: { type: String },
+        profesionGrado: [{
+            profesion: { type: String },
+            codigoProfesion: { type: String },
+            numeroMatricula: { type: String }
+        }]
     },
     dispensedBy: {
         userId: Schema.Types.ObjectId,
