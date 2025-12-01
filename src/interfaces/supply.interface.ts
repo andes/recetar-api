@@ -17,4 +17,7 @@ export default interface ISupply extends Document {
   secondPresentation: string;
   pharmaceutical_form: string;
   snomedConcept: ISnomedConcept;
+  type?: string;
+  requiresSpecification?: boolean;
+  specification?: string;
 }
