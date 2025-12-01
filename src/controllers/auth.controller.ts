@@ -47,6 +47,9 @@ class AuthController {
           const lastMatriculacion = p.matriculacion[p.matriculacion.length - 1];
           return lastMatriculacion && moment(lastMatriculacion.fin) > moment();
         });
+        if (!profAut) {
+          return res.status(400).json({ message: 'No es posible registrar, profesional sin matricula válida' });
+        }
         
         const matchesProfesional = profAut.some((p: any) => {
           const lastMat = p.matriculacion && p.matriculacion.length
@@ -60,7 +63,6 @@ class AuthController {
             : false;
           return codigoMatches && matriculaMatches && fechaEgresoMatches && fechaMatVencimientoMatches;
         });
-
         if (!matchesProfesional) {
           return res.status(400).json({ message: 'No es posible registrar, los datos del profesional no coinciden' });
         }
