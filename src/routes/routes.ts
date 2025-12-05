@@ -8,23 +8,26 @@ import authRoutes from './auth';
 import pbulicRoutes from './public';
 import privateRoutes from './private';
 import andesRoutes from './andes';
+import jobsRoutes from './jobs';
 
 class Routes {
 
-	constructor(private router: Router = Router()){}
+    constructor(private router: Router = Router()) { }
 
-	public routesDefinition(): Router{
-    // public routes
-    // auth
-    this.router.use('/auth', authRoutes);
-    this.router.use('', pbulicRoutes);
-    // andes specific routes
-    this.router.use('/andes', andesRoutes);
-    // private: requires authentication
-    this.router.all('*', checkAuth, privateRoutes);
+    public routesDefinition(): Router {
+        // public routes
+        // auth
+        this.router.use('/auth', authRoutes);
+        this.router.use('', pbulicRoutes);
+        // andes specific routes
+        this.router.use('/andes', andesRoutes);
+        // jobs routes (protected)
+        //  this.router.use('/jobs', checkAuth, jobsRoutes);
+        // private: requires authentication
+        this.router.all('*', checkAuth, privateRoutes);
 
-    return this.router;
-  }
+        return this.router;
+    }
 
 }
 

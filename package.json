@@ -12,12 +12,19 @@
         "build": "tsc",
         "start": "node dist/src/server.js",
         "start:dev": "ts-node ./src/server.ts",
+        "start:agenda-ui": "ts-node ./src/agenda-ui.ts",
+        "start:agenda-ui:prod": "node dist/src/agenda-ui.js",
         "dev": "nodemon",
+        "dev:agenda-ui": "nodemon --config nodemon.agenda.json",
+        "dev:all": "concurrently \"npm run dev\" \"npm run dev:agenda-ui\"",
+        "start:all": "concurrently \"npm run start\" \"npm run start:agenda-ui:prod\"",
         "lint": "eslint -c .eslintrc.js --ext .ts .",
         "lint:fix": "eslint -c .eslintrc.js --ext .ts . --fix"
     },
     "dependencies": {
         "accesscontrol": "^2.2.1",
+        "agenda": "^3.1.0",
+        "agendash": "^1.0.0",
         "axios": "^0.27.2",
         "bcryptjs": "^2.4.3",
         "body-parser": "^1.20.2",
@@ -41,9 +48,11 @@
         "passport-jwt": "^4.0.1",
         "passport-local": "^1.0.0",
         "rootpath": "^0.1.2",
-        "uuid": "^7.0.3"
+        "uuid": "^7.0.3",
+        "whatwg-url": "^11.0.0"
     },
     "devDependencies": {
+        "@types/agenda": "^2.0.9",
         "@types/bcryptjs": "^2.4.2",
         "@types/compression": "^1.7.0",
         "@types/cors": "^2.8.17",
