@@ -21,7 +21,6 @@ class AgendaUIServer {
     }
 
     private basicConfig() {
-        db.initializeMongo();
         const port = process.env.AGENDA_UI_PORT || '3001';
         this.app.set('port', port);
 
@@ -46,14 +45,16 @@ class AgendaUIServer {
         if (this.isConfigured) {
             return;
         }
+        // Esperar a que Mongoose esté conectado antes de inicializar Agenda
         await this.agendaService.waitForInitialization();
         this.agenda = this.agendaService.getAgenda();
         this.app.use('/', Agendash(this.agenda));
         this.isConfigured = true;
     }
 
-
     async start() {
+        await db.initializeMongo();
+
         await this.initializeAgenda();
         const port = this.app.get('port');
         this.app.listen(port, () => {
