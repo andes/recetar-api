@@ -53,7 +53,9 @@ class AuthController {
             ? p.matriculacion[p.matriculacion.length - 1]
             : null;
           const codigoMatches = p.profesion && profesion && p.profesion.codigo.toString() === profesion.codigoProfesion;
-          const fechaEgresoMatches = moment(fechaEgreso).utcOffset(-180).isSame(moment(p.fechaEgreso).utcOffset(-180), 'day');
+          const fechaEgresoMatches = moment(fechaEgreso).startOf('day').isSame(
+            moment(p.fechaEgreso).startOf('day')
+          );          
           const fechaMatVencimientoMatches = lastMat && moment(fechaMatVencimiento).isSame(moment(lastMat.fin), 'day');
           const matriculaMatches = lastMat && lastMat.matriculaNumero && enrollment
             ? lastMat.matriculaNumero.toString() === enrollment.toString()
