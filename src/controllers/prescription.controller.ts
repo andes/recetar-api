@@ -148,7 +148,8 @@ class PrescriptionController implements BaseController {
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         const { professional, patient, date, supplies, trimestral, ambito } = req.body;
-        const myProfessional: IUser | null = await User.findOne({ _id: professional });
+        const professionalId = professional.userId ? professional.userId : professional;
+        const myProfessional: IUser | null = await User.findOne({ _id: professionalId });
         let myPatient: IPatient | null;
         if (ambito === 'publico') {
             const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
@@ -247,6 +248,8 @@ class PrescriptionController implements BaseController {
                 return res.status(200).json(allPrescription);
 
             } catch (err) {
+                // eslint-disable-next-line no-console
+                console.log(err);
                 return res.status(500).json('Error al cargar la prescripción');
             }
         } else {
