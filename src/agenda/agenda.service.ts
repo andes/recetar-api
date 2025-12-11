@@ -7,21 +7,10 @@ import { Collection } from 'mongodb';
 
 class AgendaService {
     private static instance: AgendaService;
-    private agenda: Agenda;
+    private agenda!: Agenda;
     private isInitialized = false;
 
-    private constructor() {
-        this.agenda = new Agenda({
-            db: {
-                address: process.env.MONGO_URI || env.MONGODB_CONNECTION || 'mongodb://localhost/recetar',
-                collection: 'agendaJobs'
-            },
-            processEvery: '30 seconds',
-            maxConcurrency: 20,
-            defaultConcurrency: 5,
-            defaultLockLifetime: 10000
-        });
-    }
+    private constructor() {}
 
     public static getInstance(): AgendaService {
         if (!AgendaService.instance) {
@@ -34,6 +23,23 @@ class AgendaService {
         if (this.isInitialized) {
             return;
         }
+
+        // Asegurarse de que Mongoose esté conectado antes de crear Agenda
+        if (mongoose.connection.readyState !== 1) {
+            await new Promise((resolve) => {
+                mongoose.connection.once('connected', resolve);
+            });
+        }
+
+        // Ahora sí crear la instancia de Agenda con la conexión de Mongoose
+        this.agenda = new Agenda({
+            mongo: mongoose.connection.db as any,
+            db: { collection: 'agendaJobs' },
+            processEvery: '30 seconds',
+            maxConcurrency: 20,
+            defaultConcurrency: 5,
+            defaultLockLifetime: 10000
+        });
 
         this.defineJobs();
         this.agenda.on('ready', () => {
@@ -50,12 +56,12 @@ class AgendaService {
     private defineJobs() {
         // Job Ejemplo para testear el funcionamiento
         this.agenda.define('test-job', { concurrency: 10 }, async (job: Job) => {
-            testJob(job);
+            await testJob(job);
         });
 
         // Job para envio de recetas a andes
-        this.agenda.define('send prescription', { concurrency: 10 }, async (job: Job) => {
-            sendPrescriptions(job);
+        this.agenda.define('send-prescriptions', { concurrency: 10 }, async (job: Job) => {
+            await sendPrescriptions(job);
         });
     }
 
