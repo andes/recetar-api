@@ -20,6 +20,8 @@ import snomedSupplyController from '../controllers/snomed.controller';
 import andesPrescriptionController from '../controllers/andesPrescription.controller';
 import certificateController from '../controllers/certificate.controller';
 import practiceController from '../controllers/practice.controller';
+import andesStockController from '../controllers/andesStock.controller';
+import stockController from '../controllers/stock.controller';
 class PrivateRoutes {
 
   constructor(private router: Router = Router()) { }
@@ -46,11 +48,11 @@ class PrivateRoutes {
     this.router.patch(`/prescriptions/:id`, hasPermissionIn('updateOwn', 'prescription'), prescriptionController.update);
     this.router.delete(`/prescriptions/:id`, hasPermissionIn('deleteAny', 'prescription'), prescriptionController.delete);
 
-        // certificate
-        this.router.get(`/certificates/`, certificateController.index);
-        this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
-        this.router.post(`/certificates/`, certificateController.create);
-        this.router.patch(`/certificates/:id`, certificateController.update);
+    // certificate
+    this.router.get(`/certificates/`, certificateController.index);
+    this.router.get('/certificates/get-by-user-id/:userId', certificateController.getByUserId);
+    this.router.post(`/certificates/`, certificateController.create);
+    this.router.patch(`/certificates/:id`, certificateController.update);
 
 
     // SNOMED
@@ -62,6 +64,11 @@ class PrivateRoutes {
     this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
     this.router.patch('/andes-prescriptions/cancel-dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.cancelDispense);
     this.router.patch('/andes-prescriptions/suspend', hasPermissionIn('updateOwn', 'prescription'), andesPrescriptionController.suspend);
+
+    // Andes Stock
+    this.router.get('/stock/andes', andesStockController.getStock);
+    this.router.get('/stock/andes/search', andesStockController.search);
+    this.router.get('/stock', stockController.getStock);
 
     // certificates
     this.router.get(`/certificates/`, certificateController.index);
