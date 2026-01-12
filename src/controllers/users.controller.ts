@@ -124,6 +124,7 @@ class UsersController {
                 usuario: user,
                 oldEmail,
                 newEmail,
+                dateTime: new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }),
                 url: `${process.env.APP_DOMAIN || 'https://recetar.andes.gob.ar'}`,
             };
 
@@ -151,6 +152,7 @@ class UsersController {
             };
             await sendMail(optionsNew);
         } catch (error) {
+            // eslint-disable-next-line no-console
             console.error('Error enviando notificación de cambio de email:', error);
         }
     };
