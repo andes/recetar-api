@@ -45,6 +45,7 @@ class AndesService {
             }
             queryParams.append('origenExternoApp', 'recetar');
             queryParams.append('excluirEstado', 'pendiente');
+            queryParams.append('excluirEstado', 'eliminada');
 
             const fullUrl = queryParams.toString() ? `${url}?${queryParams.toString()}` : url;
 
@@ -63,18 +64,17 @@ class AndesService {
         }
     }
 
-    public async suspendPrescription(prescriptions: [string] , motivo: string, observacion?: string, profesional?: any): Promise<any> {
+    public async suspendPrescription(recetaId: string, motivo: string, observacion?: string, profesional?: any): Promise<any> {
         try {
             const url = `${this.baseURL}/modules/recetas`;
             const body = {
                 op: 'suspender',
-                recetas: prescriptions,
+                recetaId,
                 motivo,
                 observacion,
                 profesional,
                 fecha: new Date()
             };
-
             const response: AxiosResponse = await axios.patch(url, body, {
                 headers: {
                     Authorization: this.token,
