@@ -3,6 +3,7 @@ import { env } from '../config/config';
 import mongoose from 'mongoose';
 import testJob from './jobs/testJob';
 import sendPrescriptions from './jobs/sendPrecriptions';
+import deletePrescriptions from './jobs/deletePrescriptions';
 import { Collection } from 'mongodb';
 
 class AgendaService {
@@ -10,7 +11,7 @@ class AgendaService {
     private agenda!: Agenda;
     private isInitialized = false;
 
-    private constructor() {}
+    private constructor() { }
 
     public static getInstance(): AgendaService {
         if (!AgendaService.instance) {
@@ -62,6 +63,11 @@ class AgendaService {
         // Job para envio de recetas a andes
         this.agenda.define('send-prescriptions', { concurrency: 10 }, async (job: Job) => {
             await sendPrescriptions(job);
+        });
+
+        // Job para eliminación física de recetas eliminadas lógicamente
+        this.agenda.define('delete-prescriptions', { concurrency: 1 }, async (job: Job) => {
+            await deletePrescriptions(job);
         });
     }
 
@@ -143,6 +149,15 @@ class AgendaService {
     }): Promise<void> {
         const { when } = prescriptionData;
         await this.scheduleJob('send prescription', {}, when);
+    }
+
+    // programar eliminación de recetas
+    public async scheduleDeletePrescriptionJob(data: {
+        days?: number;
+        when?: string | Date;
+    }): Promise<void> {
+        const { when, days } = data;
+        await this.scheduleJob('delete-prescriptions', { days }, when || '0 0 * * *'); // Default to every day at midnight if no 'when'
     }
 
     public async getAgendaInstance(): Promise<Agenda> {
