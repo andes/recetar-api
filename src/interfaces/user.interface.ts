@@ -1,4 +1,4 @@
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import IRole from './role.interface';
 import IProfesionAutorizada from './profesionAutorizada.interface';
 export default interface IUser extends Document{
@@ -14,8 +14,12 @@ export default interface IUser extends Document{
     createdAt?: Date;
     updatedAt?: Date;
     isActive: Boolean;
+    activation?: {
+        updatedAt: Date;
+        updatedBy: Types.ObjectId;
+    };
     lastLogin?: Date;
     profesionGrado?: IProfesionAutorizada[];
     isValidPassword(thisUser: IUser, password: string): Promise<boolean>;
     idAndes?: string;
-}
+};

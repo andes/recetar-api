@@ -74,6 +74,15 @@ export const userSchema = new Schema({
         default: true,
         required: [true, '{PATH} is required']
     },
+    activation: {
+        updatedAt: {
+            type: Date
+        },
+        updatedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        }
+    },
     lastLogin: {
         type: Date,
         default: new Date('2020-04-02T00:00:00.000Z')
@@ -84,18 +93,18 @@ export const userSchema = new Schema({
     },
     profesionGrado: [{
         profesion: {
-          type: String,
-          required: '{PATH} is required'
+            type: String,
+            required: '{PATH} is required'
         },
         codigoProfesion: {
-          type: String,
-          required: '{PATH} is required'
+            type: String,
+            required: '{PATH} is required'
         },
         numeroMatricula: {
-          type: String,
-          required: '{PATH} is required'
+            type: String,
+            required: '{PATH} is required'
         },
-  }]
+    }]
 });
 
 // Model
