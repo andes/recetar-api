@@ -30,7 +30,13 @@ const prescriptionSchema = new Schema({
     dispensedAt: { type: Date },
     supplies: [{
         _id: false,
-        supply: supplySchema,
+        supply: {
+            ...supplySchema.obj,
+            type: {
+                type: String,
+                enum: ['device', 'nutrition', 'magistral']
+            },
+        },
         quantity: Number,
         quantityPresentation: Number,
         diagnostic: {
