@@ -102,7 +102,8 @@ const createPatientInAndesMPI = async (patient: IPatient, ignoreSuggestions = fa
             genero: patient.sex.toLowerCase(),
             fechaNacimiento: patient.fechaNac,
             ignoreSuggestions,
-            estado: 'temporal'
+            estado: 'temporal',
+            alias: patient.nombreAutopercibido
         }, { headers: { Authorization } });
 
         if (response.status !== 200) {
