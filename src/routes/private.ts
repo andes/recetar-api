@@ -106,6 +106,7 @@ class PrivateRoutes {
         this.router.get('/users/index', hasPermissionIn('readAny', 'user'), usersController.index);
         this.router.post('/users/update', hasPermissionIn('updateOwn', 'user'), usersController.update);
         this.router.get('/users/:id', hasPermissionIn('updateOwn', 'user'), usersController.getUserInfo);
+        this.router.get('/efectores-andes', hasPermissionIn('readOwn', 'user'), usersController.efectoresAndes);
 
         // pharmacy
         // this.router.get(`/pharmacies/`, hasPermissionIn('readAny','patient'), pharmacyController.index);
