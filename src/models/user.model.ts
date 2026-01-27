@@ -39,6 +39,15 @@ export const userSchema = new Schema({
     email: {
         type: String
     },
+    pendingEmail: {
+        type: String
+    },
+    emailConfirmationToken: {
+        type: String
+    },
+    emailConfirmationExpires: {
+        type: Date
+    },
     enrollment: {
         type: String
     },
@@ -84,18 +93,18 @@ export const userSchema = new Schema({
     },
     profesionGrado: [{
         profesion: {
-          type: String,
-          required: '{PATH} is required'
+            type: String,
+            required: '{PATH} is required'
         },
         codigoProfesion: {
-          type: String,
-          required: '{PATH} is required'
+            type: String,
+            required: '{PATH} is required'
         },
         numeroMatricula: {
-          type: String,
-          required: '{PATH} is required'
+            type: String,
+            required: '{PATH} is required'
         },
-  }]
+    }]
 });
 
 // Model
