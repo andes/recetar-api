@@ -11,7 +11,7 @@ export const supplySchema = new Schema({
   activePrinciple: {
     type: String
   },
-  pharmaceutical_form:{
+  pharmaceutical_form: {
     type: String
   },
   power: {
@@ -32,7 +32,7 @@ export const supplySchema = new Schema({
     fsn: String,
     semanticTag: String
   }
-},{
+}, {
   timestamps: true
 });
 

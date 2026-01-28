@@ -8,12 +8,6 @@ interface GetPrescriptionsParams {
     hasta?: string; // formato YYYY-MM-DD
 }
 
-interface GetPrescriptionsByPatientParams {
-    documento: string;
-    sexo?: 'masculino' | 'femenino';
-    estado?: 'vigente' | 'pendiente' | 'dispensada' | 'vencida' | 'finalizada' | 'suspendida' | 'rechazada';
-}
-
 class AndesService {
     private baseURL: string;
     private token: string;
@@ -23,6 +17,57 @@ class AndesService {
         this.token = process.env.JWT_MPI_TOKEN || '';
         if (!this.baseURL || !this.token) {
             throw new Error('ANDES_ENDPOINT y JWT_MPI_TOKEN deben estar configurados en las variables de entorno');
+        }
+    }
+
+    /**
+     * Busca stock de un insumo específico desde ANDES
+     */
+    public async searchStock(params: { insumo: string, tipos?: string }): Promise<any[]> {
+        try {
+            let url = `${this.baseURL}/modules/insumos?insumo=^${params.insumo}`;
+
+            if (params.tipos) {
+                const tipos = params.tipos.split(',');
+                tipos.forEach(tipo => {
+                    url += `&tipo=${tipo.trim()}`;
+                });
+            }
+
+            const response: AxiosResponse = await axios.get(url, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return Array.isArray(response.data) ? response.data : [response.data];
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al buscar stock desde ANDES:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Obtiene todo el stock de insumos desde ANDES
+     */
+    public async getAllStock(): Promise<any> {
+        try {
+            const url = `${this.baseURL}/modules/insumos`;
+
+            const response: AxiosResponse = await axios.get(url, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al obtener todo el stock desde ANDES:', error);
+            throw error;
         }
     }
 
@@ -63,7 +108,7 @@ class AndesService {
         }
     }
 
-    public async suspendPrescription(prescriptions: [string] , motivo: string, observacion?: string, profesional?: any): Promise<any> {
+    public async suspendPrescription(prescriptions: [string], motivo: string, observacion?: string, profesional?: any): Promise<any> {
         try {
             const url = `${this.baseURL}/modules/recetas`;
             const body = {
