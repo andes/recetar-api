@@ -41,7 +41,7 @@ class AuthController {
                 const { profesiones } = professionalAndes;
                 const profAut = profesiones.filter((p: any) => {
                     const validCodes = [1, 2, 23];
-                    if (!validCodes.includes(p.profesion.codigo)) {return false;}
+                    if (!validCodes.includes(p.profesion.codigo)) { return false; }
                     const lastMatriculacion = p.matriculacion[p.matriculacion.length - 1];
                     return lastMatriculacion && moment(lastMatriculacion.fin) > moment();
                 });
@@ -63,6 +63,7 @@ class AuthController {
                         : false;
                     return codigoMatches && matriculaMatches && fechaEgresoMatches && fechaMatVencimientoMatches;
                 });
+
                 if (!matchesProfesional) {
                     return res.status(400).json({ message: 'No es posible registrar, los datos del profesional no coinciden' });
                 }
@@ -70,15 +71,21 @@ class AuthController {
                 if (profAut && cuil === professionalAndes.cuit) {
                     const apellidoYNombre = `${professionalAndes.apellido} ${professionalAndes.nombre}`;
                     const profesionG = profAut.map((p: any) => ({ profesion: p.profesion.nombre, codigoProfesion: p.profesion.codigo, numeroMatricula: p.matriculacion[p.matriculacion.length - 1].matriculaNumero }));
-                    const newUser = new User({ username, email, password, enrollment, cuil, businessName: apellidoYNombre, profesionGrado: profesionG });
-                    newUser.roles.push(role);
-                    role.users.push(newUser);
-                    await newUser.save();
-                    await role.save();
-                    this.sendEmailNewUser(newUser);
-                    return res.status(200).json({
-                        newUser
-                    });
+                    const lastProfesion = profesiones.find((p: any) => p.profesion.codigo == '1' || p.profesion.codigo == '23' || p.profesion.codigo == '2');
+                    const lastMatriculacion = lastProfesion.matriculacion[lastProfesion.matriculacion.length - 1];
+
+                    if (lastMatriculacion && (moment(lastMatriculacion.fin)) > moment() && lastMatriculacion.matriculaNumero.toString() === enrollment && cuil === professionalAndes.cuit) {
+                        const newUser = new User({ username, email, password, enrollment, cuil, businessName: apellidoYNombre, profesionGrado: profesionG });
+
+                        newUser.roles.push(role);
+                        role.users.push(newUser);
+                        await newUser.save();
+                        await role.save();
+                        this.sendEmailNewUser(newUser);
+                        return res.status(200).json({
+                            newUser
+                        });
+                    }
                 } else {
                     return res.status(400).json({ message: 'No es posible registrar, el CUIT/CUIL del profesional no coincide' });
                 }
@@ -116,16 +123,16 @@ class AuthController {
         const { oldPassword, newPassword } = req.body;
         try {
             const user: IUser | null = await User.findOne({ _id });
-            if (!user) { return res.status(404).json('No se ha encontrado el usuario'); }
+            if (!user) { return res.status(404).json({ message: 'No se ha encontrado el usuario' }); }
             const isMatch: boolean = await User.schema.methods.isValidPassword(user, oldPassword);
             if (!isMatch) { return res.status(401).json({ message: 'Su contraseña actual no coincide con nuestros registros' }); }
 
             await user.update({ password: newPassword });
-            return res.status(200).json('Se ha modificado la contraseña correctamente!');
+            return res.status(200).json({ message: 'Se ha modificado la contraseña correctamente!' });
         } catch (err) {
             // eslint-disable-next-line no-console
-            console.log(err);
-            return res.status(500).json('Server Error');
+            console.log("Error al modificar la contraseña", err);
+            return res.status(500).json({ message: 'Server Error' });
         }
     };
 
@@ -166,7 +173,7 @@ class AuthController {
                 });
             }
 
-            return res.status(httpCodes.EXPECTATION_FAILED).json('Debe iniciar sesión');// in the case that not found user
+            return res.status(httpCodes.EXPECTATION_FAILED).json({ message: 'Debe iniciar sesión' });// in the case that not found user
         } catch (err) {
             // eslint-disable-next-line no-console
             console.log(err);
