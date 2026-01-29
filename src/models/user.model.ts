@@ -64,6 +64,13 @@ export const userSchema = new Schema({
     authenticationToken: {
         type: String,
     },
+    passwordChangeTokenExpiry: {
+        type: Date,
+    },
+    passwordCreatedAt: {
+        type: Date,
+        default: undefined
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -84,18 +91,18 @@ export const userSchema = new Schema({
     },
     profesionGrado: [{
         profesion: {
-          type: String,
-          required: '{PATH} is required'
+            type: String,
+            required: '{PATH} is required'
         },
         codigoProfesion: {
-          type: String,
-          required: '{PATH} is required'
+            type: String,
+            required: '{PATH} is required'
         },
         numeroMatricula: {
-          type: String,
-          required: '{PATH} is required'
+            type: String,
+            required: '{PATH} is required'
         },
-  }]
+    }]
 });
 
 // Model
