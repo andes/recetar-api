@@ -1,5 +1,4 @@
 import { AccessControl } from 'accesscontrol';
-import Role from '../models/role.model';
 
 class AccessControlLoader {
 

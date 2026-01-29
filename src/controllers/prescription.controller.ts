@@ -188,7 +188,8 @@ class PrescriptionController implements BaseController {
                                 profesion: pg.profesion,
                                 codigoProfesion: pg.codigoProfesion,
                                 numeroMatricula: pg.numeroMatricula
-                            })) : []
+                            })) : [],
+                            efector: myProfessional?.efectores[0] ? myProfessional.efectores[0] : undefined
                         },
                         date,
                         supplies: [sup],
@@ -219,6 +220,12 @@ class PrescriptionController implements BaseController {
                                 businessName: myProfessional?.businessName,
                                 cuil: myProfessional?.cuil,
                                 enrollment: myProfessional?.enrollment,
+                                profesionGrado: myProfessional?.profesionGrado?.length ? myProfessional.profesionGrado.map((pg: any) => ({
+                                    profesion: pg.profesion,
+                                    codigoProfesion: pg.codigoProfesion,
+                                    numeroMatricula: pg.numeroMatricula
+                                })) : [],
+                                efector: myProfessional?.efectores[0] ? myProfessional.efectores[0] : undefined
                             },
                             date: moment(date).add(30, 'days').toDate(),
                             supplies: [sup],
@@ -234,6 +241,12 @@ class PrescriptionController implements BaseController {
                                 businessName: myProfessional?.businessName,
                                 cuil: myProfessional?.cuil,
                                 enrollment: myProfessional?.enrollment,
+                                profesionGrado: myProfessional?.profesionGrado?.length ? myProfessional.profesionGrado.map((pg: any) => ({
+                                    profesion: pg.profesion,
+                                    codigoProfesion: pg.codigoProfesion,
+                                    numeroMatricula: pg.numeroMatricula
+                                })) : [],
+                                efector: myProfessional?.efectores[0] ? myProfessional.efectores[0] : undefined
                             },
                             date: moment(date).add(60, 'days').toDate(),
                             supplies: [sup],
@@ -271,7 +284,7 @@ class PrescriptionController implements BaseController {
         const prescriptionAndes = {
             idPrestacion: newPrescription._id.toString(),
             idRegistro: newPrescription._id.toString(),
-            fechaRegistro: newPrescription.date.toString(),
+            fechaRegistro: newPrescription.date.toISOString(),
             paciente: {
                 id: patient.idMPI,
                 nombre: patient.firstName,
@@ -281,7 +294,8 @@ class PrescriptionController implements BaseController {
                 obraSocial: patient.obraSocial || null,
             },
             profesional: {
-                id: profesional?.idAndes ? profesional.idAndes : ''
+                id: profesional?.idAndes ? profesional.idAndes : '',
+                efector: profesional?.efectores[0] ? profesional.efectores[0] : undefined,
             },
             organizacion: {
                 nombre: 'Recetar',
