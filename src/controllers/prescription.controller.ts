@@ -203,6 +203,7 @@ class PrescriptionController implements BaseController {
                         }
                         // En caso de que no se haya podido crear en andes, se guarda localmente
                         if (!createAndes) {
+                            console.log('No se pudo crear la prescripción en ANDES, se guarda localmente.');
                             await newPrescription.save();
                             allPrescription.push(newPrescription);
                         }
@@ -323,7 +324,8 @@ class PrescriptionController implements BaseController {
 
         } catch (e) {
             // eslint-disable-next-line no-console
-            console.error('Error al enviar receta a ANDES:', e);
+            console.error('Error al enviar receta a ANDES');
+            sendToAndes = false;
         }
         return sendToAndes;
     };
