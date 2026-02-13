@@ -8,10 +8,13 @@ export const supplySchema = new Schema({
     type: String,
     required: '{PATH} is required'
   },
+  brand: {
+    type: String
+  },
   activePrinciple: {
     type: String
   },
-  pharmaceutical_form:{
+  pharmaceutical_form: {
     type: String
   },
   power: {
@@ -32,7 +35,7 @@ export const supplySchema = new Schema({
     fsn: String,
     semanticTag: String
   }
-},{
+}, {
   timestamps: true
 });
 

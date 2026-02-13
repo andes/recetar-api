@@ -95,7 +95,7 @@ class PrivateRoutes {
         // this.router.put(`/supplies/:id`, hasPermissionIn('updateAny','patient'), supplyController.update);
         // this.router.delete(`/supplies/:id`, hasPermissionIn('deleteAny','patient'), supplyController.delete);
 
-        // SNOMED
+        // // SNOMED
         this.router.get('/snomed/supplies/', hasPermissionIn('readAny', 'supplies'), snomedSupplyController.index);
 
         // Users

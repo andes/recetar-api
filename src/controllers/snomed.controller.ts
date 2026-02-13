@@ -7,9 +7,9 @@ import { ISnomedConcept } from '../interfaces/supply.interface';
 class snomedSupplyController implements BaseController {
     public index = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const search = req.query.search;
+            const term = req.query.search;
             const path = process.env.API_SNOMED || process.env.ANDES_ENDPOINT;
-            const resp = await needle('get', `${path}/core/term/snomed?expression=<763158003:732943007=*,[0..0] 774159003=*, 763032000=*&search=${search}`);
+            const resp = await needle('get', `${path}/core/term/snomed/medicamentos?term=${term}`);
             const supplies: ISnomedConcept[] = resp.body;
             return res.status(200).json(supplies);
         } catch (e) {
