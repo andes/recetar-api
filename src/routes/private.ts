@@ -53,9 +53,6 @@ class PrivateRoutes {
         this.router.patch(`/certificates/:id`, certificateController.update);
 
 
-        // SNOMED
-        this.router.get('/snomed/supplies/', hasPermissionIn('readAny', 'supplies'), snomedSupplyController.index);
-
         // Andes prescriptions
         this.router.get('/andes-prescriptions/from-andes/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.getFromAndes);
         this.router.get('/andes-prescriptions/:id', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);

@@ -207,7 +207,6 @@ class AndesPrescriptionController implements BaseController {
 
     public suspend = async (req: Request, res: Response): Promise<Response> => {
         try {
-            console.log('Suspendiendo prescripción...', req.body);
             if (!req.body) {
                 return res.status(400).json({ mensaje: 'Missing body payload!' });
             }
@@ -237,7 +236,7 @@ class AndesPrescriptionController implements BaseController {
                 const motivo = 'suspension desde RecetAr';
                 const observacion = 'suspension desde RecetAr';
                 // Suspender en ANDES
-                const result = await AndesService.suspendPrescription([recetaId], motivo, observacion, profesionalAndes);
+                const result = await AndesService.suspendPrescription(recetaId, motivo, observacion, profesionalAndes);
 
                 return res.status(200).json({
                     result
