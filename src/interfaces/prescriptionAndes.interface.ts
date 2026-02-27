@@ -28,11 +28,6 @@ export default interface IPrescriptionAndes extends Document {
         profesion: String;
         especialidad: String;
         matricula: Number;
-        efector?: {
-            _id: ObjectID;
-            nombre: String;
-            direccion: String;
-        };
     };
     diagnostico: {
         term: String;
@@ -170,4 +165,4 @@ export default interface IPrescriptionAndes extends Document {
             nombre: String;
         };
     };
-}
+};;;;;;;;;;;;;;;;;;;;

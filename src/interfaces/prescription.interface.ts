@@ -25,11 +25,6 @@ export default interface IPrescription extends Document {
         enrollment: string;
         cuil: string;
         businessName: string;
-        efector?: {
-            _id: string;
-            nombre: string;
-            direccion: string;
-        };
     };
     dispensedBy?: {
         userId: string;
@@ -44,4 +39,9 @@ export default interface IPrescription extends Document {
     updatedAt?: Date;
     trimestral?: boolean;
     ambito?: string;
+    organizacion?: {
+        _id: string;
+        nombre: string;
+        direccion: string;
+    };
 }

@@ -113,7 +113,7 @@ export const userSchema = new Schema({
             required: '{PATH} is required'
         },
     }],
-    efectores: [
+    organizaciones: [
         {
             _id: {
                 type: Schema.Types.ObjectId,
@@ -138,8 +138,6 @@ User.schema.method('isValidPassword', async (thisUser: IUser, password: string):
 });
 
 // Model Validations
-// User.schema.path('email').validate(uniqueEmail, 'This {PATH} address is already registered');
-// User.schema.path('email').validate(validEmail, 'The {PATH} field most be type of email.');
 User.schema.path('username').validate(uniqueUsername, 'This {PATH} is already registered');
 
 export default User;

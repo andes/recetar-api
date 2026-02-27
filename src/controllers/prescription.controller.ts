@@ -147,7 +147,7 @@ class PrescriptionController implements BaseController {
     };
 
     public create = async (req: Request, res: Response): Promise<Response> => {
-        const { professional, patient, date, supplies, trimestral, ambito } = req.body;
+        const { professional, patient, date, supplies, trimestral, ambito, organizacion } = req.body;
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
         let myPatient: IPatient | null;
         if (ambito === 'publico') {
@@ -189,12 +189,12 @@ class PrescriptionController implements BaseController {
                                 codigoProfesion: pg.codigoProfesion,
                                 numeroMatricula: pg.numeroMatricula
                             })) : [],
-                            efector: myProfessional?.efectores[0] ? myProfessional.efectores[0] : undefined
                         },
                         date,
                         supplies: [sup],
                         ambito,
-                        trimestral
+                        trimestral,
+                        organizacion: organizacion || undefined
                     });
                     let createAndes = false;
                     if (ambito === 'publico') {
@@ -225,12 +225,13 @@ class PrescriptionController implements BaseController {
                                     codigoProfesion: pg.codigoProfesion,
                                     numeroMatricula: pg.numeroMatricula
                                 })) : [],
-                                efector: myProfessional?.efectores[0] ? myProfessional.efectores[0] : undefined
                             },
                             date: moment(date).add(30, 'days').toDate(),
                             supplies: [sup],
                             ambito,
                             trimestral,
+                            organizacion: organizacion || undefined
+
                         });
                         await newPrescription2.save();
                         allPrescription.push(newPrescription2);
@@ -246,12 +247,13 @@ class PrescriptionController implements BaseController {
                                     codigoProfesion: pg.codigoProfesion,
                                     numeroMatricula: pg.numeroMatricula
                                 })) : [],
-                                efector: myProfessional?.efectores[0] ? myProfessional.efectores[0] : undefined
                             },
                             date: moment(date).add(60, 'days').toDate(),
                             supplies: [sup],
                             ambito,
                             trimestral,
+                            organizacion: organizacion || undefined
+
                         });
                         await newPrescription3.save();
                         allPrescription.push(newPrescription3);
@@ -295,10 +297,11 @@ class PrescriptionController implements BaseController {
             },
             profesional: {
                 id: profesional?.idAndes ? profesional.idAndes : '',
-                efector: profesional?.efectores[0] ? profesional.efectores[0] : undefined,
             },
             organizacion: {
-                nombre: 'Recetar',
+                id: newPrescription.organizacion?._id || null,
+                nombre: newPrescription.organizacion?.nombre || 'Recetar',
+                direccion: newPrescription.organizacion?.direccion || null,
             },
             medicamento: {
                 diagnostico: newPrescription.supplies[0].diagnostic,

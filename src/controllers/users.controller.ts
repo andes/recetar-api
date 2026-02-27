@@ -83,7 +83,7 @@ class UsersController {
                 updatedAt: user.updatedAt,
                 lastLogin: user.lastLogin,
                 isActive: user.isActive,
-                efectores: user.efectores
+                organizaciones: user.organizaciones
             });
 
         } catch (err) {
@@ -418,13 +418,13 @@ class UsersController {
     /**
      * Busca en la coleccion Organizaciones TM en Andes por nombre
      * @param req - nombre en params
-     * @param res - response con el listado de efectores que machea con el nombre buscado
-     * @returns lista de efectores
+     * @param res - response con el listado de organizaciones que machea con el nombre buscado
+     * @returns lista de organizaciones
      */
-    public efectoresAndes = async (req: Request, res: Response): Promise<Response> => {
+    public organizacionesAndes = async (req: Request, res: Response): Promise<Response> => {
         try {
             if (!req.query.nombre) { return res.status(400).json('Parámetro nombre es requerido'); }
-            const resp = await axios.get(`${process.env.ANDES_ENDPOINT}/core/tm/organizaciones?nombre=${req.query.nombre}`, { headers: { Authorization: `${process.env.JWT_MPI_TOKEN}` } });
+            const resp = await axios.get(`${process.env.ANDES_ENDPOINT}/core/tm/organizaciones?nombre=${req.query.nombre}&activo=true`, { headers: { Authorization: `${process.env.JWT_MPI_TOKEN}` } });
             return res.status(200).json(resp.data);
         } catch (err) {
             // eslint-disable-next-line no-console

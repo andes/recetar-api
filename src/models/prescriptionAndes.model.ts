@@ -92,12 +92,7 @@ const prescriptionAndesSchema = new Schema({
         documento: String,
         profesion: String,
         especialidad: String,
-        matricula: Number,
-        efector: {
-            _id: Schema.Types.ObjectId,
-            nombre: String,
-            direccion: String
-        }
+        matricula: Number
     },
     diagnostico: {
         term: String,
