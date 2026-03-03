@@ -43,3 +43,5 @@ typings
 # production build
 dist
 .env
+.testcontainers.env
+*.env

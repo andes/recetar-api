@@ -85,7 +85,7 @@ const searchPatientInAndesMPI = async (dni: string, sexo: string): Promise<any[]
 
         return resp.body || [];
     } catch (error) {
-        throw new Error('Error al buscar paciente en Andes MPI');
+        throw new Error('Error al buscar paciente en Andes MPI: ' + (error as any).message);
     }
 };
 
