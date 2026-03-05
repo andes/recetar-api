@@ -1,12 +1,11 @@
 import mongoose from 'mongoose';
-import { env } from '../../config/config';
 import IUserOld from './user-deprecated.interface';
 import { UserClass } from './user.class';
 
 
 
 const initializeMongo = (): void => {
-  const MONGO_URI = `${(process.env.MONGODB_URI || env.MONGODB_CONNECTION)}`;
+  const MONGO_URI = `${(process.env.MONGODB_URI)}`;
   mongoose.Promise = Promise;
   mongoose.connect(MONGO_URI, {
     useNewUrlParser: true,
