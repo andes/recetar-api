@@ -1,9 +1,12 @@
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 import express from 'express';
 import Agenda from 'agenda';
 import jobsRoutes from './routes/jobs';
 import AgendaService from './agenda/agenda.service';
 import * as db from './database/dbconfig';
-import './config/config';
 
 // Importación dinámica de Agendash
 const Agendash = require('agendash');
