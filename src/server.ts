@@ -6,8 +6,6 @@ import compression from 'compression';
 import { errorHandler } from './middlewares/error.middleware';
 import { notFoundHandler } from './middlewares/notFound.middleware';
 import * as db from './database/dbconfig';
-// config
-import { env } from './config/config';
 // services
 
 import routes from './routes/routes';
@@ -41,7 +39,7 @@ class Server {
     }
 
     routes() {
-        this.app.use(`${(process.env.API_URI_PRFIX || env.API_URI_PREFIX)}`, routes);
+        this.app.use(`${(process.env.API_URI_PREFIX)}`, routes);
     }
 
     async start() {
@@ -50,7 +48,7 @@ class Server {
             // eslint-disable-next-line no-console
             console.log(`🚀 API Server running on port ${this.app.get('port')}`);
             // eslint-disable-next-line no-console
-            console.log(`📋 API disponible en: http://localhost:${this.app.get('port')}${env.API_URI_PREFIX}`);
+            console.log(`📋 API disponible en: http://localhost:${this.app.get('port')}${process.env.API_URI_PREFIX}`);
         });
     }
 

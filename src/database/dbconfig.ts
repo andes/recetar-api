@@ -1,8 +1,7 @@
 import mongoose from 'mongoose';
-import { env } from '../config/config';
 
 export const initializeMongo = async (): Promise<void> => {
-    const MONGO_URI = `${(process.env.MONGODB_URI || env.MONGODB_CONNECTION)}`;
+    const MONGO_URI = `${(process.env.MONGODB_URI)}`;
     try {
         await mongoose.connect(MONGO_URI, {
             useNewUrlParser: true,

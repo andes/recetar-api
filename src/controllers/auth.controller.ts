@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as JWT from 'jsonwebtoken';
-import { env, httpCodes } from '../config/config';
+import { httpCodes } from '../config/config';
 import { v4 as uuidv4 } from 'uuid';
 import IUser from '../interfaces/user.interface';
 import User from '../models/user.model';
@@ -309,8 +309,9 @@ class AuthController {
                 usrn: user.username,
                 bsname: user.businessName,
                 rl: roles,
-                iat: new Date().getTime()
-            }, (process.env.JWT_SECRET || env.JWT_SECRET), {
+                iat: moment().unix(),
+                exp: moment().add((process.env.TOKEN_LIFETIME || 12), 'hours').unix()
+            }, (process.env.JWT_SECRET || ''), {
                 algorithm: 'HS256'
             });
             return res.status(200).json({ jwt: token });
@@ -328,9 +329,9 @@ class AuthController {
             usrn: username,
             bsname: businessName,
             rl: role,
-            iat: new Date().getTime(),
-            exp: new Date().setDate(new Date().getDate() + env.TOKEN_LIFETIME)
-        }, (process.env.JWT_SECRET || env.JWT_SECRET), {
+            iat: moment().unix(),
+            exp: moment().add((process.env.TOKEN_LIFETIME || 12), 'hours').unix()
+        }, (process.env.JWT_SECRET || ''), {
             algorithm: 'HS256'
         });
         return token;
