@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 import IPrescriptionAndes, { IDispensa } from '../interfaces/prescriptionAndes.interface';
-import needle from 'needle';
 import PrescriptionAndes from '../models/prescriptionAndes.model';
 import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
@@ -86,13 +85,12 @@ class AndesPrescriptionController implements BaseController {
     public getFromAndes = async (req: Request, res: Response): Promise<Response> => {
         try {
             if (!req.query.dni) { return res.status(400).json({ mensaje: 'Missing required params!' }); }
-            const dni = req.query.dni;
-            const sexo = req.query.sexo ? req.query.sexo : '';
+            const dni = req.query.dni as string;
+            const sexo = req.query.sexo ? (req.query.sexo as any) : undefined;
             let prescriptions: IPrescriptionAndes[] | null = [];
+            let andesPrescriptions: IPrescriptionAndes[] | null = null;
 
-            const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/modules/recetas?documento=${dni}&estado=vigente${sexo ? `&sexo=${sexo}` : ''}`, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
-            if (typeof (resp.statusCode) === 'number' && resp.statusCode !== 200) { return res.status(resp.statusCode).json({ mensaje: 'Error', error: resp.body }); }
-            let andesPrescriptions: IPrescriptionAndes[] | null = resp.body;
+            andesPrescriptions = await AndesService.getPrescriptionsByPatient({ documento: dni, estado: 'vigente', sexo });
 
             if (andesPrescriptions) {
                 andesPrescriptions = andesPrescriptions.map(aPrescription => {
@@ -109,6 +107,80 @@ class AndesPrescriptionController implements BaseController {
             return res.status(200).json(prescriptions);
         } catch (e) {
             return res.status(500).json({ error: e });
+        }
+    };
+
+    public searchProfessionals = async (req: Request, res: Response): Promise<Response> => {
+        const { documento } = req.query;
+
+        if (!documento) {
+            return res.status(400).json({
+                ok: false,
+                message: 'El parámetro "documento" es requerido'
+            });
+        }
+
+        try {
+            const professionals = await AndesService.searchProfessionalsGuide(documento as string);
+
+            if (professionals && professionals.length > 0) {
+                return res.status(200).json({
+                    ok: true,
+                    message: 'Profesionales encontrados',
+                    data: professionals,
+                    total: professionals.length
+                });
+            } else {
+                return res.status(200).json({
+                    ok: false,
+                    message: 'No se encontraron profesionales con el documento proporcionado',
+                    data: [],
+                    total: 0
+                });
+            }
+        } catch (error) {
+            return res.status(500).json({
+                ok: false,
+                message: 'Error al buscar profesionales en Andes',
+                error
+            });
+        }
+    };
+
+    public searchPharmacies = async (req: Request, res: Response): Promise<Response> => {
+        const { cuit } = req.query;
+
+        if (!cuit) {
+            return res.status(400).json({
+                ok: false,
+                message: 'El parámetro "cuit" es requerido'
+            });
+        }
+
+        try {
+            const pharmacies = await AndesService.searchPharmaciesCore(cuit as string);
+
+            if (pharmacies && pharmacies.length > 0) {
+                return res.status(200).json({
+                    ok: true,
+                    message: 'Farmacias encontradas',
+                    data: pharmacies,
+                    total: pharmacies.length
+                });
+            } else {
+                return res.status(200).json({
+                    ok: false,
+                    message: 'No se encontraron farmacias con el CUIT proporcionado',
+                    data: [],
+                    total: 0
+                });
+            }
+        } catch (error) {
+            return res.status(500).json({
+                ok: false,
+                message: 'Error al buscar farmacias en Andes',
+                error
+            });
         }
     };
 
@@ -142,16 +214,11 @@ class AndesPrescriptionController implements BaseController {
                 dispensa,
                 recetaId: receta.id.toString()
             };
-            const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, body, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
-            if (typeof (resp.statusCode) === 'number' && resp.statusCode !== 200) { return res.status(resp.statusCode).json({ mensaje: 'Error', error: resp.body }); }
-            if (typeof (resp.statusCode) === 'number' && resp.statusCode === 200) {
-                const prescriptionUpdated: IPrescriptionAndes = resp.body;
-                await PrescriptionAndes.findByIdAndUpdate(receta.id.toString(), prescriptionUpdated);
-            }
+            const prescriptionUpdated: IPrescriptionAndes = await AndesService.patchPrescription(body);
 
-            const resultado: IPrescriptionAndes = resp.body;
+            await PrescriptionAndes.findByIdAndUpdate(receta.id.toString(), prescriptionUpdated);
 
-            return res.status(200).json(resultado);
+            return res.status(200).json(prescriptionUpdated);
         } catch (e) {
             return res.status(500).json({ mensaje: 'Error', error: e });
         }
@@ -181,12 +248,10 @@ class AndesPrescriptionController implements BaseController {
                 }
             };
 
-            const resp = await needle('patch', `${process.env.ANDES_ENDPOINT}/modules/recetas`, body, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
-            if (typeof (resp.statusCode) === 'number' && resp.statusCode !== 200) { return res.status(resp.statusCode).json({ mensaje: 'Error', error: resp.body }); };
-            if (typeof (resp.statusCode) === 'number' && resp.statusCode === 200) {
-                await PrescriptionAndes.findByIdAndDelete(prescriptionAndesId.toString());
-            }
-            return res.status(200).json(resp.body);
+            const canceledPrescription: any = await AndesService.patchPrescription(body);
+
+            await PrescriptionAndes.findByIdAndDelete(prescriptionAndesId.toString());
+            return res.status(200).json(canceledPrescription);
         } catch (e) {
             return res.status(500).json({ mensaje: 'Error', error: e });
         }
