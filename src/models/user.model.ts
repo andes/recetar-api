@@ -1,4 +1,5 @@
 import { Schema, Model, model } from 'mongoose';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import IUser from '../interfaces/user.interface';
 import IProfesionAutorizada from '../interfaces/profesionAutorizada.interface';
@@ -111,7 +112,17 @@ export const userSchema = new Schema({
             type: String,
             required: '{PATH} is required'
         },
-    }]
+    }],
+    organizaciones: [
+        {
+            _id: {
+                type: Schema.Types.ObjectId,
+                default: () => new mongoose.Types.ObjectId()
+            },
+            nombre: String,
+            direccion: String,
+        }
+    ]
 });
 
 // Model
@@ -127,8 +138,6 @@ User.schema.method('isValidPassword', async (thisUser: IUser, password: string):
 });
 
 // Model Validations
-// User.schema.path('email').validate(uniqueEmail, 'This {PATH} address is already registered');
-// User.schema.path('email').validate(validEmail, 'The {PATH} field most be type of email.');
 User.schema.path('username').validate(uniqueUsername, 'This {PATH} is already registered');
 
 export default User;

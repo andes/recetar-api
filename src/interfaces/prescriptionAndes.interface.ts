@@ -147,6 +147,7 @@ export default interface IPrescriptionAndes extends Document {
             valor: Number;
             unidad: String;
         };
+        cuil: String;
     };
     createdAt: Date;
     createdBy: {
@@ -164,4 +165,4 @@ export default interface IPrescriptionAndes extends Document {
             nombre: String;
         };
     };
-}
+};;;;;;;;;;;;;;;;;;;;

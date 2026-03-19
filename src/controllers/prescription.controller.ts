@@ -147,7 +147,7 @@ class PrescriptionController implements BaseController {
     };
 
     public create = async (req: Request, res: Response): Promise<Response> => {
-        const { professional, patient, date, supplies, trimestral, ambito } = req.body;
+        const { professional, patient, date, supplies, trimestral, ambito, organizacion } = req.body;
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
         let myPatient: IPatient | null;
         if (ambito === 'publico') {
@@ -188,12 +188,13 @@ class PrescriptionController implements BaseController {
                                 profesion: pg.profesion,
                                 codigoProfesion: pg.codigoProfesion,
                                 numeroMatricula: pg.numeroMatricula
-                            })) : []
+                            })) : [],
                         },
                         date,
                         supplies: [sup],
                         ambito,
-                        trimestral
+                        trimestral,
+                        organizacion: organizacion || undefined
                     });
                     let createAndes = false;
                     if (ambito === 'publico') {
@@ -219,11 +220,18 @@ class PrescriptionController implements BaseController {
                                 businessName: myProfessional?.businessName,
                                 cuil: myProfessional?.cuil,
                                 enrollment: myProfessional?.enrollment,
+                                profesionGrado: myProfessional?.profesionGrado?.length ? myProfessional.profesionGrado.map((pg: any) => ({
+                                    profesion: pg.profesion,
+                                    codigoProfesion: pg.codigoProfesion,
+                                    numeroMatricula: pg.numeroMatricula
+                                })) : [],
                             },
                             date: moment(date).add(30, 'days').toDate(),
                             supplies: [sup],
                             ambito,
                             trimestral,
+                            organizacion: organizacion || undefined
+
                         });
                         await newPrescription2.save();
                         allPrescription.push(newPrescription2);
@@ -234,11 +242,18 @@ class PrescriptionController implements BaseController {
                                 businessName: myProfessional?.businessName,
                                 cuil: myProfessional?.cuil,
                                 enrollment: myProfessional?.enrollment,
+                                profesionGrado: myProfessional?.profesionGrado?.length ? myProfessional.profesionGrado.map((pg: any) => ({
+                                    profesion: pg.profesion,
+                                    codigoProfesion: pg.codigoProfesion,
+                                    numeroMatricula: pg.numeroMatricula
+                                })) : [],
                             },
                             date: moment(date).add(60, 'days').toDate(),
                             supplies: [sup],
                             ambito,
                             trimestral,
+                            organizacion: organizacion || undefined
+
                         });
                         await newPrescription3.save();
                         allPrescription.push(newPrescription3);
@@ -271,7 +286,7 @@ class PrescriptionController implements BaseController {
         const prescriptionAndes = {
             idPrestacion: newPrescription._id.toString(),
             idRegistro: newPrescription._id.toString(),
-            fechaRegistro: newPrescription.date.toString(),
+            fechaRegistro: newPrescription.date.toISOString(),
             paciente: {
                 id: patient.idMPI,
                 nombre: patient.firstName,
@@ -281,10 +296,12 @@ class PrescriptionController implements BaseController {
                 obraSocial: patient.obraSocial || null,
             },
             profesional: {
-                id: profesional?.idAndes ? profesional.idAndes : ''
+                id: profesional?.idAndes ? profesional.idAndes : '',
             },
             organizacion: {
-                nombre: 'Recetar',
+                id: newPrescription.organizacion?._id || null,
+                nombre: newPrescription.organizacion?.nombre || 'Recetar',
+                direccion: newPrescription.organizacion?.direccion || null,
             },
             medicamento: {
                 diagnostico: newPrescription.supplies[0].diagnostic,

@@ -39,4 +39,9 @@ export default interface IPrescription extends Document {
     updatedAt?: Date;
     trimestral?: boolean;
     ambito?: string;
+    organizacion?: {
+        _id: string;
+        nombre: string;
+        direccion: string;
+    };
 }

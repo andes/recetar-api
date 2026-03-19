@@ -76,6 +76,11 @@ const prescriptionSchema = new Schema({
         type: String,
         enum: ['publico', 'privado'],
         default: 'privado'
+    },
+    organizacion: {
+        _id: { type: Schema.Types.ObjectId },
+        nombre: { type: String },
+        direccion: { type: String }
     }
 });
 

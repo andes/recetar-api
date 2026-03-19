@@ -22,6 +22,12 @@ export default interface IUser extends Document {
     };
     lastLogin?: Date;
     profesionGrado?: IProfesionAutorizada[];
+    organizaciones: [{
+        _id: string;
+        nombre: string;
+        direccion: string;
+    }];
     isValidPassword(thisUser: IUser, password: string): Promise<boolean>;
     idAndes?: string;
-};
+    // eslint-disable-next-line semi
+}
