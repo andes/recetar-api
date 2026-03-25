@@ -1,5 +1,7 @@
 import axios, { AxiosResponse } from 'axios';
+import { Request, Response } from 'express';
 import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
+import PrescriptionAndes from '../models/prescriptionAndes.model';
 
 interface GetPrescriptionsParams {
     professionalId: string;
@@ -23,6 +25,121 @@ class AndesService {
         this.token = process.env.JWT_MPI_TOKEN || '';
         if (!this.baseURL || !this.token) {
             throw new Error('ANDES_ENDPOINT y JWT_MPI_TOKEN deben estar configurados en las variables de entorno');
+        }
+    }
+
+    public async getFromAndes(req: Request, res: Response): Promise<Response> {
+        try {
+            if (!req.query.dni) { return res.status(400).json({ mensaje: 'Missing required params!' }); }
+            const dni = req.query.dni as string;
+            const sexo = req.query.sexo ? (req.query.sexo as any) : undefined;
+            let prescriptions: IPrescriptionAndes[] | null = [];
+            let andesPrescriptions: IPrescriptionAndes[] | null = null;
+
+            andesPrescriptions = await this.getPrescriptionsByPatient({ documento: dni, estado: 'vigente', sexo });
+
+            if (andesPrescriptions) {
+                andesPrescriptions = andesPrescriptions.map(aPrescription => {
+                    aPrescription.idAndes = aPrescription._id;
+                    return aPrescription;
+                });
+                prescriptions = [...prescriptions, ...andesPrescriptions];
+            }
+
+            const savedPrescriptions: IPrescriptionAndes[] | null = await PrescriptionAndes.find({ 'paciente.documento': dni });
+            if (savedPrescriptions) {
+                prescriptions = [...prescriptions, ...savedPrescriptions];
+            }
+            return res.status(200).json(prescriptions);
+        } catch (e) {
+            return res.status(500).json({ error: e });
+        }
+    }
+
+    public async searchProfessionals(req: Request, res: Response): Promise<Response> {
+        const { documento } = req.query;
+
+        if (!documento) {
+            return res.status(400).json({
+                ok: false,
+                message: 'El parámetro "documento" es requerido'
+            });
+        }
+
+        try {
+            const professionals = await this.searchProfessionalsGuide(documento as string);
+
+            if (professionals && professionals.length > 0) {
+                return res.status(200).json({
+                    ok: true,
+                    message: 'Profesionales encontrados',
+                    data: professionals,
+                    total: professionals.length
+                });
+            } else {
+                return res.status(200).json({
+                    ok: false,
+                    message: 'No se encontraron profesionales con el documento proporcionado',
+                    data: [],
+                    total: 0
+                });
+            }
+        } catch (error) {
+            return res.status(500).json({
+                ok: false,
+                message: 'Error al buscar profesionales en Andes',
+                error
+            });
+        }
+    }
+
+    public async searchPharmacies(req: Request, res: Response): Promise<Response> {
+        const { cuit } = req.query;
+
+        if (!cuit) {
+            return res.status(400).json({
+                ok: false,
+                message: 'El parámetro "cuit" es requerido'
+            });
+        }
+
+        try {
+            let cuitStr = cuit as string;
+            let altCuit = '';
+
+            if (/^\d{11}$/.test(cuitStr)) {
+                altCuit = `${cuitStr.slice(0, 2)}-${cuitStr.slice(2, 10)}-${cuitStr.slice(10)}`;
+            } else if (/^\d{2}-\d{8}-\d{1}$/.test(cuitStr)) {
+                altCuit = cuitStr.replace(/-/g, '');
+            }
+
+            let pharmacies = await this.searchPharmaciesCore(cuitStr);
+
+            if ((!pharmacies || pharmacies.length === 0) && altCuit) {
+                pharmacies = await this.searchPharmaciesCore(altCuit);
+            }
+
+            if (pharmacies && pharmacies.length > 0) {
+                return res.status(200).json({
+                    ok: true,
+                    message: 'Farmacias encontradas',
+                    data: pharmacies,
+                    total: pharmacies.length
+                });
+            } else {
+                return res.status(200).json({
+                    ok: false,
+                    message: 'No se encontraron farmacias con el CUIT proporcionado',
+                    data: [],
+                    total: 0
+                });
+            }
+        } catch (error) {
+            return res.status(500).json({
+                ok: false,
+                message: 'Error al buscar farmacias en Andes',
+                error
+            });
         }
     }
 

@@ -138,7 +138,16 @@ export const userSchema = new Schema({
             nombre: String,
             direccion: String,
         }
-    ]
+    ],
+    authorizationExpiration: {
+        type: Date
+    },
+    authorizationDisposition: {
+        type: String
+    },
+    responsibleDTEnrollment: {
+        type: String
+    }
 });
 
 // Model
