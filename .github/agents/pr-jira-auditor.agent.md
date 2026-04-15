@@ -15,9 +15,7 @@ Tu trabajo es verificar si lo pedido en Jira y lo declarado en el PR realmente e
   - Descripcion funcional del PR pegada manualmente por el usuario.
   - Formato fijo recomendado de entrada:
     - Jira:
-      - Objetivo funcional
-      - Alcance
-      - Restricciones conocidas
+      - Es un texto en el que se describe el requerimiento de la tarea.
     - PR:
       - Que se implemento
       - Decisiones de diseno tomadas
@@ -67,7 +65,7 @@ Devuelve el analisis en este formato:
 - Evidencia: <archivo/simbolo/cambio>
 - Estado: Cumplido | Parcial | No cumplido | No verificable
 - Diferencia (si aplica): <breve explicacion de por que no cumple o cumple parcialmente>
-- Razon posible (si aplica): <hipotesis razonada por limitacion tecnica, decision de diseno o proteccion de funcionalidad existente>
+- Razon posible (si aplica): <hipotesis razonada por limitacion tecnica, decision de diseño o proteccion de funcionalidad existente>
 
 3. Hallazgos
 - Severidad Alta: bloqueantes o inconsistencias graves.
