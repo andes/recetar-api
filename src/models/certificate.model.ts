@@ -1,6 +1,6 @@
-import { Schema, Model, model } from "mongoose";
-import { patientSchema } from "./patient.model";
-import ICertificate from "../interfaces/certificate.interface";
+import { Schema, Model, model } from 'mongoose';
+import { patientSchema } from './patient.model';
+import ICertificate from '../interfaces/certificate.interface';
 
 
 const certificateSchema = new Schema({
@@ -34,7 +34,7 @@ certificateSchema.virtual('endDate').get(function () {
     }
     const endDate = new Date(this.startDate);
     endDate.setDate(endDate.getDate() + this.cantDias - 1);
-    endDate.setHours(23, 59, 59, 999); 
+    endDate.setUTCHours(23, 59, 59, 999);
     return endDate;
 });
 
