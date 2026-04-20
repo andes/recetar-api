@@ -10,6 +10,7 @@ export interface ISnomedConcept {
 export default interface ISupply extends Document {
   id: string;
   name: string;
+  brand?: string;
   activePrinciple: string;
   power: string;
   unity: string;
