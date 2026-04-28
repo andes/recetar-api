@@ -31,5 +31,8 @@ export default interface IUser extends Document {
     }];
     isValidPassword(thisUser: IUser, password: string): Promise<boolean>;
     idAndes?: string;
+    authorizationExpiration?: Date;
+    authorizationDisposition?: string;
+    responsibleDTEnrollment?: string;
     // eslint-disable-next-line semi
 }

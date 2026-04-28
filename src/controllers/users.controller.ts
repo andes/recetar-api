@@ -332,7 +332,11 @@ class UsersController {
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const { email, username, businessName, enrollment, cuil, roles, password, idAndes, profesionGrado } = req.body;
+            const { 
+                email, username, businessName, enrollment, cuil, 
+                roles, password, idAndes, profesionGrado,
+                authorizationExpiration, authorizationDisposition, responsibleDTEnrollment
+            } = req.body;
 
             let finalUsername = username;
 
@@ -378,7 +382,10 @@ class UsersController {
                 ...(password && { password }),
                 ...(roles && Array.isArray(roles) && { roles }),
                 ...(idAndes !== undefined && { idAndes }),
-                ...(profesionGrado && Array.isArray(profesionGrado) && profesionGrado.length > 0 && { profesionGrado })
+                ...(profesionGrado && Array.isArray(profesionGrado) && profesionGrado.length > 0 && { profesionGrado }),
+                ...(authorizationExpiration && { authorizationExpiration }),
+                ...(authorizationDisposition && { authorizationDisposition }),
+                ...(responsibleDTEnrollment && { responsibleDTEnrollment })
             });
 
             // Campos por defecto
