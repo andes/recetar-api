@@ -261,7 +261,48 @@ class UsersController {
             return res.status(200).json(result);
 
         } catch (e) {
+            // eslint-disable-next-line no-console
             console.error('Error al actualizar usuario:', e);
+            return res.status(500).json({ mensaje: `${e}` });
+        }
+    };
+
+    public updateOwn = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            if (!req.body || !req.body._id) {
+                return res.status(400).json({ mensaje: 'Request body vacío o falta el ID del usuario' });
+            }
+
+            const requestingUser = req.user as IUser;
+            const { _id, organizaciones } = req.body;
+
+            if (String(requestingUser._id) !== String(_id)) {
+                return res.status(403).json({ mensaje: 'No tiene permisos para actualizar este usuario' });
+            }
+
+            if (!Array.isArray(organizaciones)) {
+                return res.status(400).json({ mensaje: 'El campo organizaciones debe ser un array' });
+            }
+
+            const result = await User.findOneAndUpdate(
+                { _id },
+                { organizaciones, updatedAt: new Date() },
+                {
+                    new: true,
+                    projection: { password: 0, refreshToken: 0, authenticationToken: 0 },
+                    runValidators: false
+                }
+            ).populate('roles', 'role');
+
+            if (!result) {
+                return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+            }
+
+            return res.status(200).json(result);
+
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('Error al actualizar organizaciones del usuario:', e);
             return res.status(500).json({ mensaje: `${e}` });
         }
     };
