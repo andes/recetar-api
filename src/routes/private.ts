@@ -37,7 +37,7 @@ class PrivateRoutes {
         this.router.get(`/prescriptions/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.index);
         this.router.get('/prescriptions/user/:id', prescriptionController.getByUserId);
         this.router.get('/prescriptions/user/:id/search', prescriptionController.searchByTerm);
-        this.router.get('/prescriptions/find/:patient_id&:date?', prescriptionController.getPrescriptionsByDateOrPatientId);
+        this.router.get('/prescriptions/find/:patient_id', prescriptionController.getPrescriptionsByDateOrPatientId);
         this.router.get(`/prescriptions/:id`, hasPermissionIn('readAny', 'prescription'), prescriptionController.show);
         this.router.post(`/prescriptions/`, hasPermissionIn('createAny', 'prescription'), prescriptionController.create);
         this.router.post(`/prescriptions/get-csv/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.getCsv);
