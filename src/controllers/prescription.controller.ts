@@ -12,6 +12,7 @@ import IUser from '../interfaces/user.interface';
 import moment = require('moment');
 import IRole from '../interfaces/role.interface';
 import { Types } from 'mongoose';
+import { getStringQueryParam } from '../utils/query';
 const csv = require('fast-csv');
 import needle from 'needle';
 import axios from 'axios';
@@ -566,7 +567,7 @@ class PrescriptionController implements BaseController {
 
     public getPrescriptionsDispensed = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const filterDispensedBy: string | undefined = req.query.dispensedBy;
+            const filterDispensedBy = getStringQueryParam(req.query.dispensedBy);
             const prescriptions: IPrescription[] | null = await Prescription.find({
                 status: 'Dispensada',
                 'dispensedBy.cuil': filterDispensedBy
