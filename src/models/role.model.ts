@@ -34,7 +34,7 @@ Role.schema.method('findByRoleOrCreate', async function(roleType: string): Promi
     }
     return role;
   } catch(err){
-    throw new Error(err);
+    throw err instanceof Error ? err : new Error(String(err));
   }
 });
 

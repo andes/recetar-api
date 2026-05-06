@@ -9,6 +9,7 @@ import Role from '../models/role.model';
 import IProfesionAutorizada from '../interfaces/profesionAutorizada.interface';
 import ProfesionAutorizada from '../models/profesionAutorizada.model';
 import { renderHTML, MailOptions, sendMail } from '../utils/roboSender/sendEmail';
+import { getStringQueryParam } from '../utils/query';
 import needle from 'needle';
 import moment from 'moment';
 
@@ -498,7 +499,14 @@ class AuthController {
     }
   };
 
-  private validateProfessional = (profesional: any, enrollment: string, cuil: string, graduationDate: string, enrollmentExpiration: string, profesionCodigo: string): boolean => {
+  private validateProfessional = (
+    profesional: any,
+    enrollment?: string,
+    cuil?: string,
+    graduationDate?: string,
+    enrollmentExpiration?: string,
+    profesionCodigo?: string
+  ): boolean => {
     if (!profesional || !profesional.profesiones || profesional.profesiones.length === 0 || !profesionCodigo) {
       return false;
     }
@@ -522,12 +530,17 @@ class AuthController {
 
   public getProfessionalsAndes = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const dni = req.query.documento;
-      const enrollment = req.query.matricula;
-      const cuil = req.query.cuil;
-      const graduationDate = req.query.fechaEgreso;
-      const enrollmentExpiration = req.query.fechaMatVencimiento;
-      const profesionCodigo = req.query.profesionCodigo;
+      const dni = getStringQueryParam(req.query.documento);
+      const enrollment = getStringQueryParam(req.query.matricula);
+      const cuil = getStringQueryParam(req.query.cuil);
+      const graduationDate = getStringQueryParam(req.query.fechaEgreso);
+      const enrollmentExpiration = getStringQueryParam(req.query.fechaMatVencimiento);
+      const profesionCodigo = getStringQueryParam(req.query.profesionCodigo);
+
+      if (!dni) {
+        return res.status(400).json({ message: 'Documento requerido.' });
+      }
+
       const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${dni}`);
       if (!resp.body || resp.body.length === 0) {
         return res.status(404).json({ message: 'No se encuentra el profesional.' });

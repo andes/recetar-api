@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Supply from '../models/supply.model';
 import ISupply from '../interfaces/supply.interface';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
+import { getStringQueryParam } from '../utils/query';
 
 class SupplyController implements BaseController {
 
@@ -104,8 +105,11 @@ class SupplyController implements BaseController {
 
     public getByName = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const { supplyName } = req.query;
-            let target: string = decodeURIComponent(supplyName);
+            const supplyName = getStringQueryParam(req.query.supplyName);
+            if (!supplyName) {
+                return res.status(400).json('Supply name is required');
+            }
+            let target = decodeURIComponent(supplyName);
             target = target.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
             let search = '';
             let supplies: ISupply[];
@@ -132,8 +136,11 @@ class SupplyController implements BaseController {
 
     public get = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const { supplyName } = req.query;
-            let target: string = decodeURIComponent(supplyName);
+            const supplyName = getStringQueryParam(req.query.supplyName);
+            if (!supplyName) {
+                return res.status(400).json('Supply name is required');
+            }
+            let target = decodeURIComponent(supplyName);
             target = target.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
             let search = '';
             let supplies: ISupply[];
