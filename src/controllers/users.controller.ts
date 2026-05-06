@@ -5,11 +5,14 @@ import { renderHTML, MailOptions, sendMail } from '../utils/roboSender/sendEmail
 import Role from '../models/role.model';
 import IRole from '../interfaces/role.interface';
 import axios from 'axios';
+import { getStringQueryParam } from '../utils/query';
 
 class UsersController {
     public index = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const { offset = 0, limit = 10, searchTerm } = req.query;
+            const offset = Number(getStringQueryParam(req.query.offset) ?? 0);
+            const limit = Number(getStringQueryParam(req.query.limit) ?? 10);
+            const searchTerm = getStringQueryParam(req.query.searchTerm);
 
             // Construir query base
             let query: any = {};
@@ -30,16 +33,16 @@ class UsersController {
             const users: IUser[] | null = await User.find(query, { password: 0, refreshToken: 0, authenticationToken: 0 })
                 .populate('roles', 'role')
                 .sort({ createdAt: -1 })
-                .skip(Number(offset))
-                .limit(Number(limit));
+                .skip(offset)
+                .limit(limit);
 
             const total = await User.countDocuments(query);
 
             return res.status(200).json({
                 users,
                 total,
-                offset: Number(offset),
-                limit: Number(limit)
+                offset,
+                limit
             });
         } catch (e) {
             return res.status(500).json({ mensaje: `${e}` });
@@ -139,8 +142,9 @@ class UsersController {
 
     public searchByTerm = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const { searchTerm } = req.query;
-            const { offset = 0, limit = 10 } = req.query;
+            const searchTerm = getStringQueryParam(req.query.searchTerm);
+            const offset = Number(getStringQueryParam(req.query.offset) ?? 0);
+            const limit = Number(getStringQueryParam(req.query.limit) ?? 10);
 
             if (!searchTerm) {
                 return res.status(400).json({ mensaje: 'Término de búsqueda requerido' });
@@ -160,16 +164,16 @@ class UsersController {
             const users: IUser[] | null = await User.find(searchQuery, { password: 0, refreshToken: 0, authenticationToken: 0 })
                 .populate('roles', 'role')
                 .sort({ createdAt: -1 })
-                .skip(Number(offset))
-                .limit(Number(limit));
+                .skip(offset)
+                .limit(limit);
 
             const total = await User.countDocuments(searchQuery);
 
             return res.status(200).json({
                 users,
                 total,
-                offset: Number(offset),
-                limit: Number(limit)
+                offset,
+                limit
             });
         } catch (e) {
             return res.status(500).json({ mensaje: `${e}` });
