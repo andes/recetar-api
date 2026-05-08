@@ -72,7 +72,8 @@ class SupplyController implements BaseController {
             if (typeof req.body.description !== 'undefined') { values.description = req.body.description; }
             if (typeof req.body.observation !== 'undefined') { values.observation = req.body.observation; }
             const opts: any = { runValidators: true, new: true };
-            const supply: ISupply | null = await Supply.findOneAndUpdate({ _id: id }, values, opts);
+            await Supply.updateOne({ _id: id }, values, opts);
+            const supply: ISupply | null = await Supply.findById(id);
 
             return res.status(200).json(supply);
         } catch (e) {

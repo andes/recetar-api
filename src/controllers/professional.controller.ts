@@ -24,6 +24,7 @@ class ProfessionalController implements BaseController {
             await newProfessional.save();
             return res.status(200).json({ newProfessional });
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -35,6 +36,7 @@ class ProfessionalController implements BaseController {
             const professional: IProfessional | null = await Professional.findOne({ _id: id });
             return res.status(200).json(professional);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -46,6 +48,7 @@ class ProfessionalController implements BaseController {
             const professional: IProfessional | null = await Professional.findOne({ dni });
             return res.status(200).json(professional);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -57,6 +60,7 @@ class ProfessionalController implements BaseController {
             const professional: IProfessional | null = await Professional.findOne({ enrollment });
             return res.status(200).json(professional);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -76,6 +80,7 @@ class ProfessionalController implements BaseController {
             const professional = await Professional.findOne({ _id: id });
             return res.status(200).json(professional);
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }
@@ -88,6 +93,7 @@ class ProfessionalController implements BaseController {
             await Professional.findByIdAndDelete(id);
             return res.status(200).json('deleted');
         } catch (err) {
+            // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
         }

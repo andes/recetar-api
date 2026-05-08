@@ -125,7 +125,8 @@ class PatientController implements BaseController {
             if (typeof req.body.firstName !== 'undefined') { values.firstName = req.body.firstName; }
             if (typeof req.body.sex !== 'undefined') { values.sex = req.body.sex; }
             const opts: any = { runValidators: true, new: true, context: 'query' };
-            const patient: IPatient | null = await Patient.findOneAndUpdate({ _id: id }, values, opts).select('dni lastName firstName sex');
+            await Patient.updateOne({ _id: id }, values, opts);
+            const patient: IPatient | null = await Patient.findById(id).select('dni lastName firstName sex');
 
             return res.status(200).json(patient);
         } catch (e) {

@@ -60,6 +60,7 @@ class JobsController {
                 data: { when }
             });
         } catch (error) {
+            // eslint-disable-next-line no-console
             console.error('Error programando envio de recetas:', error);
             return res.status(500).json({
                 success: false,
@@ -221,7 +222,6 @@ class JobsController {
     public deleteJobs = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { jobIds } = req.body;
-            console.log('Request to delete jobs with IDs:', jobIds);
 
             if (!jobIds && !jobIds.length) {
                 return res.status(400).json({

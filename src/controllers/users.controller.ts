@@ -473,8 +473,8 @@ class UsersController {
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const { 
-                email, username, businessName, enrollment, cuil, 
+            const {
+                email, username, businessName, enrollment, cuil,
                 roles, password, idAndes, profesionGrado,
                 authorizationExpiration, authorizationDisposition, responsibleDTEnrollment
             } = req.body;
@@ -606,6 +606,7 @@ class UsersController {
             };
             await sendMail(options);
         } catch (error) {
+            // eslint-disable-next-line no-console
             console.error('Error enviando confirmación de cambio de email:', error);
         }
     };

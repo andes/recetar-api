@@ -20,8 +20,8 @@ export class AndesInsumoDTO {
             },
             profesional: {
                 id: professional.idAndes || '',
-                nombre: nombre,
-                apellido: apellido,
+                nombre,
+                apellido,
                 documento: professional.username,
                 profesion: professional.profesionGrado?.[0]?.profesion || '',
                 matricula: professional.enrollment || '',

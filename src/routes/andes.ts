@@ -4,21 +4,21 @@ import practiceController from '../controllers/practice.controller';
 import { checkAuthAndes } from '../middlewares/passport-config-andes.middleware';
 
 
-class AndesRoutes{
+class AndesRoutes {
 
-  constructor(private router: Router = Router()){}
+    constructor(private router: Router = Router()) {}
 
-  // deefine your public routes inside of routes function
-  public routes(): Router{
+    // deefine your public routes inside of routes function
+    public routes(): Router {
 
-    // Rutas de prescripciones
-    this.router.post('/prescriptions', checkAuthAndes, andesController.create);
+        // Rutas de prescripciones
+        this.router.post('/prescriptions', checkAuthAndes, andesController.create);
 
-    // Rutas de prácticas médicas
-    this.router.post('/practices', checkAuthAndes, practiceController.create);
+        // Rutas de prácticas médicas
+        this.router.post('/practices', checkAuthAndes, practiceController.create);
 
-    return this.router;
-  }
+        return this.router;
+    }
 }
 
 const andesRoutes: AndesRoutes = new AndesRoutes();
