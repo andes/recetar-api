@@ -5,7 +5,7 @@ import { BaseController } from '../interfaces/classes/base-controllers.interface
 import ISupply from '../interfaces/supply.interface';
 import Supply from '../models/supply.model';
 import IPatient from '../interfaces/patient.interface';
-import Patient from '../models/patient.model';
+import { findOrCreatePatient } from '../models/patient.model';
 import User from '../models/user.model';
 import Role from '../models/role.model';
 import IUser from '../interfaces/user.interface';
@@ -160,15 +160,15 @@ class PrescriptionController implements BaseController {
                     myProfessional.businessName = `${resp.body[0]?.apellido}, ${resp.body[0]?.nombre}`;
                     await myProfessional.save();
                 }
-                myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
+                myPatient = await findOrCreatePatient(patient, ambito);
             } else {
                 // eslint-disable-next-line no-console
                 console.log('No se encuentra el profesional.');
                 // Se le pasa ambito privado para que solo cree el paciente en local
-                myPatient = await Patient.schema.methods.findOrCreate(patient, 'privado');
+                myPatient = await findOrCreatePatient(patient, 'privado');
             }
         } else {
-            myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
+            myPatient = await findOrCreatePatient(patient, ambito);
         }
         if (myProfessional && patient && myPatient) {
             try {
@@ -205,6 +205,7 @@ class PrescriptionController implements BaseController {
                         }
                         // En caso de que no se haya podido crear en andes, se guarda localmente
                         if (!createAndes) {
+                            // eslint-disable-next-line no-console
                             console.log('No se pudo crear la prescripción en ANDES, se guarda localmente.');
                             await newPrescription.save();
                             allPrescription.push(newPrescription);
@@ -521,15 +522,16 @@ class PrescriptionController implements BaseController {
             const opts: any = { new: true };
             const dispensedAt = moment();
 
-            const prescription: IPrescription | null = await Prescription.findOneAndUpdate({ _id: id, status: 'Pendiente' }, {
+            await Prescription.updateOne({ _id: id, status: 'Pendiente' }, {
                 status: 'Dispensada',
                 dispensedBy: {
-                    userId: dispensedBy?._id,
+                    userId: dispensedBy._id.toString(),
                     businessName: dispensedBy?.businessName,
-                    cuil: dispensedBy?.cuil,
+                    cuil: dispensedBy?.cuil || '',
                 },
-                dispensedAt
+                dispensedAt: dispensedAt.toDate()
             }, opts);
+            const prescription: IPrescription | null = await Prescription.findOne({ _id: id, status: 'Dispensada' });
 
             if (!prescription) { return res.status(422).json('La receta ya había sido dispensada.'); }
 
@@ -562,11 +564,11 @@ class PrescriptionController implements BaseController {
             if (timeNow.isAfter(limitTime) && userRole?.role !== 'admin') { return res.status(422).json('Ya no se puede anular la dispensa de la receta.'); }
 
             const opts: any = { new: true };
-            const prescription: IPrescription | null = await Prescription.findOneAndUpdate({ _id: id, status: 'Dispensada' }, {
-                status: 'Pendiente',
-                dispensedBy: {},
-                dispensedAt: ''
+            await Prescription.updateOne({ _id: id, status: 'Dispensada' }, {
+                $set: { status: 'Pendiente' },
+                $unset: { dispensedBy: '', dispensedAt: '' }
             }, opts);
+            const prescription: IPrescription | null = await Prescription.findOne({ _id: id, status: 'Pendiente' });
 
             return res.status(200).json(prescription);
         } catch (err) {
@@ -610,12 +612,13 @@ class PrescriptionController implements BaseController {
             }
 
             const opts: any = { runValidators: true, new: true, context: 'query' };
-            const updatedPrescription: IPrescription | null = await Prescription.findOneAndUpdate({ _id: id }, {
+            await Prescription.updateOne({ _id: id }, {
                 date,
                 observation,
                 diagnostic,
                 supplies: suppliesLoaded,
             }, opts);
+            const updatedPrescription: IPrescription | null = await Prescription.findById(id);
             return res.status(200).json(updatedPrescription);
         } catch (err) {
             // eslint-disable-next-line no-console

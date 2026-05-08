@@ -91,7 +91,6 @@ class AndesService {
     }
 
 
-
     public async patchPrescription(body: any): Promise<any> {
         try {
             const url = `${this.baseURL}/modules/recetas`;

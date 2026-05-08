@@ -240,7 +240,7 @@ const updateAndes = async (patient: IPatient): Promise<boolean> => {
     }
 };
 
-Patient.schema.method('findOrCreate', async (patientParam: IPatient, ambito?: string): Promise<IPatient> => {
+export const findOrCreatePatient = async (patientParam: IPatient, ambito?: string): Promise<IPatient> => {
     try {
         // Validar que el DNI no sea undefined
         if (!patientParam.dni) {
@@ -310,6 +310,8 @@ Patient.schema.method('findOrCreate', async (patientParam: IPatient, ambito?: st
     } catch (err) {
         throw new Error(`Error en findOrCreate: ${err}`);
     }
-});
+};
+
+Patient.schema.method('findOrCreate', findOrCreatePatient);
 
 export default Patient;

@@ -93,6 +93,5 @@ class AccessControlLoader {
 }
 
 const accessControlLoader = new AccessControlLoader();
-const accessControl = accessControlLoader.getAccessControl();
-export default accessControl;
-
+const accessControlInstance = accessControlLoader.getAccessControl();
+export default accessControlInstance;

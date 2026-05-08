@@ -165,4 +165,4 @@ export default interface IPrescriptionAndes extends Document {
             nombre: String;
         };
     };
-};;;;;;;;;;;;;;;;;;;;
+};

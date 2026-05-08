@@ -8,4 +8,4 @@ export default interface IObraSocial extends Document {
     idObraSocial?: number;
     numeroAfiliado?: string;
     elegidaDeAndes?: boolean;
-}
+};
