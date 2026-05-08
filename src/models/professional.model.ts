@@ -3,34 +3,34 @@ import IProfessional from '../interfaces/professional.interface';
 
 // Schema
 const professionalSchema = new Schema({
-  dni: {
-    type: String,
-  },
-  enrollment: {
-    type: String,
-    required: '{PATH} is required',
-    index: true,
-    unique: true
-  },
-  last_name: {
-    type: String,
-    required: '{PATH} is required'
-  },
-  first_name: {
-    type: Number,
-    required: '{PATH} is required'
-  },
-  sex: {
-    enum: ['Femenino', 'Masculino', 'Otro'],
-  },
-  image: {
-    type: String
-  },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  },
-  updatedAt: Date,
+    dni: {
+        type: String,
+    },
+    enrollment: {
+        type: String,
+        required: '{PATH} is required',
+        index: true,
+        unique: true
+    },
+    last_name: {
+        type: String,
+        required: '{PATH} is required'
+    },
+    first_name: {
+        type: Number,
+        required: '{PATH} is required'
+    },
+    sex: {
+        enum: ['Femenino', 'Masculino', 'Otro'],
+    },
+    image: {
+        type: String
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: Date,
 });
 
 // Model

@@ -104,7 +104,7 @@ class AndesService {
         }
 
         try {
-            let cuitStr = cuit as string;
+            const cuitStr = cuit as string;
             let altCuit = '';
 
             if (/^\d{11}$/.test(cuitStr)) {
@@ -158,8 +158,6 @@ class AndesService {
 
             const fullUrl = queryParams.toString() ? `${url}?${queryParams.toString()}` : url;
 
-            console.log('fullUrl', fullUrl);
-
             const response: AxiosResponse<IPrescriptionAndes[]> = await axios.get(fullUrl, {
                 headers: {
                     Authorization: this.token,
@@ -210,7 +208,6 @@ class AndesService {
     }
 
 
-
     public async patchPrescription(body: any): Promise<any> {
         try {
             const url = `${this.baseURL}/modules/recetas`;
@@ -231,7 +228,7 @@ class AndesService {
     /**
      * Busca stock de un insumo específico desde ANDES
      */
-    public async searchStock(params: { insumo: string, tipos?: string }): Promise<any[]> {
+    public async searchStock(params: { insumo: string; tipos?: string }): Promise<any[]> {
         try {
             let url = `${this.baseURL}/modules/insumos?nombre=^${params.insumo}`;
 
@@ -322,7 +319,6 @@ class AndesService {
     public async verificarRecetaExistente(dni: string, conceptId: string): Promise<any> {
         try {
             const url = `${this.baseURL}/modules/recetas/verificar`;
-            console.log('fullUrl', url);
 
             const response: AxiosResponse<any> = await axios.get(url, {
                 params: { documento: dni, conceptId },
@@ -331,8 +327,6 @@ class AndesService {
                     'Content-Type': 'application/json'
                 }
             });
-
-            console.log('response', response.data);
 
             return response.data;
         } catch (error) {

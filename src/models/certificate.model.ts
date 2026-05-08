@@ -1,6 +1,6 @@
-import { Schema, Model, model } from "mongoose";
-import { patientSubSchema } from "./patient.model";
-import ICertificate from "../interfaces/certificate.interface";
+import { Schema, Model, model } from 'mongoose';
+import { patientSubSchema } from './patient.model';
+import ICertificate from '../interfaces/certificate.interface';
 
 
 const certificateSchema = new Schema({

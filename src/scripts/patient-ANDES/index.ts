@@ -15,56 +15,65 @@ const initializeMongo = (): void => {
         useCreateIndex: true,
         useUnifiedTopology: true,
         useFindAndModify: false
-    }).then( mongoose => {
+    }).then(connection => {
+        // eslint-disable-next-line no-console
         console.log('DB is connected');
         patientMigration().then(() => {
-            mongoose.disconnect();
+            connection.disconnect();
         });
     });
-}
+};
 
-async function patientMigration(){
+async function patientMigration() {
 
-    console.log(">> INICIANDO PROCESO DE ACTUALIZACIÓN...");
+    // eslint-disable-next-line no-console
+    console.log('>> INICIANDO PROCESO DE ACTUALIZACIÓN...');
 
     const patientClass = new PatientClass();
 
-    try{
+    try {
         const patients: IPatient[] = await patientClass.getPatients();
 
+        // eslint-disable-next-line no-console
         console.log(`>> CANTIDAD DE PACIENTES EN BASE DE DATOS: ${patients.length}`);
-        console.log(`>> COMENZANDO ACTUALIZACIÓN....`);
-        
+        // eslint-disable-next-line no-console
+        console.log('>> COMENZANDO ACTUALIZACIÓN....');
+
         let nroPacientes = 0;
         for (const p of patients) {
             if (!p.idMPI) {
                 try {
                     const sexo = p.sex[0].toLowerCase + p.sex.substring(1);
-                    const resp = await needle('get', `${process.env.ANDES_MPI_ENDPOINT}?search=${p.dni}&activo=true&estado=validado&sexo=${sexo}`, {headers: { 'Authorization': process.env.JWT_MPI_TOKEN }})
-                    if (resp.body[0]){
+                    const resp = await needle('get', `${process.env.ANDES_MPI_ENDPOINT}?search=${p.dni}&activo=true&estado=validado&sexo=${sexo}`, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+                    if (resp.body[0]) {
                         const { id, nombre, apellido, genero, alias, numeroIdentificacion, tipoIdentificacion } = resp.body[0];
                         const rp = await Patient.updateOne({ _id: p.id }, {
                             idMPI: id,
                             firstName: nombre,
                             lastName: apellido,
-                            genero: genero,
+                            genero,
                             nombreAutopercibido: alias,
                             nroDocumentoExtranjero: numeroIdentificacion,
                             tipoDocumentoExtranjero: tipoIdentificacion,
                         });
-                        if (rp.nModified){
-                            nroPacientes += 1;                    
+                        if (rp.nModified) {
+                            nroPacientes += 1;
                         }
                     }
-                }catch(err){
+                } catch (err) {
+                    // eslint-disable-next-line no-console
                     console.log(`EL PACIENTE CON DNI ${p.dni} NO PUDO SER ACTUALIZADO ` + err);
                 }
             }
         }
+        // eslint-disable-next-line no-console
         console.log(`Pacientes actualizados: ${nroPacientes}`);
+        // eslint-disable-next-line no-console
         console.log('>> FIN PROCESO =====================');
-    }catch(err){
-        console.log("OCURRIÓ UN ERROR");
+    } catch (err) {
+        // eslint-disable-next-line no-console
+        console.log('OCURRIÓ UN ERROR');
+        // eslint-disable-next-line no-console
         console.log(err);
     }
 }

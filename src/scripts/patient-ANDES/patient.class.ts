@@ -1,5 +1,5 @@
-import Patient from "../../models/patient.model";
-import IPatient from "../../interfaces/patient.interface";
+import Patient from '../../models/patient.model';
+import IPatient from '../../interfaces/patient.interface';
 
 export class PatientClass {
 
@@ -7,9 +7,9 @@ export class PatientClass {
         try {
             return await Patient.find();
         } catch (err) {
-            throw new Error("OCURRIO UN ERROR AL OBTENER LOS PACIENTES: " + err);
+            throw new Error('OCURRIO UN ERROR AL OBTENER LOS PACIENTES: ' + err);
         }
-    }
+    };
 
-    
+
 }

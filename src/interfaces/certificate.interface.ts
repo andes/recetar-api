@@ -4,10 +4,10 @@ import IPatient from './patient.interface';
 export default interface ICertificate extends Document {
     patient: IPatient;
     professional: {
-        userId: string,
-        enrollment: string,
-        cuil: string,
-        businessName: string,
+        userId: string;
+        enrollment: string;
+        cuil: string;
+        businessName: string;
     };
     certificate: string;
     status?: string;
@@ -17,4 +17,4 @@ export default interface ICertificate extends Document {
     endDate?: Date;
     cantDias: number;
     createdAt: Date;
-}
+};
