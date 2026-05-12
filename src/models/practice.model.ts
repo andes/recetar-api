@@ -1,13 +1,13 @@
 import { Schema, Model, model } from 'mongoose';
 import IPractice from '../interfaces/practice.interface';
-import { patientSchema } from './patient.model';
+import { patientSubSchema } from './patient.model';
 
 const practiceSchema: Schema = new Schema({
   date: {
     type: Date,
     required: true
   },
-  patient: patientSchema,
+  patient: patientSubSchema,
   professional: {
     userId: {
       type: String,
