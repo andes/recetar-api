@@ -36,6 +36,12 @@ const prescriptionSchema = new Schema({
                 type: String,
                 enum: ['device', 'nutrition', 'magistral']
             },
+            requiresSpecification: {
+                type: Boolean
+            },
+            specification: {
+                type: String
+            }
         },
         quantity: Number,
         quantityPresentation: Number,

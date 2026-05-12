@@ -20,6 +20,8 @@ import snomedSupplyController from '../controllers/snomed.controller';
 import andesPrescriptionController from '../controllers/andesPrescription.controller';
 import certificateController from '../controllers/certificate.controller';
 import practiceController from '../controllers/practice.controller';
+import andesStockController from '../controllers/andesStock.controller';
+import stockController from '../controllers/stock.controller';
 class PrivateRoutes {
 
     constructor(private router: Router = Router()) { }
@@ -66,6 +68,10 @@ class PrivateRoutes {
         // Andes search
         this.router.get('/andes/professionals', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchProfessionals);
         this.router.get('/andes/pharmacies', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchPharmacies);
+        // Andes Stock
+        this.router.get('/stock/andes', andesStockController.getStock);
+        this.router.get('/stock/andes/search', andesStockController.search);
+        this.router.get('/stock', stockController.getStock);
 
         // practices
         this.router.get(`/practices/:id`, hasPermissionIn('readAny', 'prescription'), practiceController.getById);
