@@ -1,7 +1,7 @@
 import { Schema, Model, model } from 'mongoose';
 import IPrescription from '../interfaces/prescription.interface';
 import { supplySchema } from '../models/supply.model';
-import { patientSchema } from '../models/patient.model';
+import { patientSubSchema } from '../models/patient.model';
 
 // Schema
 const prescriptionSchema = new Schema({
@@ -10,7 +10,7 @@ const prescriptionSchema = new Schema({
         unique: true,
         sparse: true
     },
-    patient: patientSchema,
+    patient: patientSubSchema,
     professional: {
         userId: Schema.Types.ObjectId,
         businessName: { type: String, required: true },
