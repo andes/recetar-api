@@ -224,6 +224,40 @@ class AndesPrescriptionController implements BaseController {
         }
     };
 
+    public verificarReceta = async (req: Request, res: Response): Promise<Response> => {
+        const { dni, conceptId } = req.query;
+
+        if (!dni || !conceptId) {
+            return res.status(400).json({ mensaje: 'Se requieren los parámetros dni y conceptId' });
+        }
+
+        try {
+            // Consulta la DB local por DNI del paciente (identificador común entre sistemas)
+            const estadosValidos = ['vigente', 'pendiente'];
+            const estadosDispensaExcluidos = ['dispensada'];
+
+            const recetasLocales = await PrescriptionAndes.find({
+                'paciente.documento': dni,
+                'medicamento.concepto.conceptId': conceptId,
+                'estadoActual.tipo': { $in: estadosValidos },
+                'estadoDispensaActual.tipo': { $nin: estadosDispensaExcluidos }
+            }).lean();
+
+            // Consulta a Andes por documento y conceptId utilizando el endpoint especifico
+            const verificacionAndes = await AndesService.verificarRecetaExistente(dni as string, conceptId as string).catch(() => null);
+            const recetasAndes = verificacionAndes && verificacionAndes.existe && verificacionAndes.receta 
+                ? [verificacionAndes.receta] 
+                : [];
+
+            // Combinar resultados
+            const allRecetas = [...recetasLocales, ...recetasAndes];
+
+            return res.status(200).json(allRecetas);
+        } catch (e) {
+            return res.status(500).json({ mensaje: 'Error al verificar receta', error: e });
+        }
+    };
+
 }
 
 export default new AndesPrescriptionController();
