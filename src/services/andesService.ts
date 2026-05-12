@@ -297,8 +297,7 @@ class AndesService {
                 queryParams.append('hasta', params.hasta);
             }
             queryParams.append('origenExternoApp', 'recetar');
-            queryParams.append('excluirEstado', 'pendiente');
-            queryParams.append('excluirEstado', 'eliminada');
+            queryParams.append('excluirEstado', 'pendiente,eliminada');
 
             const fullUrl = queryParams.toString() ? `${url}?${queryParams.toString()}` : url;
 
@@ -366,6 +365,51 @@ class AndesService {
             // eslint-disable-next-line no-console
             console.error('Error al suspender la prescripción en ANDES:', error);
             throw error;
+        }
+    };
+
+    /**
+     * Obtiene prescripciones de ANDES por DNI con filtros
+     */
+    public async getPrescriptionsByDni(
+        dni: string,
+        sexo: string,
+        status?: string,
+        dateFrom?: string,
+        dateTo?: string
+    ): Promise<IPrescriptionAndes[]> {
+        try {
+            let andesUrl = `${this.baseURL}/modules/recetas/filtros?documento=${dni}&sexo=${sexo}`;
+
+            let estadoFiltro = 'vigente';
+            const validEstados = ['pendiente', 'vigente', 'finalizada', 'vencida', 'suspendida', 'rechazada', 'dispensada', 'todas'];
+
+            if (status && validEstados.includes(status)) {
+                estadoFiltro = status;
+            }
+
+            if (dateFrom) { andesUrl += `&fechaInicio=${dateFrom}`; }
+            if (dateTo) { andesUrl += `&fechaFin=${dateTo}`; }
+
+            andesUrl += `&estado=${estadoFiltro}`;
+
+            const response: AxiosResponse<IPrescriptionAndes[]> = await axios.get(andesUrl, {
+                headers: { Authorization: this.token }
+            });
+
+            let andesPrescriptions = response.data;
+            if (andesPrescriptions) {
+                andesPrescriptions = andesPrescriptions.map((aPrescription: any) => {
+                    aPrescription.idAndes = aPrescription._id;
+                    return aPrescription;
+                });
+            }
+
+            return andesPrescriptions || [];
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al obtener prescripciones de ANDES por DNI:', error);
+            return [];
         }
     };
 } export default new AndesService();
