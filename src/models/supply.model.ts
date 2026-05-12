@@ -26,11 +26,14 @@ export const supplySchema = new Schema({
   secondPresentation: {
     type: String
   },
-  snomedConcept: {
-    conceptId: String,
-    term: String,
-    fsn: String,
-    semanticTag: String
+  code: {
+    source: { type: String, enum: ['SIFAHO', 'SNOMED'] },
+    value: String
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
   }
 }, {
   timestamps: true
