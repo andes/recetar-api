@@ -158,6 +158,8 @@ class AndesService {
 
             const fullUrl = queryParams.toString() ? `${url}?${queryParams.toString()}` : url;
 
+            console.log('fullUrl', fullUrl);
+
             const response: AxiosResponse<IPrescriptionAndes[]> = await axios.get(fullUrl, {
                 headers: {
                     Authorization: this.token,
@@ -260,6 +262,32 @@ class AndesService {
         } catch (error) {
             // eslint-disable-next-line no-console
             console.error('Error al obtener prescripciones por profesional desde ANDES:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Verifica si existe una receta vigente para un paciente y medicamento (por conceptId SNOMED) en ANDES
+     */
+    public async verificarRecetaExistente(dni: string, conceptId: string): Promise<any> {
+        try {
+            const url = `${this.baseURL}/modules/recetas/verificar`;
+            console.log('fullUrl', url);
+
+            const response: AxiosResponse<any> = await axios.get(url, {
+                params: { documento: dni, conceptId },
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            console.log('response', response.data);
+
+            return response.data;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al verificar receta existente en ANDES:', error);
             throw error;
         }
     }
