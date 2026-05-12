@@ -6,6 +6,22 @@ import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
 import prescriptionController from './prescription.controller';
 import AndesService from '../services/andesService';
+import moment = require('moment');
+import needle from 'needle';
+
+/**
+ * Función helper para obtener prescripciones de ANDES por DNI
+ * Esta función puede ser llamada desde otros controladores
+ */
+export const getAndesPrescriptionsByDni = async (
+    dni: string,
+    sexo: string,
+    status?: string,
+    dateFrom?: string,
+    dateTo?: string
+): Promise<IPrescriptionAndes[]> => {
+    return AndesService.getPrescriptionsByDni(dni, sexo, status, dateFrom, dateTo);
+};
 
 
 class AndesPrescriptionController implements BaseController {
@@ -245,8 +261,8 @@ class AndesPrescriptionController implements BaseController {
 
             // Consulta a Andes por documento y conceptId utilizando el endpoint especifico
             const verificacionAndes = await AndesService.verificarRecetaExistente(dni as string, conceptId as string).catch(() => null);
-            const recetasAndes = verificacionAndes && verificacionAndes.existe && verificacionAndes.receta 
-                ? [verificacionAndes.receta] 
+            const recetasAndes = verificacionAndes && verificacionAndes.existe && verificacionAndes.receta
+                ? [verificacionAndes.receta]
                 : [];
 
             // Combinar resultados
