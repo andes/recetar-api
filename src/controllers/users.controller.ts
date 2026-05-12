@@ -5,7 +5,7 @@ import { renderHTML, MailOptions, sendMail } from '../utils/roboSender/sendEmail
 import Role from '../models/role.model';
 import IRole from '../interfaces/role.interface';
 import axios from 'axios';
-
+import crypto from 'crypto';
 class UsersController {
     public index = async (req: Request, res: Response): Promise<Response> => {
         try {
@@ -43,6 +43,102 @@ class UsersController {
             });
         } catch (e) {
             return res.status(500).json({ mensaje: `${e}` });
+        }
+    };
+
+    public requestEmailUpdate = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            const { email, userId } = req.body;
+
+            if (!email) {
+                return res.status(400).json({ mensaje: 'Email requerido' });
+            }
+
+            // Verificar si el email ya existe en otro usuario
+            const emailExists = await this.validateEmailUniqueness(email, userId);
+            if (emailExists) {
+                return res.status(400).json({ mensaje: 'El email ya está registrado por otro usuario' });
+            }
+
+            // Generar token y expiración
+            const token = crypto.randomBytes(20).toString('hex');
+            const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+
+            const user = await User.findByIdAndUpdate(userId, {
+                pendingEmail: email,
+                emailConfirmationToken: token,
+                emailConfirmationExpires: expires
+            }, { new: true });
+
+            if (!user) {
+                return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+            }
+
+            // Enviar email de confirmación
+            await this.sendEmailUpdateConfirmation(user, email, token);
+
+            return res.status(200).json({ mensaje: 'Se ha enviado un correo de confirmación a la nueva dirección.' });
+
+        } catch (e) {
+            return res.status(500).json({ mensaje: `${e}` });
+        }
+    };
+
+    public confirmEmailUpdate = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            const { token } = req.body;
+
+            if (!token) {
+                return res.status(400).json({ mensaje: 'Token requerido' });
+            }
+
+            // Buscar usuario con el token y verificar expiración
+            const user = await User.findOne({
+                emailConfirmationToken: token,
+                emailConfirmationExpires: { $gt: new Date() }
+            }).populate('roles');
+
+            if (!user) {
+                return res.status(400).json({ mensaje: 'Token inválido o expirado' });
+            }
+
+            // Aplicar el cambio
+            user.email = user.pendingEmail!;
+
+            // Si es farmacia, actualizamos también el username
+            const isPharmacy = user.roles.some((role: any) => role.role === 'pharmacist');
+            if (isPharmacy) {
+                user.username = user.pendingEmail!;
+            }
+
+            user.pendingEmail = undefined;
+            user.emailConfirmationToken = undefined;
+            user.emailConfirmationExpires = undefined;
+
+            await user.save();
+
+            return res.status(200).json({ mensaje: 'Email actualizado correctamente' });
+
+        } catch (e) {
+            return res.status(500).json({ mensaje: `${e}` });
+        }
+    };
+
+    /**
+* Valida que el email no esté siendo usado por otro usuario
+* @param email - Email a validar
+* @param userId - ID del usuario actual (para excluirlo de la búsqueda)
+* @returns true si el email ya existe, false si está disponible
+*/
+    private validateEmailUniqueness = async (email: string, userId: string): Promise<boolean> => {
+        try {
+            const existingUser = await User.findOne({
+                email,
+                _id: { $ne: userId }
+            });
+            return !!existingUser;
+        } catch (error) {
+            throw new Error(`Error validating email uniqueness: ${error}`);
         }
     };
 
@@ -471,6 +567,35 @@ class UsersController {
             // eslint-disable-next-line no-console
             console.log(err);
             return res.status(500).json('Server Error');
+        }
+    };
+
+    /**
+     * Envía un email con el token para confirmar el cambio de email
+     * @param user - Usuario
+     * @param newEmail - Nuevo email
+     * @param token - Token de confirmación
+     */
+    private sendEmailUpdateConfirmation = async (user: IUser, newEmail: string, token: string): Promise<void> => {
+        try {
+            const extras: any = {
+                titulo: 'Confirmar cambio de email',
+                usuario: user,
+                url: `${process.env.APP_DOMAIN || 'https://recetar.andes.gob.ar'}/auth/confirm-update/${token}`
+            };
+
+            const htmlToSend = await renderHTML('emails/update-email.html', extras);
+            const options: MailOptions = {
+                from: `${process.env.EMAIL_USERNAME}`,
+                to: newEmail,
+                subject: 'Confirmar cambio de email - RecetAR',
+                text: '',
+                html: htmlToSend,
+                attachments: null
+            };
+            await sendMail(options);
+        } catch (error) {
+            console.error('Error enviando confirmación de cambio de email:', error);
         }
     };
 };
