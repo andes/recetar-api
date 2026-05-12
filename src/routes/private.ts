@@ -107,6 +107,7 @@ class PrivateRoutes {
         this.router.post('/users/create', hasPermissionIn('createAny', 'user'), usersController.create);
         this.router.post('/users/update', hasPermissionIn('updateAny', 'user'), usersController.update);
         this.router.post('/users/update-own', hasPermissionIn('updateOwn', 'user'), usersController.updateOwn);
+        this.router.post('/users/request-update', hasPermissionIn('updateOwn', 'user'), usersController.requestEmailUpdate);
         this.router.get('/organizaciones-andes', hasPermissionIn('readOwn', 'user'), usersController.organizacionesAndes);
 
         // pharmacy

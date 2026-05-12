@@ -40,6 +40,15 @@ export const userSchema = new Schema({
     email: {
         type: String
     },
+    pendingEmail: {
+        type: String
+    },
+    emailConfirmationToken: {
+        type: String
+    },
+    emailConfirmationExpires: {
+        type: Date
+    },
     enrollment: {
         type: String
     },
