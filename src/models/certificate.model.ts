@@ -34,7 +34,7 @@ certificateSchema.virtual('endDate').get(function () {
     }
     const endDate = new Date(this.startDate);
     endDate.setDate(endDate.getDate() + this.cantDias - 1);
-    endDate.setUTCHours(23, 59, 59, 999);
+    endDate.setHours(23, 59, 59, 999);
     return endDate;
 });
 
