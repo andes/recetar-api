@@ -26,6 +26,11 @@ class CertificateController implements BaseController {
                     businessName: myProfessional?.businessName,
                     cuil: myProfessional?.cuil,
                     enrollment: myProfessional?.enrollment,
+                    profesionGrado: myProfessional?.profesionGrado?.length ? myProfessional.profesionGrado.map((pg: any) => ({
+                        profesion: pg.profesion,
+                        codigoProfesion: pg.codigoProfesion,
+                        numeroMatricula: pg.numeroMatricula
+                    })) : [],
                 },
                 certificate,
                 startDate,

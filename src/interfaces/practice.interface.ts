@@ -18,6 +18,11 @@ export default interface IPractice extends Document {
     enrollment: string;
     cuil: string;
     businessName: string;
+    profesionGrado?: {
+      profesion: string;
+      codigoProfesion: string;
+      numeroMatricula: string;
+    }[];
   };
   practice: string;
   diagnostic: string;
