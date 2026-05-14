@@ -8,6 +8,11 @@ export default interface ICertificate extends Document {
         enrollment: string,
         cuil: string,
         businessName: string,
+        profesionGrado?: {
+            profesion: string;
+            codigoProfesion: string;
+            numeroMatricula: string;
+        }[];
     };
     certificate: string;
     status?: string;

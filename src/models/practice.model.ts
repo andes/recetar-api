@@ -14,17 +14,28 @@ const practiceSchema: Schema = new Schema({
       required: true
     },
     enrollment: {
-      type: String,
-      required: true
+      type: String
     },
     cuil: {
-      type: String,
-      required: true
+      type: String
     },
     businessName: {
-      type: String,
-      required: true
-    }
+      type: String
+    },
+    profesionGrado: [{
+      profesion: {
+        type: String,
+        required: true
+      },
+      codigoProfesion: {
+        type: String,
+        required: true
+      },
+      numeroMatricula: {
+        type: String,
+        required: true
+      },
+    }]
   },
   practice: {
     type: String,

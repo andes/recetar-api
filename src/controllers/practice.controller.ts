@@ -36,7 +36,7 @@ class PracticeController {
         });
       }
 
-      if (patient?.os.nombre) {
+      if (patient?.os?.nombre) {
         patient.os.otraOS = patient.otraOS || false;
         myPatient.obraSocial = patient.os;
       }
@@ -49,6 +49,11 @@ class PracticeController {
           businessName: myProfessional?.businessName,
           cuil: myProfessional?.cuil,
           enrollment: myProfessional?.enrollment,
+          profesionGrado: myProfessional?.profesionGrado?.length ? myProfessional.profesionGrado.map((pg: any) => ({
+              profesion: pg.profesion,
+              codigoProfesion: pg.codigoProfesion,
+              numeroMatricula: pg.numeroMatricula
+          })) : [],
         },
         practice,
         indications,
@@ -59,6 +64,7 @@ class PracticeController {
 
       return res.status(httpCodes.CREATED).json([savedPractice]);
     } catch (error) {
+      console.error('Error interno del servidor al crear la práctica:', error);
       return res.status(httpCodes.INTERNAL_SERVER_ERROR).json('Error interno del servidor al crear la práctica');
     }
   }

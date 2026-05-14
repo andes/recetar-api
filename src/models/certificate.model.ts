@@ -10,6 +10,20 @@ const certificateSchema = new Schema({
         businessName: { type: String, required: true },
         cuil: { type: String },
         enrollment: { type: String },
+        profesionGrado: [{
+            profesion: {
+                type: String,
+                required: true
+            },
+            codigoProfesion: {
+                type: String,
+                required: true
+            },
+            numeroMatricula: {
+                type: String,
+                required: true
+            },
+        }]
     },
     certificate: { type: String },
     startDate: { type: Date, required: true },
