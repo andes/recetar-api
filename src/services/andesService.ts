@@ -319,20 +319,17 @@ class AndesService {
     /**
      * Verifica si existe una receta vigente para un paciente y medicamento (por conceptId SNOMED) en ANDES
      */
-    public async verificarRecetaExistente(dni: string, conceptId: string): Promise<any> {
+    public async verificarRecetaExistente(dni: string, conceptId: string, sexo: string): Promise<any> {
         try {
             const url = `${this.baseURL}/modules/recetas/verificar`;
-            console.log('fullUrl', url);
 
             const response: AxiosResponse<any> = await axios.get(url, {
-                params: { documento: dni, conceptId },
+                params: { documento: dni, conceptId, sexo },
                 headers: {
                     Authorization: this.token,
                     'Content-Type': 'application/json'
                 }
             });
-
-            console.log('response', response.data);
 
             return response.data;
         } catch (error) {

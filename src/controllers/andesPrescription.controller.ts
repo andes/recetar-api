@@ -241,10 +241,14 @@ class AndesPrescriptionController implements BaseController {
     };
 
     public verificarReceta = async (req: Request, res: Response): Promise<Response> => {
-        const { dni, conceptId } = req.query;
+        const { dni, conceptId, sexo } = req.query;
 
         if (!dni || !conceptId) {
             return res.status(400).json({ mensaje: 'Se requieren los parámetros dni y conceptId' });
+        }
+
+        if (!sexo) {
+            return res.status(400).json({ mensaje: 'Se requiere el parámetro sexo del paciente' });
         }
 
         try {
@@ -259,8 +263,8 @@ class AndesPrescriptionController implements BaseController {
                 'estadoDispensaActual.tipo': { $nin: estadosDispensaExcluidos }
             }).lean();
 
-            // Consulta a Andes por documento y conceptId utilizando el endpoint especifico
-            const verificacionAndes = await AndesService.verificarRecetaExistente(dni as string, conceptId as string).catch(() => null);
+            // Consulta a Andes por documento, conceptId y sexo utilizando el endpoint especifico
+            const verificacionAndes = await AndesService.verificarRecetaExistente(dni as string, conceptId as string, sexo as string).catch(() => null);
             const recetasAndes = verificacionAndes && verificacionAndes.existe && verificacionAndes.receta
                 ? [verificacionAndes.receta]
                 : [];
