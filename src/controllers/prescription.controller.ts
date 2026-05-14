@@ -173,6 +173,17 @@ class PrescriptionController implements BaseController {
         } else {
             myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
         }
+
+        // Completa fecha de nacimiento solo cuando el paciente existente no la tiene.
+        const payloadBirthDate = patient?.fechaNac || patient?.fechaNacimiento;
+        if (myPatient && !myPatient.fechaNac && payloadBirthDate) {
+            const parsedBirthDate = new Date(payloadBirthDate);
+            if (!Number.isNaN(parsedBirthDate.getTime())) {
+                myPatient.fechaNac = parsedBirthDate;
+                await myPatient.save();
+            }
+        }
+
         if (myProfessional && patient && myPatient) {
             try {
                 const allPrescription: IPrescription[] = [];
