@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Supply from '../models/supply.model';
 import ISupply from '../interfaces/supply.interface';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
+import { getStringQueryParam } from '../utils/query';
 
 class SupplyController implements BaseController {
 
@@ -71,7 +72,8 @@ class SupplyController implements BaseController {
             if (typeof req.body.description !== 'undefined') { values.description = req.body.description; }
             if (typeof req.body.observation !== 'undefined') { values.observation = req.body.observation; }
             const opts: any = { runValidators: true, new: true };
-            const supply: ISupply | null = await Supply.findOneAndUpdate({ _id: id }, values, opts);
+            await Supply.updateOne({ _id: id }, values, opts);
+            const supply: ISupply | null = await Supply.findById(id);
 
             return res.status(200).json(supply);
         } catch (e) {
@@ -104,8 +106,11 @@ class SupplyController implements BaseController {
 
     public getByName = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const { supplyName } = req.query;
-            let target: string = decodeURIComponent(supplyName);
+            const supplyName = getStringQueryParam(req.query.supplyName);
+            if (!supplyName) {
+                return res.status(400).json('Supply name is required');
+            }
+            let target = decodeURIComponent(supplyName);
             target = target.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
             let search = '';
             let supplies: ISupply[];
@@ -132,8 +137,11 @@ class SupplyController implements BaseController {
 
     public get = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const { supplyName } = req.query;
-            let target: string = decodeURIComponent(supplyName);
+            const supplyName = getStringQueryParam(req.query.supplyName);
+            if (!supplyName) {
+                return res.status(400).json('Supply name is required');
+            }
+            let target = decodeURIComponent(supplyName);
             target = target.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
             let search = '';
             let supplies: ISupply[];

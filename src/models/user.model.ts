@@ -154,13 +154,25 @@ export const userSchema = new Schema({
 const User: Model<IUser> = model<IUser>('User', userSchema);
 
 // Model methods
-User.schema.method('isValidPassword', async (thisUser: IUser, password: string): Promise<boolean> => {
+export const isValidPassword = async (thisUser: IUser, password: string): Promise<boolean> => {
     try {
         return await bcrypt.compare(password, thisUser.password);
     } catch (err) {
         throw err;
     }
-});
+};
+
+export const userHasRole = async (userId: IUser['_id'], roleName: string): Promise<boolean> => {
+    const user = await User.findById(userId).populate({
+        path: 'roles',
+        match: { role: roleName },
+        select: '_id'
+    });
+
+    return Boolean(user?.roles?.length);
+};
+
+User.schema.method('isValidPassword', isValidPassword);
 
 // Model Validations
 User.schema.path('username').validate(uniqueUsername, 'This {PATH} is already registered');

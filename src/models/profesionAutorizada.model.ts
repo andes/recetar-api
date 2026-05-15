@@ -3,14 +3,14 @@ import IProfesionAutorizada from '../interfaces/profesionAutorizada.interface';
 
 // Schema
 const profesionAutorizadaSchema = new Schema({
-  profesion: {
-    type: String,
-    required: '{PATH} is required'
-  },
-  codigoProfesion: {
-    type: String,
-    required: '{PATH} is required'
-  }
+    profesion: {
+        type: String,
+        required: '{PATH} is required'
+    },
+    codigoProfesion: {
+        type: String,
+        required: '{PATH} is required'
+    }
 });
 
 // Model
