@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { env } from '../../config/config';
 // interface
 import { PatientClass } from './patient.class';
 import IPatient from '../../interfaces/patient.interface';
@@ -8,7 +7,7 @@ import Patient from '../../models/patient.model';
 
 // init db connections
 const initializeMongo = (): void => {
-    const MONGO_URI = `${(process.env.MONGODB_URI || env.MONGODB_CONNECTION)}`;
+    const MONGO_URI = `${(process.env.MONGODB_URI)}`;
     mongoose.Promise = Promise;
     mongoose.connect(MONGO_URI, {
         useNewUrlParser: true,

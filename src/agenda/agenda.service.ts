@@ -1,5 +1,4 @@
 import Agenda, { Job } from 'agenda';
-import { env } from '../config/config';
 import mongoose from 'mongoose';
 import testJob from './jobs/testJob';
 import sendPrescriptions from './jobs/sendPrecriptions';
