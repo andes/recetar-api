@@ -18,6 +18,7 @@ import axios from 'axios';
 import AndesService from '../services/andesService';
 import { AndesInsumoDTO } from '../dtos/andes-insumo.dto';
 import { getAndesPrescriptionsByDni } from './andesPrescription.controller';
+import { buildPatientSexRegex, normalizePatientSex } from '../utils/patient-sex';
 
 class PrescriptionController implements BaseController {
 
@@ -393,6 +394,7 @@ class PrescriptionController implements BaseController {
         try {
             const filterPatient = req.params.patient_id;
             const { status, dateFrom, dateTo, sexo } = req.query;
+            const normalizedSex = normalizePatientSex(sexo);
 
             let startDate: Date = moment().subtract(1, 'month').toDate();
             let endDate: Date = moment(new Date()).endOf('day').toDate();
@@ -411,6 +413,11 @@ class PrescriptionController implements BaseController {
                 'patient.dni': filterPatient,
                 date: { $gte: startDate, $lt: endDate }
             };
+            const patientSexRegex = buildPatientSexRegex(normalizedSex);
+
+            if (patientSexRegex) {
+                filters['patient.sex'] = patientSexRegex;
+            }
 
             if (status) {
                 if (status !== 'todas') {
@@ -438,12 +445,11 @@ class PrescriptionController implements BaseController {
             if (localPrescriptions) {
                 await this.ensurePrescriptionIds(localPrescriptions);
             }
-
             // Obtener prescripciones de ANDES
-            const sexoParam = sexo ? (sexo as string).toLowerCase() : '';
+            // Obtener prescripciones de ANDES
             const andesPrescriptions = await getAndesPrescriptionsByDni(
                 filterPatient,
-                sexoParam,
+                normalizedSex,
                 status as string,
                 dateFrom as string,
                 dateTo as string
