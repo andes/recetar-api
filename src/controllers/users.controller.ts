@@ -274,19 +274,43 @@ class UsersController {
             }
 
             const requestingUser = req.user as IUser;
-            const { _id, organizaciones } = req.body;
+            const { _id, organizaciones, email } = req.body;
 
             if (String(requestingUser._id) !== String(_id)) {
                 return res.status(403).json({ mensaje: 'No tiene permisos para actualizar este usuario' });
             }
 
-            if (!Array.isArray(organizaciones)) {
-                return res.status(400).json({ mensaje: 'El campo organizaciones debe ser un array' });
+            const currentUser: IUser | null = await User.findById(_id).populate('roles', 'role');
+            if (!currentUser) {
+                return res.status(404).json({ mensaje: 'Usuario no encontrado' });
             }
+
+            const updateData: any = {};
+
+            let emailChanged = false;
+            const oldEmail = currentUser.email;
+
+            if (email && email !== currentUser.email) {
+                try {
+                    await this.validateAndPrepareEmailUpdate(email, _id, currentUser, updateData);
+                    emailChanged = true;
+                } catch (error) {
+                    return res.status(400).json({ mensaje: (error as Error).message });
+                }
+            }
+
+            if (organizaciones !== undefined) {
+                if (!Array.isArray(organizaciones)) {
+                    return res.status(400).json({ mensaje: 'El campo organizaciones debe ser un array' });
+                }
+                updateData.organizaciones = organizaciones;
+            }
+
+            updateData.updatedAt = new Date();
 
             const result = await User.findOneAndUpdate(
                 { _id },
-                { organizaciones, updatedAt: new Date() },
+                updateData,
                 {
                     new: true,
                     projection: { password: 0, refreshToken: 0, authenticationToken: 0 },
@@ -298,11 +322,18 @@ class UsersController {
                 return res.status(404).json({ mensaje: 'Usuario no encontrado' });
             }
 
+            if (emailChanged && result && oldEmail) {
+                this.sendEmailChangeNotification(result, oldEmail, email).catch(error => {
+                    // eslint-disable-next-line no-console
+                    console.error('Error enviando notificación de cambio de email:', error);
+                });
+            }
+
             return res.status(200).json(result);
 
         } catch (e) {
             // eslint-disable-next-line no-console
-            console.error('Error al actualizar organizaciones del usuario:', e);
+            console.error('Error al actualizar usuario:', e);
             return res.status(500).json({ mensaje: `${e}` });
         }
     };
