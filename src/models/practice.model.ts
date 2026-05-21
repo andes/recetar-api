@@ -3,59 +3,59 @@ import IPractice from '../interfaces/practice.interface';
 import { patientSubSchema } from './patient.model';
 
 const practiceSchema: Schema = new Schema({
-  date: {
-    type: Date,
-    required: true
-  },
-  patient: patientSubSchema,
-  professional: {
-    userId: {
-      type: String,
-      required: true
-    },
-    enrollment: {
-      type: String
-    },
-    cuil: {
-      type: String
-    },
-    businessName: {
-      type: String
-    },
-    profesionGrado: [{
-      profesion: {
-        type: String,
+    date: {
+        type: Date,
         required: true
-      },
-      codigoProfesion: {
+    },
+    patient: patientSubSchema,
+    professional: {
+        userId: {
+            type: String,
+            required: true
+        },
+        enrollment: {
+            type: String
+        },
+        cuil: {
+            type: String
+        },
+        businessName: {
+            type: String
+        },
+        profesionGrado: [{
+            profesion: {
+                type: String,
+                required: true
+            },
+            codigoProfesion: {
+                type: String,
+                required: true
+            },
+            numeroMatricula: {
+                type: String,
+                required: true
+            },
+        }]
+    },
+    practice: {
         type: String,
-        required: true
-      },
-      numeroMatricula: {
+        required: false
+    },
+    diagnostic: {
         type: String,
-        required: true
-      },
-    }]
-  },
-  practice: {
-    type: String,
-    required: false
-  },
-  diagnostic: {
-    type: String,
-    required: false
-  },
-  indications: {
-    type: String,
-    required: false
-  },
-  status: {
-    type: String,
-    enum: ['active', 'completed', 'cancelled'],
-    default: 'active'
-  }
+        required: false
+    },
+    indications: {
+        type: String,
+        required: false
+    },
+    status: {
+        type: String,
+        enum: ['active', 'completed', 'cancelled'],
+        default: 'active'
+    }
 }, {
-  timestamps: true
+    timestamps: true
 });
 
 const Practice: Model<IPractice> = model<IPractice>('Practice', practiceSchema);

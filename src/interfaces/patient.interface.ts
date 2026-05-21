@@ -34,4 +34,4 @@ export default interface IPatient extends Document {
     idLocalInMPI?: boolean; // Indica si el paciente tiene ID local en Array de identificadores de MPI
     findOrCreate(patientParam: IPatient): Promise<IPatient>;
     cuil?: string | null;
-}
+};

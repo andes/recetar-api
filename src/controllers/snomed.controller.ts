@@ -15,23 +15,23 @@ class snomedSupplyController implements BaseController {
         } catch (e) {
             return res.status(500).json({ mensaje: 'Error', error: e });
         }
-    }
+    };
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         return res.status(200);
-    }
+    };
 
     public show = async (req: Request, res: Response): Promise<Response> => {
         return res.status(200);
-    }
+    };
 
     public update = async (req: Request, res: Response): Promise<Response> => {
         return res.status(200);
-    }
+    };
 
     public delete = async (req: Request, res: Response): Promise<Response> => {
-        return res.status(200)
-    }
+        return res.status(200);
+    };
 
 }
 export default new snomedSupplyController();

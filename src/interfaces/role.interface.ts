@@ -9,4 +9,4 @@ export default interface IRole extends Document {
     createdAt?: Date;
     updatedAt?: Date;
     findByRoleOrCreate(roleType: string): Promise<IRole>;
-};;;;;;;;;;
+};

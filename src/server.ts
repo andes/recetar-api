@@ -15,14 +15,22 @@ import routes from './routes/routes';
 class Server {
 
     protected app: express.Application;
+    private isConfigured = false;
 
     constructor() {
         this.app = express();
-        this.config();
+    }
+
+    private getApiPrefix(): string {
+        return process.env.API_URI_PREFIX || process.env.API_URI_PRFIX || env.API_URI_PREFIX;
     }
 
     async config() {
-        db.initializeMongo();
+        if (this.isConfigured) {
+            return;
+        }
+
+        await db.initializeMongo();
         this.app.set('port', process.env.PORT || 4000);
         // logger
         this.app.use(morgan('dev'));
@@ -38,10 +46,11 @@ class Server {
         this.routes();
         this.app.use(errorHandler);
         this.app.use(notFoundHandler);
+        this.isConfigured = true;
     }
 
     routes() {
-        this.app.use(`${(process.env.API_URI_PRFIX || env.API_URI_PREFIX)}`, routes);
+        this.app.use(this.getApiPrefix(), routes);
     }
 
     async start() {
@@ -50,7 +59,7 @@ class Server {
             // eslint-disable-next-line no-console
             console.log(`🚀 API Server running on port ${this.app.get('port')}`);
             // eslint-disable-next-line no-console
-            console.log(`📋 API disponible en: http://localhost:${this.app.get('port')}${env.API_URI_PREFIX}`);
+            console.log(`📋 API disponible en: http://localhost:${this.app.get('port')}${this.getApiPrefix()}`);
         });
     }
 
@@ -67,4 +76,7 @@ const server = new Server();
 process.on('SIGTERM', () => server.gracefulShutdown());
 process.on('SIGINT', () => server.gracefulShutdown());
 
-server.start().catch(console.error);
+server.start().catch((error) => {
+    // eslint-disable-next-line no-console
+    console.error(error);
+});
