@@ -15,7 +15,7 @@ import needle from 'needle';
  */
 export const getAndesPrescriptionsByDni = async (
     dni: string,
-    sexo: string,
+    sexo?: string,
     status?: string,
     dateFrom?: string,
     dateTo?: string

@@ -2,6 +2,7 @@ import axios, { AxiosResponse } from 'axios';
 import { Request, Response } from 'express';
 import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
 import PrescriptionAndes from '../models/prescriptionAndes.model';
+import { buildPatientSexRegex, normalizePatientSex } from '../utils/patient-sex';
 
 interface GetPrescriptionsParams {
     professionalId: string;
@@ -12,7 +13,7 @@ interface GetPrescriptionsParams {
 
 interface GetPrescriptionsByPatientParams {
     documento: string;
-    sexo?: 'masculino' | 'femenino';
+    sexo?: 'masculino' | 'femenino' | 'otro';
     estado?: 'vigente' | 'pendiente' | 'dispensada' | 'vencida' | 'finalizada' | 'suspendida' | 'rechazada';
 }
 
@@ -32,7 +33,7 @@ class AndesService {
         try {
             if (!req.query.dni) { return res.status(400).json({ mensaje: 'Missing required params!' }); }
             const dni = req.query.dni as string;
-            const sexo = req.query.sexo ? (req.query.sexo as any) : undefined;
+            const sexo = normalizePatientSex(req.query.sexo);
             let prescriptions: IPrescriptionAndes[] | null = [];
             let andesPrescriptions: IPrescriptionAndes[] | null = null;
 
@@ -46,7 +47,14 @@ class AndesService {
                 prescriptions = [...prescriptions, ...andesPrescriptions];
             }
 
-            const savedPrescriptions: IPrescriptionAndes[] | null = await PrescriptionAndes.find({ 'paciente.documento': dni });
+            const savedPrescriptionsFilters: any = { 'paciente.documento': dni };
+            const savedPatientSexRegex = buildPatientSexRegex(sexo);
+
+            if (savedPatientSexRegex) {
+                savedPrescriptionsFilters['paciente.sexo'] = savedPatientSexRegex;
+            }
+
+            const savedPrescriptions: IPrescriptionAndes[] | null = await PrescriptionAndes.find(savedPrescriptionsFilters);
             if (savedPrescriptions) {
                 prescriptions = [...prescriptions, ...savedPrescriptions];
             }
@@ -370,13 +378,18 @@ class AndesService {
      */
     public async getPrescriptionsByDni(
         dni: string,
-        sexo: string,
+        sexo?: string,
         status?: string,
         dateFrom?: string,
         dateTo?: string
     ): Promise<IPrescriptionAndes[]> {
         try {
-            let andesUrl = `${this.baseURL}/modules/recetas/filtros?documento=${dni}&sexo=${sexo}`;
+            let andesUrl = `${this.baseURL}/modules/recetas/filtros?documento=${dni}`;
+            const normalizedSexo = normalizePatientSex(sexo);
+
+            if (normalizedSexo) {
+                andesUrl += `&sexo=${normalizedSexo}`;
+            }
 
             let estadoFiltro = 'vigente';
             const validEstados = ['pendiente', 'vigente', 'finalizada', 'vencida', 'suspendida', 'rechazada', 'dispensada', 'todas'];
