@@ -1,0 +1,181 @@
+tags:
+  - name: Andes
+    description: |
+      Integración con el sistema ANDES (API de recetas e insumos del ecosistema de salud pública).
+      
+      **Responsabilidades:**
+      - **Cliente HTTP** (`AndesClient`): comunicación con los endpoints de ANDES para recetas, insumos, profesionales, farmacias y MPI (Master Patient Index).
+      - **Mapper** (`AndesMapper`): transformación entre los tipos de ANDES y los tipos locales (pacientes, insumos).
+      - **Cache local** (`PrescriptionAndes`): réplica local de recetas de ANDES en MongoDB para consultas offline y menor latencia.
+      - **DTOs de entrada**: schemas Zod que validan los requests entrantes para operaciones ANDES (dispensa, cancelación, suspensión, verificación).
+      - **Errores**: errores específicos de ANDES (`PrescriptionAndesNotFoundError`) que se integran con el sistema de errores global.
+      
+      **Endpoints expuestos (en módulos):**
+      - `GET /prescriptions/andes/verify` — verificar receta activa en ANDES
+      - `GET /prescriptions/andes/:id` — obtener cache local de receta ANDES
+      - `PUT /prescriptions/andes/dispense` — dispensar en ANDES
+      - `PUT /prescriptions/andes/cancel-dispense` — cancelar dispensa en ANDES
+      - `PUT /prescriptions/andes/suspend` — suspender receta en ANDES
+      - `GET /stock/andes` — consultar stock real en ANDES
+      - `GET /users/organizaciones-andes` — buscar organizaciones en ANDES
+      - `GET /supplies/snomed` — buscar conceptos SNOMED en ANDES
+      
+      **Dependencias externas:**
+      - `ANDES_ENDPOINT`: URL base de la API de ANDES
+      - `JWT_MPI_TOKEN`: token de autenticación
+      - `ANDES_MPI_ENDPOINT`: endpoint del MPI (Master Patient Index)
+
+components:
+  schemas:
+    AndesDispenseRequest:
+      type: object
+      required: [recetaId, descripcion, cantidad]
+      properties:
+        recetaId:
+          type: string
+          description: ID de la receta en ANDES
+        descripcion:
+          type: string
+          description: Descripción de la dispensa
+        cantidad:
+          type: number
+          description: Cantidad dispensada
+        organizacion:
+          type: object
+          properties:
+            id:
+              type: string
+            nombre:
+              type: string
+
+    AndesCancelDispenseRequest:
+      type: object
+      required: [recetaId, idDispensaApp]
+      properties:
+        recetaId:
+          type: string
+        idDispensaApp:
+          type: string
+          description: ID de la dispensa a cancelar
+        motivo:
+          type: string
+        organizacion:
+          type: object
+          properties:
+            id:
+              type: string
+            nombre:
+              type: string
+
+    AndesSuspendRequest:
+      type: object
+      required: [recetaId, motivo]
+      properties:
+        recetaId:
+          type: string
+        motivo:
+          type: string
+        observacion:
+          type: string
+
+    VerifyRecetaRequest:
+      type: object
+      required: [dni, conceptId, sexo]
+      properties:
+        dni:
+          type: string
+        conceptId:
+          type: string
+        sexo:
+          type: string
+
+    PrescriptionAndes:
+      type: object
+      description: Cache local de una prescripción de ANDES
+      properties:
+        idAndes:
+          type: string
+          description: ID original en ANDES
+        profesionalId:
+          type: string
+        organizacion:
+          type: object
+          properties:
+            _id:
+              type: string
+            nombre:
+              type: string
+        profesional:
+          type: object
+          properties:
+            id:
+              type: string
+            nombre:
+              type: string
+            apellido:
+              type: string
+            documento:
+              type: string
+        paciente:
+          type: object
+          properties:
+            id:
+              type: string
+            nombre:
+              type: string
+            apellido:
+              type: string
+            documento:
+              type: string
+            sexo:
+              type: string
+            fechaNacimiento:
+              type: string
+        concepto:
+          type: object
+          properties:
+            conceptId:
+              type: string
+            term:
+              type: string
+        estadoActual:
+          type: object
+          properties:
+            tipo:
+              type: string
+              enum: [pendiente, vigente, finalizada, vencida, suspendida, rechazada]
+        estadoDispensaActual:
+          type: object
+          properties:
+            tipo:
+              type: string
+              enum: [pendiente, dispensada]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AndesPrescriptionExternal:
+      type: object
+      description: |
+        Esquema de una prescripción devuelta por la API externa de ANDES.
+        Se almacena localmente en `PrescriptionAndes` para cache.
+      properties:
+        _id:
+          type: string
+        organizacion:
+          type: object
+        profesional:
+          type: object
+        paciente:
+          type: object
+        fechaRegistro:
+          type: string
+        estadoActual:
+          type: object
+        dispensa:
+          type: array
+          items:
+            type: object

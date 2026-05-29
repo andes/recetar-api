@@ -1,11 +1,9 @@
 import express from 'express';
 import Agenda from 'agenda';
-import jobsRoutes from './routes/jobs';
-import AgendaService from './agenda/agenda.service';
-import * as db from './database/dbconfig';
+import { initializeMongo } from './database/dbconfig';
 import './config/config';
+import AgendaService from './agenda/agenda.service';
 
-// Importación dinámica de Agendash
 const Agendash = require('agendash');
 
 class AgendaUIServer {
@@ -26,17 +24,15 @@ class AgendaUIServer {
 
         this.app.use(express.json());
 
-        this.app.use('/api/jobs', jobsRoutes);
-
-        this.app.get('/api/info', (req, res) => {
+        this.app.get('/api/info', (_req, res) => {
             res.json({
                 service: 'Agenda.js UI',
                 version: '1.0.0',
                 description: 'Interfaz web para gestionar trabajos programados',
                 agenda: {
                     collection: 'agendaJobs',
-                    processEvery: '30 seconds'
-                }
+                    processEvery: '30 seconds',
+                },
             });
         });
     }
@@ -45,7 +41,7 @@ class AgendaUIServer {
         if (this.isConfigured) {
             return;
         }
-        // Esperar a que Mongoose esté conectado antes de inicializar Agenda
+
         await this.agendaService.waitForInitialization();
         this.agenda = this.agendaService.getAgenda();
         this.app.use('/', Agendash(this.agenda));
@@ -53,15 +49,15 @@ class AgendaUIServer {
     }
 
     async start() {
-        await db.initializeMongo();
+        await initializeMongo();
 
         await this.initializeAgenda();
         const port = this.app.get('port');
         this.app.listen(port, () => {
             // eslint-disable-next-line no-console
-            console.log(`🚀 Agenda.js UI running on port ${port}`);
+            console.log(`Agenda.js UI running on port ${port}`);
             // eslint-disable-next-line no-console
-            console.log(`📊 Dashboard available at: http://localhost:${port}`);
+            console.log(`Dashboard available at: http://localhost:${port}`);
         });
     }
 

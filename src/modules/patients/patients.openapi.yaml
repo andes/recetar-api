@@ -1,0 +1,144 @@
+tags:
+  - name: Pacientes
+    description: |
+      Gestión de pacientes del sistema.
+      
+      - CRUD completo (crear, listar, obtener por ID, actualizar).
+      - Búsqueda por DNI (`GET /patients/dni/{dni}`).
+      - Consulta de obras sociales (`GET /patients/coverages`) y cobertura por DNI (`GET /patients/coverages/{dni}`).
+
+paths:
+  /patients:
+    get:
+      tags: [Pacientes]
+      summary: Listar pacientes
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de pacientes
+    post:
+      tags: [Pacientes]
+      summary: Crear paciente
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dni:
+                  type: string
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                sex:
+                  type: string
+                  enum: [Femenino, Masculino, Otro]
+                fechaNac:
+                  type: string
+      responses:
+        "201":
+          description: Paciente creado
+        "422":
+          description: Error de validación
+
+  /patients/{id}:
+    get:
+      tags: [Pacientes]
+      summary: Obtener paciente por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos del paciente
+        "404":
+          description: Paciente no encontrado
+    patch:
+      tags: [Pacientes]
+      summary: Actualizar paciente
+      description: Acepta campos parciales para actualizar. Los campos enviados se setean; los no enviados no se modifican.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dni:
+                  type: string
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                sex:
+                  type: string
+                  enum: [Femenino, Masculino, Otro]
+                fechaNac:
+                  type: string
+      responses:
+        "200":
+          description: Paciente actualizado
+        "404":
+          description: Paciente no encontrado
+        "422":
+          description: Error de validación
+
+  /patients/dni/{dni}:
+    get:
+      tags: [Pacientes]
+      summary: Buscar paciente por DNI
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dni
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paciente(s) encontrado(s)
+
+  /patients/coverages:
+    get:
+      tags: [Pacientes]
+      summary: Listar obras sociales
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de obras sociales
+
+  /patients/coverages/{dni}:
+    get:
+      tags: [Pacientes]
+      summary: Obtener obra social por DNI
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dni
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Obra social del paciente

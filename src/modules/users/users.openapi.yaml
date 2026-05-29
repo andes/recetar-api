@@ -1,0 +1,266 @@
+tags:
+  - name: Usuarios
+    description: Gestión de usuarios del sistema
+
+paths:
+  /users:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios
+      x-description-file: docs/paths/users/list.md
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: searchTerm
+          schema: { type: string }
+          description: Término de búsqueda (email, username, businessName)
+        - in: query
+          name: offset
+          schema: { type: integer, default: 0 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: Lista paginada de usuarios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserSummary'
+                      total: { type: integer }
+                      offset: { type: integer }
+                      limit: { type: integer }
+    post:
+      tags: [Usuarios]
+      summary: Crear un nuevo usuario
+      x-description-file: docs/paths/users/create.md
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    $ref: '#/components/schemas/UserSummary'
+
+  /users/{id}:
+    get:
+      tags: [Usuarios]
+      summary: Obtener usuario por ID
+      x-description-file: docs/paths/users/show.md
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Datos del usuario
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    $ref: '#/components/schemas/UserDetail'
+    patch:
+      tags: [Usuarios]
+      summary: Actualizar un usuario
+      x-description-file: docs/paths/users/update.md
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    $ref: '#/components/schemas/UserSummary'
+
+  /users/me/organizaciones:
+    patch:
+      tags: [Usuarios]
+      summary: Actualizar organizaciones del usuario autenticado
+      x-description-file: docs/paths/users/update-own-organizaciones.md
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organizaciones]
+              properties:
+                organizaciones:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      nombre: { type: string }
+                      direccion: { type: string }
+      responses:
+        '200':
+          description: Organizaciones actualizadas
+
+  /users/request-email-update:
+    post:
+      tags: [Usuarios]
+      summary: Solicitar cambio de email
+      x-description-file: docs/paths/users/request-email-update.md
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Email de confirmación enviado
+
+  /users/confirm-email-update:
+    post:
+      tags: [Usuarios]
+      summary: Confirmar cambio de email con token
+      x-description-file: docs/paths/users/confirm-email-update.md
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Email confirmado correctamente
+
+  /users/organizaciones-andes:
+    get:
+      tags: [Usuarios]
+      summary: Buscar organizaciones en ANDES
+      x-description-file: docs/paths/users/organizaciones-andes.md
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: nombre
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Lista de organizaciones
+
+components:
+  schemas:
+    UserSummary:
+      type: object
+      properties:
+        _id: { type: string }
+        username: { type: string }
+        email: { type: string }
+        businessName: { type: string }
+        isActive: { type: boolean }
+        createdAt:
+          type: string
+          format: date-time
+    UserDetail:
+      allOf:
+        - $ref: '#/components/schemas/UserSummary'
+        - type: object
+          properties:
+            enrollment: { type: string }
+            cuil: { type: string }
+            roles:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id: { type: string }
+                  role: { type: string }
+            lastLogin:
+              type: string
+              format: date-time
+            organizaciones:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id: { type: string }
+                  nombre: { type: string }
+                  direccion: { type: string }
+    CreateUserRequest:
+      type: object
+      required: [password, roles]
+      properties:
+        email: { type: string }
+        username: { type: string }
+        password: { type: string, minLength: 8 }
+        businessName: { type: string }
+        enrollment: { type: string }
+        cuil: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+        idAndes: { type: string }
+        profesionGrado:
+          type: array
+          items:
+            type: object
+            properties:
+              profesion: { type: string }
+              codigoProfesion: { type: string }
+              numeroMatricula: { type: string }
+    UpdateUserRequest:
+      type: object
+      properties:
+        email: { type: string }
+        username: { type: string }
+        businessName: { type: string }
+        enrollment: { type: string }
+        cuil: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+        isActive: { type: boolean }
+        idAndes: { type: string }

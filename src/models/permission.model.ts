@@ -1,7 +1,14 @@
-import { Schema, Model, model } from 'mongoose';
-import IPermission from '../interfaces/permission.interface';
+import { Schema, Model, model, Document, Types } from 'mongoose';
 
-// Schema
+export interface IPermission extends Document {
+    resource: string;
+    action: string;
+    attributes: string[];
+    roles: Types.ObjectId[];
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
 const permissionSchema = new Schema({
     resource: {
         type: String,
@@ -26,7 +33,6 @@ const permissionSchema = new Schema({
     updatedAt: Date,
 });
 
-// Model
 const Permission: Model<IPermission> = model<IPermission>('Permission', permissionSchema);
 
 export default Permission;

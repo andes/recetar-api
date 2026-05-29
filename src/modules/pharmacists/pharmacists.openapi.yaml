@@ -1,0 +1,98 @@
+tags:
+  - name: Farmacéuticos
+    description: |
+      Gestión de farmacéuticos del sistema.
+      
+      - CRUD completo (listar, crear, obtener por ID, actualizar, eliminar).
+      - Cada farmacéutico puede estar asociado a una o más farmacias.
+
+paths:
+  /pharmacists:
+    get:
+      tags: [Farmacéuticos]
+      summary: Listar farmacéuticos
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de farmacéuticos
+    post:
+      tags: [Farmacéuticos]
+      summary: Crear farmacéutico
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enrollment:
+                  type: string
+                lastName:
+                  type: string
+                firstName:
+                  type: string
+                sex:
+                  type: string
+                  enum: [Femenino, Masculino, Otro]
+                image:
+                  type: string
+      responses:
+        "201":
+          description: Farmacéutico creado
+        "422":
+          description: Error de validación
+
+  /pharmacists/{id}:
+    get:
+      tags: [Farmacéuticos]
+      summary: Obtener farmacéutico por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos del farmacéutico
+        "404":
+          description: Farmacéutico no encontrado
+    patch:
+      tags: [Farmacéuticos]
+      summary: Actualizar farmacéutico
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Farmacéutico actualizado
+        "404":
+          description: Farmacéutico no encontrado
+    delete:
+      tags: [Farmacéuticos]
+      summary: Eliminar farmacéutico
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Farmacéutico eliminado
+        "404":
+          description: Farmacéutico no encontrado
+
+

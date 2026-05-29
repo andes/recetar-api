@@ -1,35 +1,29 @@
-
 import { Router } from 'express';
-import { checkAuth } from '../middlewares/passport-config.middleware';
+import authRoutes from '../modules/auth/auth.routes';
+import patientsRoutes from '../modules/patients/patients.routes';
+import professionalsRoutes from '../modules/professionals/professionals.routes';
+import pharmacistsRoutes from '../modules/pharmacists/pharmacists.routes';
+import pharmaciesRoutes from '../modules/pharmacists/pharmacies.routes';
 
+import suppliesRoutes from '../modules/supplies/supplies.routes';
+import practicesRoutes from '../modules/practices/practices.routes';
+import certificatesRoutes from '../modules/certificates/certificates.routes';
+import prescriptionsRoutes from '../modules/prescriptions/prescription.routes';
+import stockRoutes from '../modules/stock/stock.routes';
+import usersRoutes from '../modules/users/users.routes';
 
-// routes
-import authRoutes from './auth';
-import pbulicRoutes from './public';
-import privateRoutes from './private';
-import andesRoutes from './andes';
-import jobsRoutes from './jobs';
+const router = Router();
 
-class Routes {
+router.use('/auth', authRoutes);
+router.use('/users', usersRoutes);
+router.use('/patients', patientsRoutes);
+router.use('/professionals', professionalsRoutes);
+router.use('/pharmacists', pharmacistsRoutes);
+router.use('/pharmacies', pharmaciesRoutes);
+router.use('/supplies', suppliesRoutes);
+router.use('/practices', practicesRoutes);
+router.use('/certificates', certificatesRoutes);
+router.use('/prescriptions', prescriptionsRoutes);
+router.use('/stock', stockRoutes);
 
-    constructor(private router: Router = Router()) { }
-
-    public routesDefinition(): Router {
-        // public routes
-        // auth
-        this.router.use('/auth', authRoutes);
-        this.router.use('', pbulicRoutes);
-        // andes specific routes
-        this.router.use('/andes', andesRoutes);
-        // jobs routes (protected)
-        //  this.router.use('/jobs', checkAuth, jobsRoutes);
-        // private: requires authentication
-        this.router.all('*', checkAuth, privateRoutes);
-
-        return this.router;
-    }
-
-}
-
-const routes = new Routes();
-export default routes.routesDefinition();
+export default router;

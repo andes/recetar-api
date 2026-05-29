@@ -1,5 +1,6 @@
 
 module.exports = {
+    "ignorePatterns": ["tests/", "jest.config.ts"],
     "env": {
         "browser": true,
         "es6": true,

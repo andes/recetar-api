@@ -1,0 +1,316 @@
+tags:
+  - name: Prescripciones
+    description: |
+      Gestión de recetas y prescripciones médicas. El módulo más complejo del sistema.
+      
+      - **Recetas locales**: CRUD completo + dispensa + cancelación de dispensa con ventana de 2h.
+      - **Recetas ANDES**: cache local de prescripciones de ANDES, dispensa, cancelación y suspensión con sincronización.
+      - **Sincronización**: ámbito público envía a ANDES; ámbito privado es solo local.
+      - **Trimestral**: genera 3 recetas (inmediata + 30 + 60 días).
+      - **Búsquedas**: por profesional, por paciente (DNI), por rango de fechas, por CUIL del farmacéutico.
+      - **Verificación**: consulta recetas activas locales + ANDES por DNI + conceptId.
+
+paths:
+  /prescriptions:
+    get:
+      tags: [Prescripciones]
+      summary: Listar recetas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista paginada de recetas
+    post:
+      tags: [Prescripciones]
+      summary: Crear receta
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "201":
+          description: Receta creada
+        "422":
+          description: Error de validación
+
+  /prescriptions/{id}:
+    get:
+      tags: [Prescripciones]
+      summary: Obtener receta por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos de la receta
+        "404":
+          description: Receta no encontrada
+    patch:
+      tags: [Prescripciones]
+      summary: Actualizar receta (solo Pendiente)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Receta actualizada
+        "404":
+          description: Receta no encontrada
+    delete:
+      tags: [Prescripciones]
+      summary: Eliminar receta (solo Pendiente)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Receta eliminada
+        "404":
+          description: Receta no encontrada
+
+  /prescriptions/user/{id}:
+    get:
+      tags: [Prescripciones]
+      summary: Recetas por profesional
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: ambito
+          in: query
+          schema:
+            type: string
+            enum: [publico, privado]
+        - name: skip
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista de recetas del profesional
+
+  /prescriptions/find/{patientId}:
+    get:
+      tags: [Prescripciones]
+      summary: Buscar recetas por paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+        - name: endDate
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de recetas del paciente
+
+  /prescriptions/{id}/dispense:
+    patch:
+      tags: [Prescripciones]
+      summary: Dispensar receta
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                businessName:
+                  type: string
+                cuil:
+                  type: string
+      responses:
+        "200":
+          description: Receta dispensada
+        "409":
+          description: Error de negocio (no dispensable, ya dispensada)
+
+  /prescriptions/{id}/cancel-dispense:
+    patch:
+      tags: [Prescripciones]
+      summary: Cancelar dispensa
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dispensa cancelada
+        "409":
+          description: Error de negocio (fuera de ventana 2h)
+
+  /prescriptions/andes/verify:
+    get:
+      tags: [Prescripciones]
+      summary: Verificar receta activa en ANDES
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dni
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: conceptId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: sexo
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resultado de verificación
+
+  /prescriptions/andes/{id}:
+    get:
+      tags: [Prescripciones]
+      summary: Obtener receta de ANDES por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Receta de ANDES encontrada
+        "404":
+          description: Receta no encontrada
+
+  /prescriptions/andes/dispense:
+    patch:
+      tags: [Prescripciones]
+      summary: Dispensar receta de ANDES
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recetaId:
+                  type: string
+                descripcion:
+                  type: string
+                cantidad:
+                  type: number
+      responses:
+        "200":
+          description: Dispensa registrada
+
+  /prescriptions/andes/cancel-dispense:
+    patch:
+      tags: [Prescripciones]
+      summary: Cancelar dispensa de ANDES
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recetaId:
+                  type: string
+                idDispensaApp:
+                  type: string
+      responses:
+        "204":
+          description: Dispensa cancelada
+
+  /prescriptions/andes/suspend:
+    patch:
+      tags: [Prescripciones]
+      summary: Suspender receta en ANDES
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recetaId:
+                  type: string
+                motivo:
+                  type: string
+      responses:
+        "200":
+          description: Receta suspendida

@@ -43,3 +43,6 @@ typings
 # production build
 dist
 .env
+
+# generated docs
+/openapi.json
