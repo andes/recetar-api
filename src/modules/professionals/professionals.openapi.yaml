@@ -1,0 +1,123 @@
+tags:
+  - name: Profesionales
+    description: |
+      Gestión de profesionales de la salud habilitados para recetar.
+      
+      - CRUD completo (listar, crear, obtener por ID, actualizar, eliminar).
+      - Búsqueda por DNI (`GET /professionals/dni/{dni}`).
+
+paths:
+  /professionals:
+    get:
+      tags: [Profesionales]
+      summary: Listar profesionales
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista de profesionales
+    post:
+      tags: [Profesionales]
+      summary: Crear profesional
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dni:
+                  type: string
+                enrollment:
+                  type: string
+                lastName:
+                  type: string
+                firstName:
+                  type: string
+                sex:
+                  type: string
+                  enum: [Femenino, Masculino, Otro]
+                image:
+                  type: string
+      responses:
+        "201":
+          description: Profesional creado
+        "422":
+          description: Error de validación
+
+  /professionals/{id}:
+    get:
+      tags: [Profesionales]
+      summary: Obtener profesional por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos del profesional
+        "404":
+          description: Profesional no encontrado
+    patch:
+      tags: [Profesionales]
+      summary: Actualizar profesional
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profesional actualizado
+        "404":
+          description: Profesional no encontrado
+    delete:
+      tags: [Profesionales]
+      summary: Eliminar profesional
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profesional eliminado
+        "404":
+          description: Profesional no encontrado
+
+  /professionals/dni/{dni}:
+    get:
+      tags: [Profesionales]
+      summary: Buscar profesional por DNI
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dni
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profesional(es) encontrado(s)

@@ -1,0 +1,260 @@
+tags:
+  - name: Autenticación
+    description: |
+      Autenticación y gestión de usuarios del sistema.
+      
+      - **login**: inicio de sesión con identifier + password, devuelve JWT y refreshToken.
+      - **register**: registro de nuevos usuarios (profesional o farmacéutico) con captcha.
+      - **jwt-login**: verifica validez del JWT actual y renueva si es válido.
+      - **logout / refresh**: cierre de sesión y renovación de tokens.
+      - **reset-password / recovery-password**: cambio y recuperación de contraseña.
+      - **pharmacies-andes / professionals-andes**: búsqueda de farmacias y profesionales en ANDES para validar registro.
+      - **authorizedProfessions**: lista de profesiones habilitadas para recetar.
+
+paths:
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Iniciar sesión
+      x-description-file: docs/paths/auth/login.md
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                identifier:
+                  type: string
+                  example: profesional@test.com
+                password:
+                  type: string
+                  example: "12345678"
+      responses:
+        "200":
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jwt:
+                    type: string
+                  refreshToken:
+                    type: string
+        "401":
+          description: Credenciales inválidas
+        "422":
+          description: Error de validación
+
+  /auth/register:
+    post:
+      tags: [Autenticación]
+      summary: Registrar nuevo usuario
+      x-description-file: docs/paths/auth/register.md
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+                roleType:
+                  type: string
+                  enum: [professional, pharmacist]
+                captcha:
+                  type: string
+                email:
+                  type: string
+                businessName:
+                  type: string
+                enrollment:
+                  type: string
+                cuil:
+                  type: string
+      responses:
+        "200":
+          description: Usuario registrado
+        "422":
+          description: Error de validación
+        "403":
+          description: No autorizado
+
+  /auth/jwt-login:
+    get:
+      tags: [Autenticación]
+      summary: Verificar JWT y obtener nuevo token
+      x-description-file: docs/paths/auth/jwt-login.md
+      security:
+        - bearerAutenticación: []
+      responses:
+        "200":
+          description: Token válido
+        "401":
+          description: Token inválido o expirado
+
+  /auth/logout:
+    post:
+      tags: [Autenticación]
+      summary: Cerrar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        "204":
+          description: Sesión cerrada
+
+  /auth/refresh:
+    post:
+      tags: [Autenticación]
+      summary: Refrescar JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        "200":
+          description: Nuevo token generado
+        "401":
+          description: Refresh token inválido
+
+  /auth/reset-password:
+    post:
+      tags: [Autenticación]
+      summary: Cambiar contraseña
+      security:
+        - bearerAutenticación: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Contraseña modificada
+        "401":
+          description: No autorizado
+
+  /auth/recovery-password:
+    post:
+      tags: [Autenticación]
+      summary: Recuperar contraseña con token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                authenticationToken:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Contraseña modificada
+        "401":
+          description: Token inválido o expirado
+
+  /auth/pharmacies-andes:
+    get:
+      tags: [Autenticación]
+      summary: Buscar farmacia en ANDES
+      parameters:
+        - name: cuil
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: disposicionHabilitacion
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos de la farmacia
+
+  /auth/professionals-andes:
+    get:
+      tags: [Autenticación]
+      summary: Buscar profesional en ANDES
+      parameters:
+        - name: documento
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos del profesional
+        "404":
+          description: Profesional no encontrado
+
+  /auth/authorizedProfessions:
+    get:
+      tags: [Autenticación]
+      summary: Listar profesiones autorizadas
+      responses:
+        "200":
+          description: Lista de profesiones
+
+  /auth/get-token:
+    post:
+      tags: [Autenticación]
+      summary: Generar JWT para un usuario (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        "200":
+          description: Token generado
+        "404":
+          description: Usuario no encontrado
+
+  /auth/setValidationTokenAndNotify:
+    post:
+      tags: [Autenticación]
+      summary: Enviar email de recuperación de contraseña
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                usuario:
+                  type: string
+      responses:
+        "200":
+          description: Email enviado

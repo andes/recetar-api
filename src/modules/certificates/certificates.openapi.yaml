@@ -1,0 +1,141 @@
+tags:
+  - name: Certificados
+    description: |
+      Gestión de certificados médicos. Permite registrar licencias por enfermedad con fecha de inicio y duración en días.
+      
+      - CRUD completo + anulación vía `PUT /certificates/{id}` (setea status `'anulado'` + motivo + fecha).
+      - Filtros por profesional (`?userId=`) y búsqueda por término (`?searchTerm=`) vía query params.
+      - El campo `endDate` se calcula automáticamente como virtual a partir de `startDate + cantDias`.
+
+paths:
+  /certificates:
+    get:
+      tags: [Certificados]
+      summary: Listar certificados
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: searchTerm
+          in: query
+          schema:
+            type: string
+        - name: skip
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista paginada de certificados
+    post:
+      tags: [Certificados]
+      summary: Crear certificado
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                patient:
+                  type: object
+                  properties:
+                    firstName:
+                      type: string
+                    lastName:
+                      type: string
+                    dni:
+                      type: string
+                    sex:
+                      type: string
+                professional:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                    businessName:
+                      type: string
+                    cuil:
+                      type: string
+                    enrollment:
+                      type: string
+                certificate:
+                  type: string
+                startDate:
+                  type: string
+                  format: date
+                cantDias:
+                  type: integer
+      responses:
+        "201":
+          description: Certificado creado
+        "422":
+          description: Error de validación
+
+  /certificates/{id}:
+    get:
+      tags: [Certificados]
+      summary: Obtener certificado por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos del certificado
+        "404":
+          description: Certificado no encontrado
+    patch:
+      tags: [Certificados]
+      summary: Anular certificado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                anulateReason:
+                  type: string
+                anulateDate:
+                  type: string
+                  format: date
+      responses:
+        "200":
+          description: Certificado anulado
+        "404":
+          description: Certificado no encontrado
+    delete:
+      tags: [Certificados]
+      summary: Eliminar certificado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Certificado eliminado
+        "404":
+          description: Certificado no encontrado

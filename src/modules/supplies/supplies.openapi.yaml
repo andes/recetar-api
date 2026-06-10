@@ -1,0 +1,156 @@
+tags:
+  - name: Insumos
+    description: |
+      Catálogo de insumos. Define qué insumos existen en el sistema.
+      
+      - CRUD completo (listar, crear, obtener por ID, actualizar, eliminar).
+      - Filtro por nombre vía query param `?name=`.
+      - Cada insumo incluye: nombre, principio activo, forma farmacéutica, concentración, presentación, concepto SNOMED y código SIFAHO.
+      
+      Diferencia clave: **Supply** es el catálogo (qué insumos existen), **Stock** es el inventario (cuánto hay disponible).
+
+paths:
+  /supplies/snomed:
+    get:
+      tags: [Insumos]
+      summary: Buscar conceptos SNOMED en ANDES
+      x-description-file: docs/paths/supplies/snomed.md
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de conceptos SNOMED
+        "400":
+          description: Parámetro search requerido
+
+  /supplies:
+    get:
+      tags: [Insumos]
+      summary: Listar insumos
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: skip
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista de insumos
+    post:
+      tags: [Insumos]
+      summary: Crear insumo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                activePrinciple:
+                  type: string
+                pharmaceutical_form:
+                  type: string
+                power:
+                  type: string
+                unity:
+                  type: string
+                firstPresentation:
+                  type: string
+                secondPresentation:
+                  type: string
+                snomedConcept:
+                  type: object
+                  properties:
+                    conceptId:
+                      type: string
+                    term:
+                      type: string
+                    fsn:
+                      type: string
+                    semanticTag:
+                      type: string
+                code:
+                  type: object
+                  properties:
+                    source:
+                      type: string
+                      enum: [SIFAHO, SNOMED]
+                    value:
+                      type: string
+                status:
+                  type: string
+                  enum: [active, inactive]
+      responses:
+        "201":
+          description: Insumo creado
+        "422":
+          description: Error de validación
+
+  /supplies/{id}:
+    get:
+      tags: [Insumos]
+      summary: Obtener insumo por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos del insumo
+        "404":
+          description: Insumo no encontrado
+    patch:
+      tags: [Insumos]
+      summary: Actualizar insumo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Insumo actualizado
+        "404":
+          description: Insumo no encontrado
+    delete:
+      tags: [Insumos]
+      summary: Eliminar insumo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Insumo eliminado
+        "404":
+          description: Insumo no encontrado

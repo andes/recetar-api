@@ -4,19 +4,10 @@ dotenv.config();
 
 export const env = {
     API_URI_PREFIX: '/api',
-    JWT_SECRET: 'e18a33b0-9866-4867-800a-d6ffcd8f1cbd',
-    TOKEN_LIFETIME: 1,
-    MONGODB_CONNECTION: 'mongodb://localhost/recetar'
-};
-
-export const httpCodes = {
-    UNAUTHORIZED: 401,
-    FORBIDDEN: 403,
-    EXPIRED_TOKEN: 406,
-    EXPECTATION_FAILED: 417,
-    BAD_REQUEST: 400,
-    CREATED: 201,
-    INTERNAL_SERVER_ERROR: 500,
-    OK: 200,
-    NOT_FOUND: 404,
+    JWT_SECRET: process.env.JWT_SECRET || 'e18a33b0-9866-4867-800a-d6ffcd8f1cbd',
+    TOKEN_LIFETIME: parseInt(process.env.TOKEN_LIFETIME || '1', 10),
+    MONGODB_CONNECTION: process.env.MONGODB_URI || 'mongodb://localhost/recetar',
+    ANDES_ENDPOINT: process.env.ANDES_ENDPOINT || '',
+    JWT_MPI_TOKEN: process.env.JWT_MPI_TOKEN || '',
+    ANDES_MPI_ENDPOINT: process.env.ANDES_MPI_ENDPOINT || '',
 };

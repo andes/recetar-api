@@ -1,21 +1,16 @@
 import express from 'express';
-import morgan from 'morgan';
-import helmet from 'helmet';
+import { apiReference } from '@scalar/express-api-reference';
 import cors from 'cors';
-import compression from 'compression';
-import { errorHandler } from './middlewares/error.middleware';
-import { notFoundHandler } from './middlewares/notFound.middleware';
-import * as db from './database/dbconfig';
-// config
+import { errorHandler } from './shared/middlewares/error-handler';
 import { env } from './config/config';
-// services
-
+import { buildOpenApiSpec } from './config/openapi';
+import { initializeMongo } from './database/dbconfig';
 import routes from './routes/routes';
 
-class Server {
+const apiSpec = buildOpenApiSpec();
 
+class Server {
     protected app: express.Application;
-    private isConfigured = false;
 
     constructor() {
         this.app = express();
@@ -26,40 +21,33 @@ class Server {
     }
 
     async config() {
-        if (this.isConfigured) {
-            return;
-        }
-
-        await db.initializeMongo();
+        await initializeMongo();
         this.app.set('port', process.env.PORT || 4000);
-        // logger
-        this.app.use(morgan('dev'));
-        // security
-        this.app.use(helmet());
-        // request compression
-        this.app.use(compression());
-        this.app.use(cors());
-        // middleware
-        this.app.use(express.json());
-        this.app.use(express.urlencoded({ extended: false }));
-        // routes
-        this.routes();
-        this.app.use(errorHandler);
-        this.app.use(notFoundHandler);
-        this.isConfigured = true;
-    }
 
-    routes() {
+        this.app.use(express.json());
+        this.app.use(cors());
+
+        this.app.use('/api-docs', apiReference({
+            spec: { content: apiSpec },
+            metaData: { title: 'RecetAR API - Documentación' },
+        }));
         this.app.use(this.getApiPrefix(), routes);
+
+        this.app.use(errorHandler);
+        this.app.use((_req, res) => {
+            res.status(404).json({ status: 'error', error: { code: 'NOT_FOUND', message: 'Ruta no encontrada' } });
+        });
     }
 
     async start() {
         await this.config();
         this.app.listen(this.app.get('port'), () => {
             // eslint-disable-next-line no-console
-            console.log(`🚀 API Server running on port ${this.app.get('port')}`);
+            console.log(`API Server running on port ${this.app.get('port')}`);
             // eslint-disable-next-line no-console
-            console.log(`📋 API disponible en: http://localhost:${this.app.get('port')}${this.getApiPrefix()}`);
+            console.log(`API disponible en: http://localhost:${this.app.get('port')}${this.getApiPrefix()}`);
+            // eslint-disable-next-line no-console
+            console.log(`Documentación API: http://localhost:${this.app.get('port')}/api-docs`);
         });
     }
 
@@ -72,7 +60,6 @@ class Server {
 
 const server = new Server();
 
-// Manejo de cierre graceful
 process.on('SIGTERM', () => server.gracefulShutdown());
 process.on('SIGINT', () => server.gracefulShutdown());
 

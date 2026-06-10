@@ -1,0 +1,49 @@
+tags:
+  - name: Stock
+    description: |
+      Disponibilidad e inventario de insumos.
+      
+      - **Stock local** (`GET /stock`): vista derivada de recetas que contienen insumos (filtra por `supplies.supply.type` existente). Solo lectura, paginada por `?skip=` y `?limit=` (default 100).
+      - **Stock ANDES** (`GET /stock/andes`): proxy al endpoint de ANDES que consulta el inventario real. Sin `?insumo=` devuelve todo; con `?insumo=` busca por nombre; `?tipos=` permite filtrar por tipo (device, nutrition, magistral).
+      
+      Diferencia clave: **Supply** es el catálogo (qué insumos existen), **Stock** es el inventario (cuánto hay disponible).
+
+paths:
+  /stock:
+    get:
+      tags: [Stock]
+      summary: Listar stock derivado de recetas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: Lista paginada de recetas con insumos
+
+  /stock/andes:
+    get:
+      tags: [Stock]
+      summary: Obtener stock desde ANDES
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: insumo
+          in: query
+          schema:
+            type: string
+        - name: tipos
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock desde ANDES

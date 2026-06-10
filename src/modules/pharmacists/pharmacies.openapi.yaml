@@ -1,0 +1,98 @@
+tags:
+  - name: Farmacias
+    description: |
+      Gestión de farmacias (recurso separado de farmacéuticos).
+      
+      - CRUD completo (listar, crear, obtener por ID, actualizar, eliminar).
+      - Cada farmacia referencia a un farmacéutico responsable mediante `pharmacist` (ObjectId).
+      - Búsqueda en ANDES por CUIT disponible desde el módulo Auth.
+
+paths:
+  /pharmacies:
+    get:
+      tags: [Farmacias]
+      summary: Listar farmacias
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de farmacias
+    post:
+      tags: [Farmacias]
+      summary: Crear farmacia
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cuit:
+                  type: string
+                name:
+                  type: string
+                city:
+                  type: string
+                pharmacist:
+                  type: string
+                address:
+                  type: string
+                image:
+                  type: string
+      responses:
+        "201":
+          description: Farmacia creada
+        "422":
+          description: Error de validación
+
+  /pharmacies/{id}:
+    get:
+      tags: [Farmacias]
+      summary: Obtener farmacia por ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos de la farmacia
+        "404":
+          description: Farmacia no encontrada
+    patch:
+      tags: [Farmacias]
+      summary: Actualizar farmacia
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Farmacia actualizada
+        "404":
+          description: Farmacia no encontrada
+    delete:
+      tags: [Farmacias]
+      summary: Eliminar farmacia
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Farmacia eliminada
+        "404":
+          description: Farmacia no encontrada

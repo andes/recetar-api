@@ -1,7 +1,13 @@
-import { Schema, Model, model } from 'mongoose';
-import IRole from '../interfaces/role.interface';
+import { Schema, Model, model, Document, Types } from 'mongoose';
 
-// Schema
+export interface IRole extends Document {
+    role: string;
+    users: Types.ObjectId[];
+    permissions: Types.ObjectId[];
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
 const roleSchema = new Schema({
     role: {
         type: String,
@@ -22,20 +28,6 @@ const roleSchema = new Schema({
     updatedAt: Date,
 });
 
-// Model
 const Role: Model<IRole> = model<IRole>('Role', roleSchema);
-
-Role.schema.method('findByRoleOrCreate', async (roleType: string): Promise<IRole> =>{
-    try {
-        let role: IRole | null = await Role.findOne({ role: roleType });
-        if (!role) {
-            role = new Role({ role: roleType });
-            await role.save();
-        }
-        return role;
-    } catch (err) {
-        throw err instanceof Error ? err : new Error(String(err));
-    }
-});
 
 export default Role;

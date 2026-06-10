@@ -1,0 +1,117 @@
+tags:
+  - name: Prácticas
+    description: |
+      Gestión de prácticas médicas realizadas a pacientes.
+      
+      - CRUD completo (listar, crear, obtener por ID, actualizar, eliminar).
+      - Filtros por profesional (`?userId=`) y búsqueda por término (`?searchTerm=`) vía query params.
+      - Respuesta paginada con formato `{ practices, total, offset, limit }`.
+
+paths:
+  /practices:
+    get:
+      tags: [Prácticas]
+      summary: Listar prácticas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: searchTerm
+          in: query
+          schema:
+            type: string
+        - name: skip
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lista paginada de prácticas
+    post:
+      tags: [Prácticas]
+      summary: Crear práctica
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date-time
+                patient:
+                  type: object
+                professional:
+                  type: object
+                practice:
+                  type: string
+                diagnostic:
+                  type: string
+                indications:
+                  type: string
+                status:
+                  type: string
+                  enum: [active, completed, cancelled]
+      responses:
+        "201":
+          description: Práctica creada
+        "422":
+          description: Error de validación
+
+  /practices/{id}:
+    get:
+      tags: [Prácticas]
+      summary: Obtener práctica por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos de la práctica
+        "404":
+          description: Práctica no encontrada
+    patch:
+      tags: [Prácticas]
+      summary: Actualizar práctica
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Práctica actualizada
+        "404":
+          description: Práctica no encontrada
+    delete:
+      tags: [Prácticas]
+      summary: Eliminar práctica
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Práctica eliminada
+        "404":
+          description: Práctica no encontrada

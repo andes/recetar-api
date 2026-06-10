@@ -1,11 +1,49 @@
-import { Schema, Model, model } from 'mongoose';
+import { Schema, Model, model, Document, Types } from 'mongoose';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import IUser from '../interfaces/user.interface';
-import IProfesionAutorizada from '../interfaces/profesionAutorizada.interface';
 
+export interface IUser extends Document {
+    username: string;
+    email: string;
+    pendingEmail?: string;
+    emailConfirmationToken?: string;
+    emailConfirmationExpires?: Date;
+    businessName: string;
+    enrollment?: string;
+    cuil?: string;
+    password: string;
+    roles: Array<{ _id: Types.ObjectId; role?: string }>;
+    refreshToken?: string;
+    authenticationToken?: string;
+    passwordChangeTokenExpiry?: Date;
+    passwordCreatedAt?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+    isActive: Boolean;
+    activation?: {
+        updatedAt: Date;
+        updatedBy: Types.ObjectId;
+        userId: Types.ObjectId;
+        userName: string;
+    };
+    lastLogin?: Date;
+    idAndes?: string;
+    profesionGrado?: Array<{
+        profesion: string;
+        codigoProfesion: string;
+        numeroMatricula: string;
+    }>;
+    organizaciones: Array<{
+        _id: string;
+        nombre: string;
+        direccion: string;
+    }>;
+    authorizationExpiration?: Date;
+    authorizationDisposition?: string;
+    responsibleDTEnrollment?: string;
+    isValidPassword(password: string): Promise<boolean>;
+}
 
-// Validation callbacks
 const uniqueEmail = async (email: string): Promise<boolean> => {
     const user = await User.findOne({ email });
     return !user;
@@ -16,21 +54,18 @@ const validEmail = (email: string): boolean => {
     return emailRegex.test(email);
 };
 
-const uniqueUsername = async function (username: string): Promise<boolean> {
-    // excluimos el id del usuario que vamos a actualizar para no validar que se esta repitiendo el campo username
+const uniqueUsername = async function (this: any, username: string): Promise<boolean> {
     const _id = typeof (this._id) !== 'undefined' ? this._id : this.getFilter()._id;
     const user = await User.findOne({ username, _id: { $nin: [_id] } });
     return !user;
 };
 
-// Setter
 const encryptPassword = (password: string) => {
     const salt = bcrypt.genSaltSync(10);
     const passwordDigest = bcrypt.hashSync(password, salt);
     return passwordDigest;
 };
 
-// Schema
 export const userSchema = new Schema({
     username: {
         type: String,
@@ -150,10 +185,10 @@ export const userSchema = new Schema({
     }
 });
 
-// Model
+userSchema.path('username').validate(uniqueUsername, 'This {PATH} is already registered');
+
 const User: Model<IUser> = model<IUser>('User', userSchema);
 
-// Model methods
 export const isValidPassword = async (thisUser: IUser, password: string): Promise<boolean> => {
     try {
         return await bcrypt.compare(password, thisUser.password);
@@ -162,19 +197,6 @@ export const isValidPassword = async (thisUser: IUser, password: string): Promis
     }
 };
 
-export const userHasRole = async (userId: IUser['_id'], roleName: string): Promise<boolean> => {
-    const user = await User.findById(userId).populate({
-        path: 'roles',
-        match: { role: roleName },
-        select: '_id'
-    });
-
-    return Boolean(user?.roles?.length);
-};
-
-User.schema.method('isValidPassword', isValidPassword);
-
-// Model Validations
-User.schema.path('username').validate(uniqueUsername, 'This {PATH} is already registered');
+userSchema.method('isValidPassword', isValidPassword);
 
 export default User;

@@ -1,2 +1,3 @@
-src/migration-script/**
-src/jobs/user-migration/**
+src-legacy/
+dist/
+node_modules/
