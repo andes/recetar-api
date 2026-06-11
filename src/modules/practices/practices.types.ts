@@ -1,4 +1,4 @@
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 export interface IProfesionGrado {
     profesion: string;
@@ -7,7 +7,7 @@ export interface IProfesionGrado {
 }
 
 export interface IProfessional {
-    userId: string;
+    userId: Types.ObjectId;
     enrollment?: string;
     cuil?: string;
     businessName?: string;
@@ -16,7 +16,7 @@ export interface IProfessional {
 
 export interface IObraSocialPractice {
     nombre?: string;
-    codigoPuco?: string;
+    codigoPuco?: number;
     numeroAfiliado?: string;
 }
 

@@ -1,25 +1,34 @@
 import axios, { AxiosInstance } from 'axios';
 import { InternalError } from '../../shared/errors';
 import { andesMessages } from './lang';
+import { AndesMapper } from './andes.mapper';
 import {
     AndesPrescription,
     AndesStockItem,
     AndesInsumoPayload,
     AndesSuspendPayload,
     AndesMPIPatient,
+    AndesMPICreateResponse,
+    AndesMPISearchParams,
     AndesCoverage,
     AndesOrganization,
     AndesSnomedConcept,
+    ValidatedPatient,
+    ValidationResponse,
     GetPrescriptionsByPatientParams,
     GetPrescriptionsByProfessionalParams,
     GetPrescriptionsByDniParams,
+    AndesProfesionalDetalle,
+    AndesFarmacia,
 } from './andes.types';
 
 export interface AndesClientConfig {
     andesEndpoint: string;
     jwtMpiToken: string;
-    mpiEndpoint: string;
+    mpiEndpoint?: string;
 }
+
+const MPI_DEFAULT_PATH = '/core-v2/mpi/pacientes';
 
 export class AndesClient {
     private client: AxiosInstance;
@@ -29,7 +38,7 @@ export class AndesClient {
     constructor(config?: AndesClientConfig) {
         const resolvedEndpoint = config?.andesEndpoint || '';
         const resolvedToken = config?.jwtMpiToken || '';
-        this.mpiEndpoint = config?.mpiEndpoint || '';
+        this.mpiEndpoint = config?.mpiEndpoint || MPI_DEFAULT_PATH;
 
         this.configured = !!(resolvedEndpoint && resolvedToken);
         this.client = axios.create({
@@ -116,6 +125,22 @@ export class AndesClient {
         return response.data;
     }
 
+    async getProfessionalByDocumento(documento: string): Promise<AndesProfesionalDetalle | null> {
+        this.ensureConfigured();
+        const response = await this.client.get<AndesProfesionalDetalle[]>('/core/tm/profesionales/guia', {
+            params: { documento },
+        });
+        return Array.isArray(response.data) && response.data.length ? response.data[0] : null;
+    }
+
+    async getPharmacyByCuit(cuit: string): Promise<AndesFarmacia | null> {
+        this.ensureConfigured();
+        const response = await this.client.get<AndesFarmacia[]>('/core/tm/farmacias', {
+            params: { cuit },
+        });
+        return Array.isArray(response.data) && response.data.length ? response.data[0] : null;
+    }
+
     async searchStock(insumo: string, tipos?: string): Promise<AndesStockItem[]> {
         let url = `/modules/insumos?nombre=^${insumo}`;
         if (tipos) {
@@ -150,17 +175,32 @@ export class AndesClient {
         return response.data;
     }
 
-    async searchPatientInMPI(dni: string, sexo: string): Promise<AndesMPIPatient[]> {
-        this.ensureConfigured();
-        const response = await this.client.get<AndesMPIPatient[]>(this.mpiEndpoint, {
-            params: { documento: dni, sexo, activo: true, estado: 'validado' },
-        });
-        return response.data;
+    async searchPatientInMPI(dni: string, sexo = ''): Promise<AndesMPIPatient[]> {
+        return this.searchPatients({ documento: dni, sexo });
     }
 
-    async createPatientInMPI(patientData: Record<string, unknown>, ignoreSuggestions = false): Promise<AndesMPIPatient> {
+    async searchPatients(params: AndesMPISearchParams): Promise<AndesMPIPatient[]> {
         this.ensureConfigured();
-        const response = await this.client.post<AndesMPIPatient>(this.mpiEndpoint, {
+        const response = await this.client.get<AndesMPIPatient[]>(this.mpiEndpoint, {
+            params: {
+                ...(params.documento && { documento: params.documento }),
+                ...(params.search && { search: params.search }),
+                ...(params.nombre && { nombre: params.nombre }),
+                ...(params.apellido && { apellido: params.apellido }),
+                ...(params.sexo && { sexo: params.sexo }),
+                activo: params.activo ?? true,
+                estado: params.estado ?? 'validado',
+            },
+        });
+        return Array.isArray(response.data) ? response.data : [];
+    }
+
+    async createPatientInMPI(
+        patientData: Record<string, unknown>,
+        ignoreSuggestions = false,
+    ): Promise<AndesMPICreateResponse> {
+        this.ensureConfigured();
+        const response = await this.client.post<AndesMPICreateResponse>(this.mpiEndpoint, {
             ...patientData,
             ignoreSuggestions,
         });
@@ -173,9 +213,10 @@ export class AndesClient {
         return response.data;
     }
 
-    async updatePatientInMPI(id: string, data: Record<string, unknown>): Promise<void> {
+    async updatePatientInMPI(id: string, data: Record<string, unknown>): Promise<AndesMPIPatient> {
         this.ensureConfigured();
-        await this.client.patch(`${this.mpiEndpoint}/${id}`, data);
+        const response = await this.client.patch<AndesMPIPatient>(`${this.mpiEndpoint}/${id}`, data);
+        return response.data;
     }
 
     async listCoverages(): Promise<AndesCoverage[]> {
@@ -188,6 +229,14 @@ export class AndesClient {
         this.ensureConfigured();
         const response = await this.client.get<AndesCoverage | AndesCoverage[]>('/modules/obraSocial/obraSocialPaciente', {
             params: { documento: dni, sexo },
+        });
+        return response.data;
+    }
+
+    async searchCoverages(query: string): Promise<AndesCoverage[]> {
+        this.ensureConfigured();
+        const response = await this.client.get<AndesCoverage[]>('/modules/obraSocial/obrasSociales', {
+            params: { nombre: query },
         });
         return response.data;
     }
@@ -207,5 +256,17 @@ export class AndesClient {
             params: { expression, search },
         });
         return response.data;
+    }
+
+    async validatePatient(dni: string, sexo: string): Promise<ValidatedPatient | null> {
+        this.ensureConfigured();
+        const response = await this.client.post<ValidationResponse>('/core-v2/mpi/validacion', {
+            documento: dni,
+            sexo: sexo.toLowerCase(),
+        });
+        if (response.data && response.data.documento) {
+            return AndesMapper.toValidatedPatientFromResponse(response.data);
+        }
+        return null;
     }
 }

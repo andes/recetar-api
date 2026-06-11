@@ -2,9 +2,9 @@ import { z } from 'zod';
 
 export const createPatientSchema = z.object({
     dni: z.string().min(6).max(11, 'errors.validation.invalidDni'),
-    firstName: z.string().min(1, 'errors.validation.requiredField'),
-    lastName: z.string().min(1, 'errors.validation.requiredField'),
     sex: z.enum(['Femenino', 'Masculino', 'Otro'], { message: 'errors.validation.invalidSex' }),
+    firstName: z.string().min(1, 'errors.validation.requiredField').optional(),
+    lastName: z.string().min(1, 'errors.validation.requiredField').optional(),
     fechaNac: z.string().optional(),
     nombreAutopercibido: z.string().optional(),
     genero: z.string().optional(),

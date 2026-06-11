@@ -36,6 +36,31 @@ describe('Prescription DTOs', () => {
             expect(result.trimestral).toBe(true);
         });
 
+        it('accepts numeric obraSocial codigoPuco', () => {
+            const data = {
+                ...validData,
+                supplies: [{
+                    supply: { name: 'Ibuprofeno 400mg' },
+                    quantity: 1,
+                    obraSocial: { nombre: 'OSDE', codigoPuco: 123, numeroAfiliado: '456' },
+                }],
+            };
+            const result = createPrescriptionSchema.parse(data);
+            expect(result.supplies[0].obraSocial?.codigoPuco).toBe(123);
+        });
+
+        it('rejects string obraSocial codigoPuco', () => {
+            const data = {
+                ...validData,
+                supplies: [{
+                    supply: { name: 'Ibuprofeno 400mg' },
+                    quantity: 1,
+                    obraSocial: { nombre: 'OSDE', codigoPuco: '123', numeroAfiliado: '456' },
+                }],
+            };
+            expect(() => createPrescriptionSchema.parse(data)).toThrow();
+        });
+
         it('rejects missing patient', () => {
             const { patient: _, ...rest } = validData as any;
             expect(() => createPrescriptionSchema.parse(rest)).toThrow();

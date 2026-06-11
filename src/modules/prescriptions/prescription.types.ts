@@ -1,3 +1,5 @@
+export const PRESCRIPTION_SEARCH_LIMIT = 50;
+
 export interface IPrescriptionSupply {
     supply: {
         name?: string;
@@ -7,11 +9,11 @@ export interface IPrescriptionSupply {
         unity?: string;
         firstPresentation?: string;
         secondPresentation?: string;
-        snomedConcept?: { conceptId?: string; term?: string; fsn?: string; semanticTag?: string };
-        code?: { source?: 'SIFAHO' | 'SNOMED'; value?: string };
+        code?: { source?: 'SIFAHO' | 'SNOMED' | 'ALFABETA' | 'ANDES'; value?: string };
         type?: 'device' | 'nutrition' | 'magistral';
         requiresSpecification?: boolean;
         specification?: string;
+        barCode?: string;
     };
     quantity?: number;
     quantityPresentation?: number;
@@ -20,6 +22,13 @@ export interface IPrescriptionSupply {
     duplicate?: boolean;
     triplicate?: boolean;
     triplicateData?: { serie?: string; numero?: number };
+    obraSocial?: { nombre?: string; codigoPuco?: number; numeroAfiliado?: string };
+}
+
+export interface ReplacedMedication {
+    name?: string;
+    quantity?: number;
+    supply?: IPrescriptionSupply['supply'];
 }
 
 export interface IPrescription extends Document {
@@ -29,7 +38,7 @@ export interface IPrescription extends Document {
         lastName: string;
         dni: string;
         sex: string;
-        obraSocial?: { nombre?: string; numeroAfiliado?: string };
+        obraSocial?: { nombre?: string; codigoPuco?: number; numeroAfiliado?: string };
         fechaNac?: Date;
         idMPI?: string;
     };
@@ -46,6 +55,7 @@ export interface IPrescription extends Document {
         cuil?: string;
     };
     dispensedAt?: Date;
+    replacedMedication?: ReplacedMedication;
     supplies: IPrescriptionSupply[];
     status: 'Pendiente' | 'Dispensada' | 'Vencida';
     date: Date;

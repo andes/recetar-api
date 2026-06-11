@@ -5,6 +5,65 @@ export interface AndesSnomedConcept {
     semanticTag?: string;
 }
 
+export type MatriculaEstado = 'vigente' | 'vencida' | 'suspendida' | 'sin-matricula' | 'baja';
+
+export interface AndesMatriculacion {
+    matriculaNumero?: number;
+    libro?: string;
+    folio?: string;
+    inicio?: string;
+    fin?: string;
+    baja?: {
+        motivo?: string;
+        fecha?: string | null;
+    };
+    revalidacionNumero?: number;
+}
+
+export interface AndesFormacionGrado {
+    profesion?: {
+        codigo?: number;
+        nombre?: string;
+        tipoDeFormacion?: string;
+    };
+    entidadFormadora?: {
+        codigo?: number;
+        nombre?: string;
+    };
+    titulo?: string;
+    fechaEgreso?: string;
+    matriculacion?: AndesMatriculacion[];
+    matriculado?: boolean;
+    papelesVerificados?: boolean;
+    fechaDeInscripcion?: string;
+}
+
+export interface AndesProfesionalDetalle {
+    id?: string;
+    documento?: string;
+    nombre?: string;
+    apellido?: string;
+    sexo?: string;
+    cuit?: string;
+    habilitado?: boolean;
+    nacionalidad?: string | {
+        nombre?: string;
+    };
+    profesiones?: AndesFormacionGrado[];
+}
+
+export interface AndesFarmacia {
+    _id?: string;
+    id?: string;
+    denominacion?: string;
+    razonSocial?: string;
+    cuit?: string;
+    DTResponsable?: string;
+    matriculaDTResponsable?: string;
+    disposicionHabilitacion?: string;
+    vencimientoHabilitacion?: string;
+}
+
 export interface AndesProfessional {
     id: string;
     nombre: string;
@@ -24,6 +83,7 @@ export interface AndesPatient {
     fechaNacimiento: string;
     obraSocial?: {
         nombre: string;
+        codigoPuco?: number;
         numeroAfiliado?: string;
     };
     genero?: string;
@@ -112,7 +172,7 @@ export interface GetPrescriptionsByProfessionalParams {
 
 export interface GetPrescriptionsByDniParams {
     dni: string;
-    sexo: string;
+    sexo?: string;
     status?: string;
     dateFrom?: string;
     dateTo?: string;
@@ -148,7 +208,7 @@ export interface AndesInsumoPayload {
         documento: string;
         sexo: string;
         fechaNacimiento?: string;
-        obraSocial?: { nombre: string; numeroAfiliado?: string };
+        obraSocial?: { nombre: string; codigoPuco?: number; numeroAfiliado?: string };
     };
     origenExterno: {
         id: string;
@@ -175,7 +235,7 @@ export interface AndesMedicamentoPayload {
         documento: string;
         sexo: string;
         fechaNacimiento?: string;
-        obraSocial?: { nombre: string; numeroAfiliado?: string };
+        obraSocial?: { nombre: string; codigoPuco?: number; numeroAfiliado?: string };
     };
     idPrestacion: string;
     idRegistro: string;
@@ -212,9 +272,10 @@ export interface AndesPatientPayload {
     documento: string;
     sexo: string;
     genero: string;
-    fechaNacimiento?: Date;
+    fechaNacimiento?: Date | string;
     estado: string;
     alias?: string;
+    cuil?: string;
 }
 
 export interface AndesSuspendPayload {
@@ -240,6 +301,7 @@ export interface AndesStockItem {
 
 export interface AndesMPIPatient {
     id: string;
+    _id?: string;
     documento: string;
     nombre: string;
     apellido: string;
@@ -254,10 +316,59 @@ export interface AndesMPIPatient {
     identificadores?: Array<{ entidad: string; valor: string }>;
 }
 
+export interface AndesMPISearchParams {
+    documento?: string;
+    search?: string;
+    nombre?: string;
+    apellido?: string;
+    estado?: string;
+    activo?: boolean;
+    sexo?: string;
+}
+
+export interface AndesMPISugerido {
+    id?: string;
+    _id?: string;
+    documento?: string;
+    nombre?: string;
+    apellido?: string;
+    sexo?: string;
+    fechaNacimiento?: string;
+    estado?: string;
+    cuil?: string;
+    [key: string]: unknown;
+}
+
+export type AndesMPICreateResponse = AndesMPIPatient | { sugeridos: AndesMPISugerido[] };
+
 export interface AndesCoverage {
     nombre: string;
     financiador?: string;
     codigoPuco?: number;
     idObraSocial?: number;
     prepaga?: boolean;
+}
+
+export interface ValidatedPatient {
+    dni: string;
+    nombre: string;
+    apellido: string;
+    sexo: string;
+    fechaNacimiento: string;
+    cuil?: string;
+    idMPI?: string;
+}
+
+export interface ValidationResponse {
+    documento: string;
+    nombre: string;
+    apellido: string;
+    sexo: string;
+    fechaNacimiento?: string;
+    genero?: string;
+    cuil?: string;
+    estado?: string;
+    foto?: string;
+    idTramite?: string;
+    errorData?: boolean;
 }

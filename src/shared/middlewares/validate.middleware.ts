@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodType } from 'zod';
 import { ValidationError } from '../errors';
+import { t } from '../lang';
 
 type ValidationTarget = 'body' | 'query' | 'params';
 
@@ -10,7 +11,7 @@ export const validate = (schema: ZodType, target: ValidationTarget = 'body') => 
         if (!result.success) {
             const details = result.error.issues.map(e => ({
                 field: e.path.join('.'),
-                message: e.message,
+                message: t(e.message, e.message),
             }));
             throw new ValidationError('errors.validation.default', details);
         }

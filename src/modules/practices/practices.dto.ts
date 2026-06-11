@@ -9,7 +9,7 @@ export const createPracticeSchema = z.object({
         sex: z.string().min(1, 'errors.validation.requiredField'),
         obraSocial: z.object({
             nombre: z.string().optional(),
-            codigoPuco: z.string().optional(),
+            codigoPuco: z.number().optional(),
             numeroAfiliado: z.string().optional(),
         }).optional(),
     }),
@@ -39,7 +39,7 @@ export const updatePracticeSchema = z.object({
         sex: z.string().optional(),
         obraSocial: z.object({
             nombre: z.string().optional(),
-            codigoPuco: z.string().optional(),
+            codigoPuco: z.number().optional(),
             numeroAfiliado: z.string().optional(),
         }).optional(),
     }).optional(),

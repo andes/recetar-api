@@ -2,6 +2,7 @@ import { connectTestDB, clearCollections, disconnectTestDB } from '../../helpers
 import { CertificateRepository } from '../../../src/modules/certificates/certificates.repository';
 import { CertificateService } from '../../../src/modules/certificates/certificates.service';
 import { CertificateNotFoundError } from '../../../src/modules/certificates/certificates.errors';
+import { PatientService } from '../../../src/modules/patients';
 
 jest.setTimeout(15000);
 
@@ -11,13 +12,23 @@ const logger = {
     logWarn: (..._args: unknown[]) => {},
 };
 
+const patientStub = {
+    resolveSnapshot: async (dni: string, sex: string) => ({
+        firstName: 'Juan',
+        lastName: 'Perez',
+        dni,
+        sex: sex ? sex.charAt(0).toUpperCase() + sex.slice(1).toLowerCase() : '',
+        idMPI: 'andes-1',
+    }),
+} as unknown as PatientService;
+
 let repository: CertificateRepository;
 let service: CertificateService;
 
 beforeAll(async () => {
     await connectTestDB();
     repository = new CertificateRepository();
-    service = new CertificateService(repository, logger as any);
+    service = new CertificateService(repository, patientStub, logger as any);
 });
 
 afterAll(async () => {

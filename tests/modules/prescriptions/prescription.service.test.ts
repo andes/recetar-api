@@ -4,6 +4,7 @@ import { PrescriptionRepository } from '../../../src/modules/prescriptions/presc
 import { PrescriptionAndesRepository } from '../../../src/integrations/andes';
 import { PrescriptionService } from '../../../src/modules/prescriptions/prescription.service';
 import { AndesClient } from '../../../src/integrations/andes';
+import { PatientService } from '../../../src/modules/patients';
 import {
     PrescriptionNotFoundError,
     PrescriptionNotDispensableError,
@@ -21,7 +22,28 @@ const logger = {
 
 const mockAndesClient = new AndesClient();
 
+const patientStub = {
+    resolveSnapshot: async (dni: string, sex: string) => ({
+        firstName: 'Juan',
+        lastName: 'Pérez',
+        dni,
+        sex: sex ? sex.charAt(0).toUpperCase() + sex.slice(1).toLowerCase() : '',
+        idMPI: 'andes-1',
+    }),
+} as unknown as PatientService;
+
 const PrescriptionSchema = new mongoose.Schema({
+    patient: {
+        firstName: { type: String },
+        lastName: { type: String },
+        dni: { type: String },
+        sex: { type: String },
+        obraSocial: {
+            nombre: { type: String },
+            codigoPuco: { type: Number },
+            numeroAfiliado: { type: String },
+        },
+    },
     supplies: [{
         _id: false,
         supply: {
@@ -45,7 +67,7 @@ beforeAll(async () => {
     await connectTestDB();
     repo = new PrescriptionRepository();
     andesRepo = new PrescriptionAndesRepository();
-    service = new PrescriptionService(repo, andesRepo, mockAndesClient, logger as any);
+    service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any);
 });
 
 afterAll(async () => {
@@ -59,7 +81,7 @@ beforeEach(async () => {
 function createTestPrescription(overrides = {}) {
     return Prescription.create({
         patient: { firstName: 'Juan', lastName: 'Pérez', dni: '12345678', sex: 'Masculino' },
-        professional: { userId: 'prof123', businessName: 'Dr. Gómez' },
+        professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
         supplies: [{ supply: { name: 'Ibuprofeno 400mg', type: 'device' }, quantity: 10 }],
         status: 'Pendiente',
         date: new Date(),
@@ -101,7 +123,7 @@ describe('PrescriptionService', () => {
         it('creates a prescription', async () => {
             const result = await service.create({
                 patient: { firstName: 'Juan', lastName: 'Pérez', dni: '12345678', sex: 'Masculino' },
-                professional: { userId: 'prof123', businessName: 'Dr. Gómez' },
+                professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
                 supplies: [{ supply: { name: 'Ibuprofeno 400mg' }, quantity: 10 }],
                 ambito: 'privado',
             });
@@ -110,10 +132,25 @@ describe('PrescriptionService', () => {
             expect(result.prescriptionId).toBeDefined();
         });
 
+        it('copies obraSocial codigoPuco as number onto the embedded patient', async () => {
+            const result = await service.create({
+                patient: { firstName: 'Juan', lastName: 'Pérez', dni: '12345678', sex: 'Masculino' },
+                professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
+                supplies: [{
+                    supply: { name: 'Ibuprofeno 400mg' },
+                    quantity: 1,
+                    obraSocial: { nombre: 'OSDE', codigoPuco: 123, numeroAfiliado: '456' },
+                }],
+            });
+
+            expect(result.patient.obraSocial?.codigoPuco).toBe(123);
+            expect(typeof result.patient.obraSocial?.codigoPuco).toBe('number');
+        });
+
         it('creates trimestral prescriptions', async () => {
             const result = await service.create({
                 patient: { firstName: 'Juan', lastName: 'Pérez', dni: '12345678', sex: 'Masculino' },
-                professional: { userId: 'prof123', businessName: 'Dr. Gómez' },
+                professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
                 supplies: [{ supply: { name: 'Ibuprofeno 400mg' }, quantity: 10 }],
                 trimestral: true,
             });
@@ -121,6 +158,48 @@ describe('PrescriptionService', () => {
 
             const all = await Prescription.find({}).exec();
             expect(all.length).toBeGreaterThanOrEqual(3);
+        });
+    });
+
+    describe('magistral', () => {
+        const patient = { firstName: 'Juan', lastName: 'Pérez', dni: '12345678', sex: 'Masculino' };
+        const magistralSupply = { supply: { name: 'Magistral X', type: 'magistral' }, quantity: 1 };
+
+        it('creates a magistral in a public ambito', async () => {
+            const result = await service.create({
+                patient,
+                professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
+                supplies: [magistralSupply],
+                ambito: 'publico',
+                organizacion: { _id: 'org-public', nombre: 'Hospital Público' },
+            });
+
+            expect(result).toBeDefined();
+            expect(result.ambito).toBe('publico');
+        });
+
+        it('creates a magistral in a private ambito (manual)', async () => {
+            const result = await service.create({
+                patient,
+                professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
+                supplies: [{ supply: { name: 'Magistral manual', type: 'magistral' }, quantity: 1 }],
+                ambito: 'privado',
+                organizacion: { _id: 'org-private', nombre: 'Clínica Privada' },
+            });
+
+            expect(result).toBeDefined();
+            expect(result.ambito).toBe('privado');
+        });
+
+        it('creates commercial supplies without any ambito restriction', async () => {
+            const result = await service.create({
+                patient,
+                professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
+                supplies: [{ supply: { name: 'Ibuprofeno 400mg', type: 'device' }, quantity: 1 }],
+                ambito: 'privado',
+            });
+
+            expect(result).toBeDefined();
         });
     });
 
@@ -154,7 +233,7 @@ describe('PrescriptionService', () => {
         it('dispenses a pending prescription', async () => {
             const created = await createTestPrescription();
             const result = await service.dispense(created._id.toString(), {
-                userId: 'farm123',
+                userId: '000000000000000000000003',
                 businessName: 'Farm. López',
                 cuil: '20-12345678-9',
             });
@@ -165,7 +244,7 @@ describe('PrescriptionService', () => {
         it('throws on non-pending prescription', async () => {
             const created = await createTestPrescription({ status: 'Vencida' });
             await expect(service.dispense(created._id.toString(), {
-                userId: 'farm123', businessName: 'Test',
+                userId: '000000000000000000000003', businessName: 'Test',
             })).rejects.toThrow(PrescriptionNotDispensableError);
         });
     });
@@ -174,10 +253,10 @@ describe('PrescriptionService', () => {
         it('cancels dispense within 2 hours', async () => {
             const created = await createTestPrescription({
                 status: 'Dispensada',
-                dispensedBy: { userId: 'farm123', businessName: 'Farm. López' },
+                dispensedBy: { userId: '000000000000000000000003', businessName: 'Farm. López' },
                 dispensedAt: new Date(),
             });
-            const result = await service.cancelDispense(created._id.toString(), 'farm123');
+            const result = await service.cancelDispense(created._id.toString(), '000000000000000000000003');
             expect(result.status).toBe('Pendiente');
         });
 
@@ -191,10 +270,10 @@ describe('PrescriptionService', () => {
             oldDate.setHours(oldDate.getHours() - 3);
             const created = await createTestPrescription({
                 status: 'Dispensada',
-                dispensedBy: { userId: 'farm123', businessName: 'Farm. López' },
+                dispensedBy: { userId: '000000000000000000000003', businessName: 'Farm. López' },
                 dispensedAt: oldDate,
             });
-            await expect(service.cancelDispense(created._id.toString(), 'farm123', false)).rejects.toThrow(PrescriptionCancelTimeExceededError);
+            await expect(service.cancelDispense(created._id.toString(), '000000000000000000000003', false)).rejects.toThrow(PrescriptionCancelTimeExceededError);
         });
 
         it('allows cancel after 2 hours for admin', async () => {
@@ -202,10 +281,10 @@ describe('PrescriptionService', () => {
             oldDate.setHours(oldDate.getHours() - 3);
             const created = await createTestPrescription({
                 status: 'Dispensada',
-                dispensedBy: { userId: 'farm123', businessName: 'Farm. López' },
+                dispensedBy: { userId: '000000000000000000000003', businessName: 'Farm. López' },
                 dispensedAt: oldDate,
             });
-            const result = await service.cancelDispense(created._id.toString(), 'farm123', true);
+            const result = await service.cancelDispense(created._id.toString(), '000000000000000000000003', true);
             expect(result.status).toBe('Pendiente');
         });
     });
@@ -223,10 +302,10 @@ describe('PrescriptionService', () => {
 
     describe('getByUserId', () => {
         it('returns prescriptions for a professional', async () => {
-            await createTestPrescription({ professional: { userId: 'prof123', businessName: 'Dr.' } });
-            await createTestPrescription({ professional: { userId: 'prof456', businessName: 'Dr.' } });
+            await createTestPrescription({ professional: { userId: '000000000000000000000001', businessName: 'Dr.' } });
+            await createTestPrescription({ professional: { userId: '000000000000000000000002', businessName: 'Dr.' } });
 
-            const result = await service.getByUserId('prof123');
+            const result = await service.getByUserId('000000000000000000000001');
             expect(result.prescriptions).toHaveLength(1);
             expect(result.total).toBe(1);
         });
@@ -236,7 +315,7 @@ describe('PrescriptionService', () => {
         it('returns dispensed prescriptions by cuil', async () => {
             await createTestPrescription({
                 status: 'Dispensada',
-                dispensedBy: { cuil: '20-12345678-9', userId: 'farm123', businessName: 'Farm.' },
+                dispensedBy: { cuil: '20-12345678-9', userId: '000000000000000000000003', businessName: 'Farm.' },
             });
             await createTestPrescription({ status: 'Pendiente' });
 

@@ -108,5 +108,14 @@ describe('StockService', () => {
         it('calls searchStock when insumo param provided', async () => {
             await expect(service.getAndesStock('ibuprofeno')).rejects.toThrow();
         });
+
+        it('delegates the magistral tipo to searchStock', async () => {
+            const spy = jest.spyOn(mockAndesClient, 'searchStock').mockResolvedValue([]);
+
+            await service.getAndesStock('ibuprofeno', 'magistral');
+
+            expect(spy).toHaveBeenCalledWith('ibuprofeno', 'magistral');
+            spy.mockRestore();
+        });
     });
 });

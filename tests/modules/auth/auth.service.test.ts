@@ -3,6 +3,7 @@ import { createUser } from '../../helpers/factories';
 import { AuthRepository } from '../../../src/modules/auth/auth.repository';
 import { AuthService } from '../../../src/modules/auth/auth.service';
 import { InvalidCredentialsError, UserNotFoundError } from '../../../src/modules/auth/auth.errors';
+import { AndesClient, AndesProfesionalDetalle, AndesFarmacia } from '../../../src/integrations/andes';
 
 jest.setTimeout(15000);
 
@@ -12,13 +13,47 @@ const logger = {
     logWarn: (..._args: unknown[]) => {},
 };
 
+const futureDate = '2099-01-01T00:00:00.000Z';
+
+function buildProfessional(): AndesProfesionalDetalle {
+    return {
+        id: 'prof1',
+        documento: '30123456',
+        nombre: 'Ana',
+        apellido: 'Pérez',
+        cuit: '27-30123456-3',
+        profesiones: [{
+            profesion: { codigo: 1, nombre: 'Médico' },
+            matriculado: true,
+            matriculacion: [{ matriculaNumero: 222, inicio: '2020-01-01', fin: futureDate }],
+        }],
+    };
+}
+
+class AndesClientStub {
+    professional: AndesProfesionalDetalle | null = null;
+    pharmacy: AndesFarmacia | null = null;
+    shouldThrow = false;
+
+    getProfessionalByDocumento = jest.fn(async (_documento: string): Promise<AndesProfesionalDetalle | null> => {
+        if (this.shouldThrow) { throw new Error('andes down'); }
+        return this.professional;
+    });
+
+    getPharmacyByCuit = jest.fn(async (_cuit: string): Promise<AndesFarmacia | null> => {
+        if (this.shouldThrow) { throw new Error('andes down'); }
+        return this.pharmacy;
+    });
+}
+
 let repository: AuthRepository;
 let service: AuthService;
+const andesStub = new AndesClientStub();
 
 beforeAll(async () => {
     await connectTestDB();
     repository = new AuthRepository();
-    service = new AuthService(repository, logger as any);
+    service = new AuthService(repository, logger as any, undefined, undefined, andesStub as unknown as AndesClient);
 });
 
 afterAll(async () => {
@@ -27,6 +62,11 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await clearCollections();
+    andesStub.professional = null;
+    andesStub.pharmacy = null;
+    andesStub.shouldThrow = false;
+    andesStub.getProfessionalByDocumento.mockClear();
+    andesStub.getPharmacyByCuit.mockClear();
 });
 
 describe('AuthService', () => {
@@ -127,6 +167,89 @@ describe('AuthService', () => {
             await expect(
                 service.getToken({ username: 'nobody' }),
             ).rejects.toThrow(UserNotFoundError);
+        });
+    });
+
+    describe('sincronización con Andes', () => {
+        it('login sincroniza cuil, nombre/apellido, businessName y profesionGrado del profesional', async () => {
+            await createUser({ username: '30123456', email: 'prof@test.com', businessName: '', profesionGrado: [] });
+            andesStub.professional = buildProfessional();
+
+            await service.login({ identifier: '30123456', password: 'password123' });
+
+            const updated = await repository.findOneByUsername('30123456');
+            expect(updated?.cuil).toBe('27-30123456-3');
+            expect(updated?.firstName).toBe('Ana');
+            expect(updated?.lastName).toBe('Pérez');
+            expect(updated?.businessName).toBe('PÉREZ ANA');
+            expect(updated?.profesionGrado?.[0]).toMatchObject({
+                profesion: 'Médico',
+                codigoProfesion: '1',
+                numeroMatricula: '222',
+                estado: 'vigente',
+            });
+            expect(andesStub.getProfessionalByDocumento).toHaveBeenCalledWith('30123456');
+        });
+
+        it('no sobreescribe businessName si ya tiene valor', async () => {
+            await createUser({ username: '30123456', email: 'prof@test.com', businessName: 'EXISTENTE' });
+            andesStub.professional = buildProfessional();
+
+            await service.login({ identifier: '30123456', password: 'password123' });
+
+            const updated = await repository.findOneByUsername('30123456');
+            expect(updated?.businessName).toBe('EXISTENTE');
+            expect(updated?.cuil).toBe('27-30123456-3');
+        });
+
+        it('loginWithJwt también sincroniza', async () => {
+            const user = await createUser({ username: '30123456', email: 'prof@test.com', businessName: '' });
+            andesStub.professional = buildProfessional();
+
+            await service.loginWithJwt(user._id.toString());
+
+            const updated = await repository.findOneByUsername('30123456');
+            expect(updated?.firstName).toBe('Ana');
+            expect(updated?.cuil).toBe('27-30123456-3');
+        });
+
+        it('si Andes falla, el login devuelve tokens y conserva los datos previos', async () => {
+            await createUser({ username: '30123456', email: 'prof@test.com', businessName: '' });
+            andesStub.shouldThrow = true;
+
+            const result = await service.login({ identifier: '30123456', password: 'password123' });
+
+            expect(result.jwt).toBeDefined();
+            const updated = await repository.findOneByUsername('30123456');
+            expect(updated?.cuil).toBeUndefined();
+        });
+
+        it('no llama a Andes para roles que no son profesional ni farmacéutico', async () => {
+            await createUser({ username: 'aud1', email: 'aud@test.com', roleType: 'auditor' });
+
+            await service.login({ identifier: 'aud1', password: 'password123' });
+
+            expect(andesStub.getProfessionalByDocumento).not.toHaveBeenCalled();
+            expect(andesStub.getPharmacyByCuit).not.toHaveBeenCalled();
+        });
+
+        it('sincroniza datos de farmacia (cuil, razonSocial, matrícula DT y businessName)', async () => {
+            await createUser({ username: '20123456789', email: 'farm@test.com', roleType: 'pharmacist', businessName: '' });
+            andesStub.pharmacy = {
+                _id: 'farm1',
+                cuit: '20123456789',
+                denominacion: 'Farmacia Centro',
+                razonSocial: 'Farmacia Centro S.A.',
+                matriculaDTResponsable: 'DT-999',
+            };
+
+            await service.login({ identifier: '20123456789', password: 'password123' });
+
+            const updated = await repository.findOneByUsername('20123456789');
+            expect(updated?.cuil).toBe('20123456789');
+            expect(updated?.razonSocial).toBe('Farmacia Centro S.A.');
+            expect(updated?.responsibleDTEnrollment).toBe('DT-999');
+            expect(updated?.businessName).toBe('Farmacia Centro S.A.');
         });
     });
 });

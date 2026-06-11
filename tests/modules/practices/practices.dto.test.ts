@@ -39,7 +39,20 @@ describe('Practices DTOs', () => {
             expect(result.status).toBe('active');
         });
 
-        it('accepts obraSocial', () => {
+        it('accepts obraSocial with numeric codigoPuco', () => {
+            const data = {
+                ...validData,
+                patient: {
+                    ...validData.patient,
+                    obraSocial: { nombre: 'OSDE', codigoPuco: 123, numeroAfiliado: '456' },
+                },
+            };
+            const result = createPracticeSchema.parse(data);
+            expect(result.patient.obraSocial?.nombre).toBe('OSDE');
+            expect(result.patient.obraSocial?.codigoPuco).toBe(123);
+        });
+
+        it('rejects string codigoPuco', () => {
             const data = {
                 ...validData,
                 patient: {
@@ -47,8 +60,7 @@ describe('Practices DTOs', () => {
                     obraSocial: { nombre: 'OSDE', codigoPuco: '123', numeroAfiliado: '456' },
                 },
             };
-            const result = createPracticeSchema.parse(data);
-            expect(result.patient.obraSocial?.nombre).toBe('OSDE');
+            expect(() => createPracticeSchema.parse(data)).toThrow();
         });
 
         it('rejects missing date', () => {

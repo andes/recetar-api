@@ -1,5 +1,6 @@
 import Practice from './practices.model';
 import { IPractice } from './practices.types';
+import { toObjectId } from '../../shared/utils/object-id';
 
 export class PracticeRepository {
     async findAll(skip = 0, limit = 20): Promise<{ practices: IPractice[]; total: number }> {
@@ -15,7 +16,11 @@ export class PracticeRepository {
     }
 
     async findByUserId(userId: string, skip = 0, limit = 20): Promise<{ practices: IPractice[]; total: number }> {
-        const filter = { 'professional.userId': userId };
+        const professionalId = toObjectId(userId);
+        if (!professionalId) {
+            return { practices: [], total: 0 };
+        }
+        const filter = { 'professional.userId': professionalId };
         const [practices, total] = await Promise.all([
             Practice.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
             Practice.countDocuments(filter).exec(),
@@ -24,9 +29,13 @@ export class PracticeRepository {
     }
 
     async searchByUserId(userId: string, searchTerm: string, skip = 0, limit = 20): Promise<{ practices: IPractice[]; total: number }> {
+        const professionalId = toObjectId(userId);
+        if (!professionalId) {
+            return { practices: [], total: 0 };
+        }
         const regex = new RegExp(searchTerm, 'i');
         const filter = {
-            'professional.userId': userId,
+            'professional.userId': professionalId,
             $or: [
                 { 'patient.firstName': regex },
                 { 'patient.lastName': regex },
@@ -38,6 +47,15 @@ export class PracticeRepository {
             Practice.countDocuments(filter).exec(),
         ]);
         return { practices, total };
+    }
+
+    async findByUserIdAndPatientDni(userId: string, patientDni: string, limit = 10): Promise<IPractice[]> {
+        const professionalId = toObjectId(userId);
+        if (!professionalId) {
+            return [];
+        }
+        return Practice.find({ 'professional.userId': professionalId, 'patient.dni': patientDni })
+            .sort({ createdAt: -1 }).limit(limit).exec();
     }
 
     async create(data: Partial<IPractice>): Promise<IPractice> {

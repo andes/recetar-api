@@ -8,7 +8,7 @@ interface ISnomedConcept {
 }
 
 interface ISupplyCode {
-    source?: 'SIFAHO' | 'SNOMED';
+    source?: 'SIFAHO' | 'SNOMED' | 'ALFABETA';
     value?: string;
 }
 

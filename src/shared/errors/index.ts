@@ -5,3 +5,4 @@ export { AuthError } from './auth.error';
 export { ForbiddenError } from './forbidden.error';
 export { InternalError } from './internal.error';
 export { BusinessError } from './business.error';
+export { BadGatewayError } from './bad-gateway.error';

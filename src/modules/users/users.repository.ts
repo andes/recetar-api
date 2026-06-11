@@ -74,6 +74,18 @@ export class UsersRepository {
         }).populate('roles', 'role').exec();
     }
 
+    async deleteById(id: string): Promise<IUser | null> {
+        return User.findByIdAndDelete(id).exec();
+    }
+
+    async pullUserFromRoles(userId: string): Promise<void> {
+        const userObjectId = new Types.ObjectId(userId);
+        await Role.updateMany(
+            { users: userObjectId },
+            { $pull: { users: userObjectId } },
+        ).exec();
+    }
+
     async findRolesByIds(ids: string[]): Promise<any[]> {
         return Role.find({ _id: { $in: ids } }).exec();
     }

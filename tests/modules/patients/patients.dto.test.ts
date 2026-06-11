@@ -22,6 +22,13 @@ describe('Patients DTOs', () => {
             expect(result.sex).toBe('Masculino');
         });
 
+        it('accepts dni and sex only (RENAPER completa el resto)', () => {
+            const result = createPatientSchema.parse({ dni: '12345678', sex: 'Masculino' });
+            expect(result.dni).toBe('12345678');
+            expect(result.sex).toBe('Masculino');
+            expect(result.firstName).toBeUndefined();
+        });
+
         it('accepts optional fields', () => {
             const data = {
                 ...validData,
@@ -37,16 +44,12 @@ describe('Patients DTOs', () => {
             expect(result.cuil).toBe('20-12345678-9');
         });
 
-        it('rejects missing firstName', () => {
-            expect(() => createPatientSchema.parse({ ...validData, firstName: '' })).toThrow();
-        });
-
-        it('rejects missing lastName', () => {
-            expect(() => createPatientSchema.parse({ ...validData, lastName: '' })).toThrow();
-        });
-
         it('rejects missing sex', () => {
             expect(() => createPatientSchema.parse({ ...validData, sex: undefined })).toThrow();
+        });
+
+        it('rejects missing dni', () => {
+            expect(() => createPatientSchema.parse({ sex: 'Masculino' })).toThrow();
         });
 
         it('rejects invalid sex', () => {

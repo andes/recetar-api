@@ -2,24 +2,44 @@ tags:
   - name: Pacientes
     description: |
       Gestión de pacientes del sistema.
-      
-      - CRUD completo (crear, listar, obtener por ID, actualizar).
-      - Búsqueda por DNI (`GET /patients/dni/{dni}`).
-      - Consulta de obras sociales (`GET /patients/coverages`) y cobertura por DNI (`GET /patients/coverages/{dni}`).
+
+      Andes (MPI) es la **única fuente de verdad** de pacientes. Todas las
+      operaciones de lectura y escritura se resuelven contra el MPI de Andes:
+
+      - Búsqueda en Andes (`GET /patients`, `/search`, `/dni/{dni}`, `/{id}`).
+      - Alta validada con RENAPER vía Andes (`POST /patients`).
+      - Actualización contra Andes (`PATCH /patients/{id}`).
+      - Consulta de obras sociales (`GET /patients/coverages`) y cobertura por DNI.
+      - RecetAR no mantiene copia local del paciente: sólo referencia su `_id`
+        de Andes (`idMPI`).
 
 paths:
   /patients:
     get:
       tags: [Pacientes]
-      summary: Listar pacientes
+      summary: Listar / buscar pacientes en Andes
+      description: Devuelve pacientes validados de Andes. Sin `q` lista todos; con `q` busca por nombre, apellido o documento.
       security:
         - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Término de búsqueda en Andes (nombre, apellido o documento)
       responses:
         "200":
-          description: Lista de pacientes
+          description: Lista de pacientes de Andes
+        "502":
+          description: Andes no disponible
     post:
       tags: [Pacientes]
-      summary: Crear paciente
+      summary: Alta de paciente validado con RENAPER vía Andes
+      description: |
+        Busca el DNI en Andes; si ya existe, reutiliza ese paciente sin crear ni
+        modificar. Si no existe, valida con RENAPER (vía Andes) y crea el paciente
+        en Andes con `estado: validado`. La respuesta incluye el `_id` de Andes.
       security:
         - bearerAuth: []
       requestBody:
@@ -28,28 +48,39 @@ paths:
           application/json:
             schema:
               type: object
+              required: [dni, sex]
               properties:
                 dni:
-                  type: string
-                firstName:
-                  type: string
-                lastName:
                   type: string
                 sex:
                   type: string
                   enum: [Femenino, Masculino, Otro]
+                firstName:
+                  type: string
+                lastName:
+                  type: string
                 fechaNac:
+                  type: string
+                nombreAutopercibido:
+                  type: string
+                genero:
+                  type: string
+                cuil:
                   type: string
       responses:
         "201":
-          description: Paciente creado
+          description: Paciente creado en Andes
+        "400":
+          description: Documento faltante o inválido
         "422":
-          description: Error de validación
+          description: Ciudadano no encontrado en RENAPER
+        "502":
+          description: Andes no disponible
 
   /patients/{id}:
     get:
       tags: [Pacientes]
-      summary: Obtener paciente por ID
+      summary: Obtener paciente por ID de Andes
       security:
         - bearerAuth: []
       parameters:
@@ -60,13 +91,15 @@ paths:
             type: string
       responses:
         "200":
-          description: Datos del paciente
+          description: Datos del paciente (Andes)
         "404":
-          description: Paciente no encontrado
+          description: Paciente no encontrado en Andes
+        "502":
+          description: Andes no disponible
     patch:
       tags: [Pacientes]
-      summary: Actualizar paciente
-      description: Acepta campos parciales para actualizar. Los campos enviados se setean; los no enviados no se modifican.
+      summary: Actualizar paciente en Andes
+      description: Acepta campos parciales. Andes impide alterar `documento` y `estado` de un paciente validado.
       security:
         - bearerAuth: []
       parameters:
@@ -97,14 +130,36 @@ paths:
         "200":
           description: Paciente actualizado
         "404":
-          description: Paciente no encontrado
+          description: Paciente no encontrado en Andes
         "422":
           description: Error de validación
+        "502":
+          description: Andes no disponible
+
+  /patients/search:
+    get:
+      tags: [Pacientes]
+      summary: Buscar pacientes en Andes
+      description: Búsqueda en Andes por nombre, apellido o documento.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Término de búsqueda
+      responses:
+        "200":
+          description: Lista de pacientes que coinciden
+        "502":
+          description: Andes no disponible
 
   /patients/dni/{dni}:
     get:
       tags: [Pacientes]
-      summary: Buscar paciente por DNI
+      summary: Buscar paciente por DNI en Andes
       security:
         - bearerAuth: []
       parameters:
@@ -115,7 +170,37 @@ paths:
             type: string
       responses:
         "200":
-          description: Paciente(s) encontrado(s)
+          description: Paciente(s) encontrado(s) en Andes
+        "502":
+          description: Andes no disponible
+
+  /patients/validate:
+    post:
+      tags: [Pacientes]
+      summary: Validar identidad con RENAPER vía Andes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dni, sexo]
+              properties:
+                dni:
+                  type: string
+                sexo:
+                  type: string
+      responses:
+        "200":
+          description: Datos validados
+        "400":
+          description: dni o sexo faltantes
+        "422":
+          description: Ciudadano no encontrado
+        "502":
+          description: Andes no disponible
 
   /patients/coverages:
     get:
@@ -123,6 +208,12 @@ paths:
       summary: Listar obras sociales
       security:
         - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: Lista de obras sociales
@@ -136,6 +227,11 @@ paths:
       parameters:
         - name: dni
           in: path
+          required: true
+          schema:
+            type: string
+        - name: sexo
+          in: query
           required: true
           schema:
             type: string

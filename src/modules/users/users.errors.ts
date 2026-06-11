@@ -1,4 +1,4 @@
-import { NotFoundError, BusinessError, ValidationError } from '../../shared/errors';
+import { NotFoundError, BusinessError, ValidationError, ForbiddenError } from '../../shared/errors';
 
 export class UserNotFoundError extends NotFoundError {
     constructor() {
@@ -33,6 +33,12 @@ export class InvalidEmailTokenError extends ValidationError {
 export class SelfUpdateForbiddenError extends BusinessError {
     constructor() {
         super('errors.forbidden.selfUpdate');
+    }
+}
+
+export class SelfDeleteForbiddenError extends ForbiddenError {
+    constructor() {
+        super('errors.forbidden.selfDelete');
     }
 }
 

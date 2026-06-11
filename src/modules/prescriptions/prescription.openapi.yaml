@@ -6,6 +6,7 @@ tags:
       - **Recetas locales**: CRUD completo + dispensa + cancelación de dispensa con ventana de 2h.
       - **Recetas ANDES**: cache local de prescripciones de ANDES, dispensa, cancelación y suspensión con sincronización.
       - **Sincronización**: ámbito público envía a ANDES; ámbito privado es solo local.
+      - **Magistrales**: los suministros con `supply.type = magistral` se aceptan en cualquier ámbito (público o privado).
       - **Trimestral**: genera 3 recetas (inmediata + 30 + 60 días).
       - **Búsquedas**: por profesional, por paciente (DNI), por rango de fechas, por CUIL del farmacéutico.
       - **Verificación**: consulta recetas activas locales + ANDES por DNI + conceptId.
@@ -26,6 +27,30 @@ paths:
           in: query
           schema:
             type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: sexo
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: searchTerm
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: Lista paginada de recetas
@@ -40,6 +65,52 @@ paths:
           application/json:
             schema:
               type: object
+              properties:
+                patient:
+                  type: object
+                professional:
+                  type: object
+                ambito:
+                  type: string
+                  enum: [publico, privado]
+                  description: Ámbito de la receta. Un magistral requiere `publico`.
+                organizacion:
+                  type: object
+                  properties:
+                    _id: { type: string }
+                    nombre: { type: string }
+                    direccion: { type: string }
+                supplies:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      supply:
+                        type: object
+                        properties:
+                          name: { type: string }
+                          type:
+                            type: string
+                            enum: [device, nutrition, magistral]
+                          code:
+                            type: object
+                            properties:
+                              source:
+                                type: string
+                                enum: [SIFAHO, SNOMED, ALFABETA, ANDES]
+                              value: { type: string }
+                      quantity:
+                        type: number
+                      obraSocial:
+                        type: object
+                        properties:
+                          nombre:
+                            type: string
+                          codigoPuco:
+                            type: integer
+                            description: Código PUCO de ANDES (fuente autoritativa, numérico)
+                          numeroAfiliado:
+                            type: string
       responses:
         "201":
           description: Receta creada
@@ -149,6 +220,14 @@ paths:
           in: query
           schema:
             type: string
+        - name: sexo
+          in: query
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: Lista de recetas del paciente
@@ -178,6 +257,13 @@ paths:
                   type: string
                 cuil:
                   type: string
+                replacement:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    quantity:
+                      type: number
       responses:
         "200":
           description: Receta dispensada

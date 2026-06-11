@@ -134,6 +134,13 @@ El progreso se lleva en el checklist del skill en `.opencode/skills/recetar-api-
 - **recetar-api-tests** (`.opencode/skills/recetar-api-tests/SKILL.md`): guía para escribir tests con Jest + mongodb-memory-server.
 - **recetar-api-maintenance** (`.opencode/skills/recetar-api-maintenance/SKILL.md`): reglas permanentes del proyecto — documentación sincronizada, convención REST, formato de respuestas, estructura de módulos, verificación pre-commit.
 
+## Skills obligatorios
+
+- **Antes de cualquier tarea**, leer los skills del proyecto en `.opencode/skills/`. Los skills definen reglas de arquitectura, convenciones y verificación que tienen precedencia.
+- **Cómo leerlos:** cada skill vive en `.opencode/skills/{skill}/SKILL.md`. Leerlo con la herramienta `Read` (o `bash`) sobre el path literal. **No buscar skills con `glob` ni `grep`**: esas herramientas ignoran los directorios ocultos (`.opencode/`) y devuelven vacío, lo que lleva a concluir erróneamente que no existen.
+- **Si una instrucción del usuario contradice un skill**, preguntar antes de escribir o modificar código. No asumir que la instrucción del usuario reemplaza automáticamente lo que dice el skill.
+- **Después de leer un skill nuevo**, revisar el código existente en el área de trabajo para detectar violaciones que deban corregirse.
+
 ## Referencias utiles
 - Operacion de Agenda: `src/agenda/AGENDA_README.md`.
 - Convenciones de PR: `.github/pull_request_template.md`.

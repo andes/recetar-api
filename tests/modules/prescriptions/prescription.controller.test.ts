@@ -3,8 +3,21 @@ import mongoose from 'mongoose';
 import { connectTestDB, clearCollections, disconnectTestDB } from '../../helpers/db';
 import { createAuthenticatedUser } from '../../helpers/auth';
 import { createApp } from '../../helpers/app';
+import { setPatientService, PatientService } from '../../../src/modules/patients';
 
 jest.setTimeout(15000);
+
+const patientStub = {
+    resolveSnapshot: async (dni: string, sex: string) => ({
+        firstName: 'Juan',
+        lastName: 'Pérez',
+        dni,
+        sex: sex ? sex.charAt(0).toUpperCase() + sex.slice(1).toLowerCase() : '',
+        idMPI: 'andes-1',
+    }),
+} as unknown as PatientService;
+
+setPatientService(patientStub);
 
 const PrescriptionSchema = new mongoose.Schema({
     supplies: [{
@@ -40,7 +53,7 @@ beforeEach(async () => {
 function createTestPrescription(overrides = {}) {
     return Prescription.create({
         patient: { firstName: 'Juan', lastName: 'Pérez', dni: '12345678', sex: 'Masculino' },
-        professional: { userId: 'prof123', businessName: 'Dr. Gómez' },
+        professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
         supplies: [{ supply: { name: 'Ibuprofeno 400mg', type: 'device' }, quantity: 10 }],
         status: 'Pendiente',
         date: new Date(),
@@ -75,12 +88,26 @@ describe('Prescriptions Controller', () => {
     describe('GET /api/prescriptions/user/:id', () => {
         it('returns 200', async () => {
             const { token } = await createAuthenticatedUser();
-            await createTestPrescription({ professional: { userId: 'prof123', businessName: 'Dr.' } });
+            await createTestPrescription({ professional: { userId: '000000000000000000000001', businessName: 'Dr.' } });
             const res = await request(app)
-                .get('/api/prescriptions/user/prof123')
+                .get('/api/prescriptions/user/000000000000000000000001')
                 .set('Authorization', `Bearer ${token}`);
             expect(res.status).toBe(200);
             expect(res.body.data.prescriptions).toHaveLength(1);
+        });
+
+        it('returns all prescriptions for the professional userId (ObjectId)', async () => {
+            const { token } = await createAuthenticatedUser();
+            await createTestPrescription({ professional: { userId: '000000000000000000000001', businessName: 'Dr.' } });
+            await createTestPrescription({ professional: { userId: '000000000000000000000001', businessName: 'Dr.' } });
+            await createTestPrescription({ professional: { userId: '000000000000000000000001', businessName: 'Dr.' } });
+
+            const res = await request(app)
+                .get('/api/prescriptions/user/000000000000000000000001')
+                .set('Authorization', `Bearer ${token}`);
+            expect(res.status).toBe(200);
+            expect(res.body.data.prescriptions).toHaveLength(3);
+            expect(res.body.data.total).toBe(3);
         });
     });
 
@@ -101,7 +128,7 @@ describe('Prescriptions Controller', () => {
             const { token } = await createAuthenticatedUser();
             await createTestPrescription({
                 status: 'Dispensada',
-                dispensedBy: { cuil: '20-12345678-9', userId: 'farm123', businessName: 'Farm.' },
+                dispensedBy: { cuil: '20-12345678-9', userId: '000000000000000000000003', businessName: 'Farm.' },
             });
             const res = await request(app)
                 .get('/api/prescriptions/dispensed-by/20-12345678-9')
@@ -140,7 +167,7 @@ describe('Prescriptions Controller', () => {
                 .set('Authorization', `Bearer ${token}`)
                 .send({
                     patient: { firstName: 'Juan', lastName: 'Pérez', dni: '12345678', sex: 'Masculino' },
-                    professional: { userId: 'prof123', businessName: 'Dr. Gómez' },
+                    professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
                     supplies: [{ supply: { name: 'Ibuprofeno 400mg' }, quantity: 10 }],
                 });
             expect(res.status).toBe(201);
@@ -186,7 +213,7 @@ describe('Prescriptions Controller', () => {
             const res = await request(app)
                 .patch(`/api/prescriptions/${created._id}/dispense`)
                 .set('Authorization', `Bearer ${token}`)
-                .send({ userId: 'farm123', businessName: 'Farm. López' });
+                .send({ userId: '000000000000000000000003', businessName: 'Farm. López' });
             expect(res.status).toBe(200);
             expect(res.body.data.status).toBe('Dispensada');
         });
@@ -207,8 +234,30 @@ describe('Prescriptions Controller', () => {
             const res = await request(app)
                 .patch(`/api/prescriptions/${created._id}/dispense`)
                 .set('Authorization', `Bearer ${token}`)
-                .send({ userId: 'farm123', businessName: 'Farm.' });
+                .send({ userId: '000000000000000000000003', businessName: 'Farm.' });
             expect(res.status).toBe(409);
+        });
+
+        it('stores replacement as current medication and keeps the original in replacedMedication', async () => {
+            const { token } = await createAuthenticatedUser();
+            const created = await createTestPrescription({
+                supplies: [{ supply: { name: 'Ibuprofeno 400mg' }, quantity: 10 }],
+            });
+            const res = await request(app)
+                .patch(`/api/prescriptions/${created._id}/dispense`)
+                .set('Authorization', `Bearer ${token}`)
+                .send({
+                    userId: '000000000000000000000003',
+                    businessName: 'Farm. López',
+                    replacement: { name: 'Ibuprofeno 600mg', quantity: 20 },
+                });
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.status).toBe('Dispensada');
+            expect(res.body.data.supplies[0].supply.name).toBe('Ibuprofeno 600mg');
+            expect(res.body.data.supplies[0].quantity).toBe(20);
+            expect(res.body.data.replacedMedication.name).toBe('Ibuprofeno 400mg');
+            expect(res.body.data.replacedMedication.quantity).toBe(10);
         });
     });
 
@@ -217,11 +266,11 @@ describe('Prescriptions Controller', () => {
             const { token } = await createAuthenticatedUser();
             const created = await createTestPrescription({
                 status: 'Dispensada',
-                dispensedBy: { userId: 'farm123', businessName: 'Farm. López' },
+                dispensedBy: { userId: '000000000000000000000003', businessName: 'Farm. López' },
                 dispensedAt: new Date(),
             });
             const res = await request(app)
-                .patch(`/api/prescriptions/${created._id}/cancel-dispense?userId=farm123`)
+                .patch(`/api/prescriptions/${created._id}/cancel-dispense?userId=000000000000000000000003`)
                 .set('Authorization', `Bearer ${token}`);
             expect(res.status).toBe(200);
             expect(res.body.data.status).toBe('Pendiente');

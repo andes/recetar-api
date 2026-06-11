@@ -21,7 +21,7 @@ const patientSubSchema = z.object({
     sex: z.string().min(1, 'errors.validation.requiredField'),
     nombreAutopercibido: z.string().optional(),
     fechaNac: z.string().optional(),
-    idMPI: z.string().optional(),
+    idMPI: z.string().nullable().optional(),
     obraSocial: z.object({
         nombre: z.string().optional(),
         numeroAfiliado: z.string().optional(),

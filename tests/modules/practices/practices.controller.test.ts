@@ -3,8 +3,21 @@ import { connectTestDB, clearCollections, disconnectTestDB } from '../../helpers
 import { createAuthenticatedUser } from '../../helpers/auth';
 import { createApp } from '../../helpers/app';
 import Practice from '../../../src/modules/practices/practices.model';
+import { setPatientService, PatientService } from '../../../src/modules/patients';
 
 jest.setTimeout(15000);
+
+const patientStub = {
+    resolveSnapshot: async (dni: string, sex: string) => ({
+        firstName: 'Juan',
+        lastName: 'Perez',
+        dni,
+        sex,
+        idMPI: 'andes-1',
+    }),
+} as unknown as PatientService;
+
+setPatientService(patientStub);
 
 let app: ReturnType<typeof createApp>;
 
@@ -66,6 +79,20 @@ describe('Practices Controller', () => {
             expect(res.status).toBe(200);
             expect(res.body.data.practices).toHaveLength(1);
             expect(res.body.data.total).toBe(1);
+        });
+
+        it('returns all practices for the professional userId', async () => {
+            const { token } = await createAuthenticatedUser();
+            await Practice.create({ ...practiceData, practice: 'Práctica 1' });
+            await Practice.create({ ...practiceData, practice: 'Práctica 2' });
+            await Practice.create({ ...practiceData, practice: 'Práctica 3' });
+
+            const res = await request(app)
+                .get('/api/practices?userId=000000000000000000000001')
+                .set('Authorization', `Bearer ${token}`);
+            expect(res.status).toBe(200);
+            expect(res.body.data.practices).toHaveLength(3);
+            expect(res.body.data.total).toBe(3);
         });
 
         it('returns 200 with practices filtered by userId and searchTerm', async () => {
