@@ -41,6 +41,22 @@ export interface IUser extends Document {
     authorizationExpiration?: Date;
     authorizationDisposition?: string;
     responsibleDTEnrollment?: string;
+    securityPin?: {
+        hash: string;
+        isActive: boolean;
+    };
+    webauthnCredentials?: Array<{
+        credentialId: string;
+        publicKey: string;
+        counter: number;
+        deviceType: string;
+        backedUp: boolean;
+        transport: string[];
+        createdAt: Date;
+        lastUsedAt?: Date;
+    }>;
+    webauthnChallenge?: string;
+    webauthnChallengeExpires?: Date;
     isValidPassword(password: string): Promise<boolean>;
 }
 
@@ -182,6 +198,53 @@ export const userSchema = new Schema({
     },
     responsibleDTEnrollment: {
         type: String
+    },
+    securityPin: {
+        hash: {
+            type: String
+        },
+        isActive: {
+            type: Boolean,
+            default: false
+        }
+    },
+    webauthnCredentials: [{
+        credentialId: {
+            type: String,
+            required: true
+        },
+        publicKey: {
+            type: String,
+            required: true
+        },
+        counter: {
+            type: Number,
+            default: 0
+        },
+        deviceType: {
+            type: String,
+            default: 'singleDevice'
+        },
+        backedUp: {
+            type: Boolean,
+            default: false
+        },
+        transport: [{
+            type: String
+        }],
+        createdAt: {
+            type: Date,
+            default: Date.now
+        },
+        lastUsedAt: {
+            type: Date
+        }
+    }],
+    webauthnChallenge: {
+        type: String
+    },
+    webauthnChallengeExpires: {
+        type: Date
     }
 });
 

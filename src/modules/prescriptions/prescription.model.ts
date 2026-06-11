@@ -16,12 +16,13 @@ const supplySubSchema = new mongoose.Schema({
         semanticTag: String,
     },
     code: {
-        source: { type: String, enum: ['SIFAHO', 'SNOMED'] },
+        source: { type: String, enum: ['SIFAHO', 'SNOMED', 'ALFABETA'] },
         value: String,
     },
     type: { type: String, enum: ['device', 'nutrition', 'magistral'] },
     requiresSpecification: { type: Boolean },
     specification: { type: String },
+    barCode: { type: String },
 }, { _id: false });
 
 const supplyEntrySubSchema = new mongoose.Schema({

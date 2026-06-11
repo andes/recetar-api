@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { PrescriptionService } from './prescription.service';
+import { SecurityService } from '../security/security.service';
 import { ApiResponse } from '../../shared/api-response';
 import {
     CreatePrescriptionDTO, UpdatePrescriptionDTO,
@@ -7,9 +8,13 @@ import {
 } from './prescription.dto';
 import { AndesDispenseDTO, AndesCancelDispenseDTO, AndesSuspendDTO } from '../../integrations/andes';
 import { getStringQueryParam } from '../../shared/utils/query';
+import { PinRequiredError, InvalidPinError, SecurityTokenInvalidError } from '../security/security.errors';
 
 export class PrescriptionController {
-    constructor(private readonly prescriptionService: PrescriptionService) {}
+    constructor(
+        private readonly prescriptionService: PrescriptionService,
+        private readonly securityService: SecurityService
+    ) {}
 
     index = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
@@ -73,6 +78,29 @@ export class PrescriptionController {
 
     create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const userId = (req.user as any)._id.toString();
+            const securityPin = req.headers['x-security-pin'] as string | undefined;
+            const securityToken = req.headers['x-security-token'] as string | undefined;
+
+            const hasPin = await this.securityService.hasPinActive(userId);
+            const hasBiometric = await this.securityService.hasWebAuthnCredentials(userId);
+
+            if (hasPin || hasBiometric) {
+                if (securityPin) {
+                    const isValid = await this.securityService.verifyPin(userId, securityPin);
+                    if (!isValid) {
+                        throw new InvalidPinError();
+                    }
+                } else if (securityToken) {
+                    const isValid = await this.securityService.verifySecurityToken(userId, securityToken);
+                    if (!isValid) {
+                        throw new SecurityTokenInvalidError();
+                    }
+                } else {
+                    throw new PinRequiredError();
+                }
+            }
+
             const prescription = await this.prescriptionService.create(req.body as CreatePrescriptionDTO);
             res.status(201).json(ApiResponse.success(prescription));
         } catch (error) {

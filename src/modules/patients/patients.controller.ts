@@ -25,6 +25,16 @@ export class PatientController {
         }
     };
 
+    search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const q = getStringQueryParam(req.query.q) || '';
+            const patients = await this.patientService.search(q);
+            res.status(200).json(ApiResponse.success(patients));
+        } catch (error) {
+            next(error);
+        }
+    };
+
     findByDni = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const patients = await this.patientService.findByDni(req.params.dni);
