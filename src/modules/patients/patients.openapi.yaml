@@ -101,6 +101,24 @@ paths:
         "422":
           description: Error de validación
 
+  /patients/search:
+    get:
+      tags: [Pacientes]
+      summary: Buscar pacientes por DNI, nombre o apellido
+      description: Búsqueda parcial (case-insensitive) sobre DNI, nombre y apellido.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Término de búsqueda (mínimo 3 caracteres recomendado)
+      responses:
+        "200":
+          description: Lista de pacientes que coinciden con el término
+
   /patients/dni/{dni}:
     get:
       tags: [Pacientes]

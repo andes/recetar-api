@@ -24,6 +24,9 @@ export const messages = {
             invalidSupplies: 'Insumos inválidos',
             invalidObjectId: 'ID inválido',
         },
+        patient: {
+            duplicateDni: 'Ya existe un paciente con ese DNI',
+        },
         auth: {
             default: 'No autorizado',
             invalidCredentials: 'Credenciales inválidas',

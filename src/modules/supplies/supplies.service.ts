@@ -52,7 +52,10 @@ export class SupplyService {
         await this.supplyRepository.delete(id);
     }
 
-    async searchSnomedConcepts(search: string): Promise<AndesSnomedConcept[]> {
-        return this.andesClient.searchSnomedConcepts(search);
+    async searchSnomedConcepts(search: string, offset = 0, limit = 10): Promise<{ results: AndesSnomedConcept[]; total: number }> {
+        const all = await this.andesClient.searchSnomedConcepts(search);
+        const total = all.length;
+        const results = all.slice(offset, offset + limit);
+        return { results, total };
     }
 }

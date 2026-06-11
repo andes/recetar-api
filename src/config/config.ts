@@ -10,4 +10,6 @@ export const env = {
     ANDES_ENDPOINT: process.env.ANDES_ENDPOINT || '',
     JWT_MPI_TOKEN: process.env.JWT_MPI_TOKEN || '',
     ANDES_MPI_ENDPOINT: process.env.ANDES_MPI_ENDPOINT || '',
+    VADEMECUM_MS_URL: process.env.VADEMECUM_MS_URL || 'http://localhost:4001',
+    VADEMECUM_API_KEY: process.env.VADEMECUM_API_KEY || '',
 };

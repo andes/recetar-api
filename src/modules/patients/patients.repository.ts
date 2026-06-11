@@ -14,6 +14,22 @@ export class PatientRepository {
         return Patient.find({ dni }).exec();
     }
 
+    async search(term: string): Promise<IPatient[]> {
+        const parts = term.trim().split(/\s+/).filter(p => p.length > 0);
+        const conditions = parts.map(part => {
+            const regex = new RegExp(part, 'i');
+            return {
+                $or: [
+                    { dni: { $regex: regex } },
+                    { firstName: { $regex: regex } },
+                    { lastName: { $regex: regex } },
+                    { nombreAutopercibido: { $regex: regex } },
+                ],
+            };
+        });
+        return Patient.find({ $and: conditions }).exec();
+    }
+
     async findOneByDniAndSex(dni: string, sex: string): Promise<IPatient | null> {
         return Patient.findOne({ dni, sex }).exec();
     }
