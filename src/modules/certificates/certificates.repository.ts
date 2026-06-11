@@ -41,6 +41,11 @@ export class CertificateRepository {
         return { certificates, total };
     }
 
+    async findByUserIdAndPatientDni(userId: string, patientDni: string, limit = 10): Promise<ICertificate[]> {
+        return Certificate.find({ 'professional.userId': userId, 'patient.dni': patientDni })
+            .sort({ createdAt: -1 }).limit(limit).exec();
+    }
+
     async create(data: Partial<ICertificate>): Promise<ICertificate> {
         return Certificate.create(data);
     }

@@ -13,8 +13,10 @@ import {
     PasswordExpiredError,
     InvalidLinkError,
     SamePasswordError,
+    ProfessionalNotFoundError,
 } from './auth.errors';
-import { ForbiddenError } from '../../shared/errors';
+import { ForbiddenError, ValidationError, BadGatewayError } from '../../shared/errors';
+import { AndesClient, AndesMapper, MatriculasEstadoResponse, AndesProfesionalDetalle } from '../../integrations/andes';
 import {
     RegisterDTO,
     LoginDTO,
@@ -26,6 +28,7 @@ import {
     GetProfessionalsAndesDTO,
 } from './auth.dto';
 import { IUser } from '../../models/user.model';
+import ProfesionAutorizada from '../../models/profesionAutorizada.model';
 
 interface TokenPayload {
     iss: string;
@@ -47,6 +50,7 @@ export class AuthService {
         private readonly logger: Logger,
         private readonly emailService?: EmailService,
         private readonly emailTemplateService?: EmailTemplateService,
+        private readonly andesClient?: AndesClient,
     ) {
         this.jwtSecret = process.env.JWT_SECRET || '';
         this.tokenLifetime = parseInt(process.env.TOKEN_LIFETIME || '1', 10);
@@ -80,6 +84,8 @@ export class AuthService {
             throw new PasswordExpiredError();
         }
 
+        await this.syncUserFromAndes(user);
+
         const roles = user.roles.map(r => r.role || '');
         const token = this.signToken(user._id.toString(), user.username, user.businessName, roles);
         const refreshToken = uuidv4();
@@ -95,6 +101,8 @@ export class AuthService {
         if (!user || !user.isActive) {
             throw new UserNotFoundError();
         }
+
+        await this.syncUserFromAndes(user);
 
         const roles = user.roles.map(r => r.role || '');
         const token = this.signToken(user._id.toString(), user.username, user.businessName, roles);
@@ -183,6 +191,7 @@ export class AuthService {
             profesion: p.profesion.nombre,
             codigoProfesion: p.profesion.codigo,
             numeroMatricula: p.matriculacion[p.matriculacion.length - 1].matriculaNumero,
+            vencimiento: p.matriculacion[p.matriculacion.length - 1].fin,
         }));
 
         const newUser = await this.authRepository.createUser({
@@ -372,8 +381,27 @@ export class AuthService {
         return resp.body;
     }
 
+    async getMatriculas(documento: string): Promise<MatriculasEstadoResponse> {
+        if (!documento) {
+            throw new ValidationError('errors.validation.requiredField', [{ field: 'documento', message: 'Requerido' }]);
+        }
+        if (!this.andesClient) {
+            throw new BadGatewayError('errors.badGateway.andes');
+        }
+        let profesional: AndesProfesionalDetalle | null;
+        try {
+            profesional = await this.andesClient.getProfessionalByDocumento(documento);
+        } catch (error) {
+            this.logger.logError(error);
+            throw new BadGatewayError('errors.badGateway.andes');
+        }
+        if (!profesional) {
+            throw new ProfessionalNotFoundError();
+        }
+        return AndesMapper.toMatriculasEstado(profesional);
+    }
+
     async getAuthorizedProfessions(): Promise<any> {
-        const { default: ProfesionAutorizada } = await import('../../models/profesionAutorizada.model');
         return ProfesionAutorizada.find().exec();
     }
 
@@ -404,6 +432,55 @@ export class AuthService {
             return false;
         } catch {
             return false;
+        }
+    }
+
+    private async syncUserFromAndes(user: IUser): Promise<void> {
+        if (!this.andesClient || !user.username) {
+            return;
+        }
+        const roles = user.roles.map(r => r.role || '');
+        const isProfessional = roles.includes('professional') || roles.includes('professional-public');
+        const isPharmacist = roles.includes('pharmacist') || roles.includes('pharmacist-public');
+        // eslint-disable-next-line no-console
+        console.log('[sync] username:', user.username, '| roles:', roles.join(','), '| professional:', isProfessional, '| pharmacist:', isPharmacist);
+        if (!isProfessional && !isPharmacist) {
+            return;
+        }
+        try {
+            const updates: Record<string, unknown> = {};
+            if (isProfessional) {
+                const profesional = await this.andesClient.getProfessionalByDocumento(user.username);
+                if (profesional) {
+                    const sync = AndesMapper.toSyncableProfessional(profesional);
+                    if (sync.cuil) { updates.cuil = sync.cuil; }
+                    if (sync.firstName) { updates.firstName = sync.firstName; }
+                    if (sync.lastName) { updates.lastName = sync.lastName; }
+                    if (sync.profesionGrado?.length) { updates.profesionGrado = sync.profesionGrado; }
+                    if (!user.businessName && sync.businessName) { updates.businessName = sync.businessName; }
+                    if (!user.idAndes && sync.idAndes) { updates.idAndes = sync.idAndes; }
+                }
+            } else {
+                const farmacia = await this.andesClient.getPharmacyByCuit(user.username);
+                if (farmacia) {
+                    const sync = AndesMapper.toSyncablePharmacist(farmacia);
+                    if (sync.cuil) { updates.cuil = sync.cuil; }
+                    if (sync.razonSocial) { updates.razonSocial = sync.razonSocial; }
+                    if (sync.responsibleDTEnrollment) { updates.responsibleDTEnrollment = sync.responsibleDTEnrollment; }
+                    if (!user.businessName && sync.businessName) { updates.businessName = sync.businessName; }
+                    if (!user.idAndes && sync.idAndes) { updates.idAndes = sync.idAndes; }
+                }
+            }
+            // eslint-disable-next-line no-console
+            console.log('[sync] updates:', JSON.stringify(updates));
+            if (Object.keys(updates).length) {
+                Object.assign(user, updates);
+                await this.authRepository.saveUser(user);
+            }
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.log('[sync] error:', (error as Error).message);
+            this.logger.logError(error);
         }
     }
 

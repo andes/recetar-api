@@ -21,6 +21,7 @@ export const createUserSchema = z.object({
         profesion: z.string(),
         codigoProfesion: z.string(),
         numeroMatricula: z.string(),
+        vencimiento: z.string().optional(),
     })).optional(),
     authorizationExpiration: z.string().optional(),
     authorizationDisposition: z.string().optional(),
@@ -41,6 +42,7 @@ export const updateUserSchema = z.object({
         profesion: z.string(),
         codigoProfesion: z.string(),
         numeroMatricula: z.string(),
+        vencimiento: z.string().optional(),
     })).optional(),
     authorizationExpiration: z.string().optional(),
     authorizationDisposition: z.string().optional(),
@@ -63,9 +65,14 @@ export const updateOwnOrganizacionesSchema = z.object({
         _id: z.string().optional(),
         nombre: z.string(),
         direccion: z.string().optional(),
+        provincia: z.string().optional(),
     })),
 });
 export type UpdateOwnOrganizacionesDTO = z.infer<typeof updateOwnOrganizacionesSchema>;
+
+export const addSisaOrganizacionSchema = z.object({
+    codigo: z.string().min(1),
+});
 
 export const organizacionesAndesSchema = z.object({
     nombre: z.string().min(1, 'Parámetro nombre es requerido'),

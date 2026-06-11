@@ -9,7 +9,10 @@ tags:
       - **logout / refresh**: cierre de sesión y renovación de tokens.
       - **reset-password / recovery-password**: cambio y recuperación de contraseña.
       - **pharmacies-andes / professionals-andes**: búsqueda de farmacias y profesionales en ANDES para validar registro.
+      - **professionals-andes/matriculas**: estado de matrícula de grado de un profesional (ANDES).
       - **authorizedProfessions**: lista de profesiones habilitadas para recetar.
+
+      > **login** y **jwt-login** sincronizan (best-effort) los datos del usuario con ANDES: matrícula, CUIL y nombre/apellido (profesional) y matrícula DT, CUIL y razón social (farmacéutico). Si ANDES no responde, el login continúa con los datos previos.
 
 paths:
   /auth/login:
@@ -214,6 +217,60 @@ paths:
           description: Datos del profesional
         "404":
           description: Profesional no encontrado
+
+  /auth/professionals-andes/matriculas:
+    get:
+      tags: [Autenticación]
+      summary: Obtener estado de matrícula de grado de un profesional
+      x-description-file: docs/paths/auth/professionals-andes-matriculas.md
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: documento
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Estado de matrícula de grado del profesional
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      documento: { type: string }
+                      nombre: { type: string }
+                      apellido: { type: string }
+                      profesionalMatriculado: { type: boolean }
+                      estadoGeneral:
+                        type: string
+                        enum: [vigente, vencida, suspendida, sin-matricula, baja]
+                      matriculas:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            profesion: { type: string }
+                            codigo: { type: string }
+                            numero: { type: string }
+                            inicio: { type: string }
+                            fin: { type: string }
+                            estado:
+                              type: string
+                              enum: [vigente, vencida, suspendida, sin-matricula, baja]
+        "401":
+          description: No autorizado
+        "404":
+          description: Profesional no encontrado
+        "422":
+          description: Error de validación
+        "502":
+          description: No se pudo conectar con ANDES
 
   /auth/authorizedProfessions:
     get:

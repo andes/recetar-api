@@ -5,6 +5,65 @@ export interface AndesSnomedConcept {
     semanticTag?: string;
 }
 
+export type MatriculaEstado = 'vigente' | 'vencida' | 'suspendida' | 'sin-matricula' | 'baja';
+
+export interface AndesMatriculacion {
+    matriculaNumero?: number;
+    libro?: string;
+    folio?: string;
+    inicio?: string;
+    fin?: string;
+    baja?: {
+        motivo?: string;
+        fecha?: string | null;
+    };
+    revalidacionNumero?: number;
+}
+
+export interface AndesFormacionGrado {
+    profesion?: {
+        codigo?: number;
+        nombre?: string;
+        tipoDeFormacion?: string;
+    };
+    entidadFormadora?: {
+        codigo?: number;
+        nombre?: string;
+    };
+    titulo?: string;
+    fechaEgreso?: string;
+    matriculacion?: AndesMatriculacion[];
+    matriculado?: boolean;
+    papelesVerificados?: boolean;
+    fechaDeInscripcion?: string;
+}
+
+export interface AndesProfesionalDetalle {
+    id?: string;
+    documento?: string;
+    nombre?: string;
+    apellido?: string;
+    sexo?: string;
+    cuit?: string;
+    habilitado?: boolean;
+    nacionalidad?: string | {
+        nombre?: string;
+    };
+    profesiones?: AndesFormacionGrado[];
+}
+
+export interface AndesFarmacia {
+    _id?: string;
+    id?: string;
+    denominacion?: string;
+    razonSocial?: string;
+    cuit?: string;
+    DTResponsable?: string;
+    matriculaDTResponsable?: string;
+    disposicionHabilitacion?: string;
+    vencimientoHabilitacion?: string;
+}
+
 export interface AndesProfessional {
     id: string;
     nombre: string;
@@ -112,7 +171,7 @@ export interface GetPrescriptionsByProfessionalParams {
 
 export interface GetPrescriptionsByDniParams {
     dni: string;
-    sexo: string;
+    sexo?: string;
     status?: string;
     dateFrom?: string;
     dateTo?: string;
@@ -260,4 +319,28 @@ export interface AndesCoverage {
     codigoPuco?: number;
     idObraSocial?: number;
     prepaga?: boolean;
+}
+
+export interface ValidatedPatient {
+    dni: string;
+    nombre: string;
+    apellido: string;
+    sexo: string;
+    fechaNacimiento: string;
+    cuil?: string;
+    idMPI?: string;
+}
+
+export interface ValidationResponse {
+    documento: string;
+    nombre: string;
+    apellido: string;
+    sexo: string;
+    fechaNacimiento?: string;
+    genero?: string;
+    cuil?: string;
+    estado?: string;
+    foto?: string;
+    idTramite?: string;
+    errorData?: boolean;
 }

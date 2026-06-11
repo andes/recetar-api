@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { InternalError } from '../../shared/errors';
 import { andesMessages } from './lang';
+import { AndesMapper } from './andes.mapper';
 import {
     AndesPrescription,
     AndesStockItem,
@@ -10,9 +11,13 @@ import {
     AndesCoverage,
     AndesOrganization,
     AndesSnomedConcept,
+    ValidatedPatient,
+    ValidationResponse,
     GetPrescriptionsByPatientParams,
     GetPrescriptionsByProfessionalParams,
     GetPrescriptionsByDniParams,
+    AndesProfesionalDetalle,
+    AndesFarmacia,
 } from './andes.types';
 
 export interface AndesClientConfig {
@@ -116,6 +121,22 @@ export class AndesClient {
         return response.data;
     }
 
+    async getProfessionalByDocumento(documento: string): Promise<AndesProfesionalDetalle | null> {
+        this.ensureConfigured();
+        const response = await this.client.get<AndesProfesionalDetalle[]>('/core/tm/profesionales/guia', {
+            params: { documento },
+        });
+        return Array.isArray(response.data) && response.data.length ? response.data[0] : null;
+    }
+
+    async getPharmacyByCuit(cuit: string): Promise<AndesFarmacia | null> {
+        this.ensureConfigured();
+        const response = await this.client.get<AndesFarmacia[]>('/core/tm/farmacias', {
+            params: { cuit },
+        });
+        return Array.isArray(response.data) && response.data.length ? response.data[0] : null;
+    }
+
     async searchStock(insumo: string, tipos?: string): Promise<AndesStockItem[]> {
         let url = `/modules/insumos?nombre=^${insumo}`;
         if (tipos) {
@@ -192,6 +213,14 @@ export class AndesClient {
         return response.data;
     }
 
+    async searchCoverages(query: string): Promise<AndesCoverage[]> {
+        this.ensureConfigured();
+        const response = await this.client.get<AndesCoverage[]>('/modules/obraSocial/obrasSociales', {
+            params: { nombre: query },
+        });
+        return response.data;
+    }
+
     async searchOrganizations(nombre: string): Promise<AndesOrganization[]> {
         this.ensureConfigured();
         const response = await this.client.get<AndesOrganization[]>('/core/tm/organizaciones', {
@@ -207,5 +236,17 @@ export class AndesClient {
             params: { expression, search },
         });
         return response.data;
+    }
+
+    async validatePatient(dni: string, sexo: string): Promise<ValidatedPatient | null> {
+        this.ensureConfigured();
+        const response = await this.client.post<ValidationResponse>('/core-v2/mpi/validacion', {
+            documento: dni,
+            sexo: sexo.toLowerCase(),
+        });
+        if (response.data && response.data.documento) {
+            return AndesMapper.toValidatedPatientFromResponse(response.data);
+        }
+        return null;
     }
 }

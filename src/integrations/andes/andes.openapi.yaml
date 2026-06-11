@@ -7,6 +7,7 @@ tags:
       - **Cliente HTTP** (`AndesClient`): comunicación con los endpoints de ANDES para recetas, insumos, profesionales, farmacias y MPI (Master Patient Index).
       - **Mapper** (`AndesMapper`): transformación entre los tipos de ANDES y los tipos locales (pacientes, insumos).
       - **Cache local** (`PrescriptionAndes`): réplica local de recetas de ANDES en MongoDB para consultas offline y menor latencia.
+      - **Sincronización de usuarios**: en el login se consultan `GET /core/tm/profesionales/guia?documento=` (profesiones con matriculación, CUIL, nombre/apellido) y `GET /core/tm/farmacias` (matrícula DT, CUIL, razón social) para actualizar el usuario de RecetAR.
       - **DTOs de entrada**: schemas Zod que validan los requests entrantes para operaciones ANDES (dispensa, cancelación, suspensión, verificación).
       - **Errores**: errores específicos de ANDES (`PrescriptionAndesNotFoundError`) que se integran con el sistema de errores global.
       
@@ -27,6 +28,55 @@ tags:
 
 components:
   schemas:
+    AndesProfessionalDetail:
+      type: object
+      description: Profesional devuelto por `GET /core/tm/profesionales/guia` (subconjunto usado para matrículas y sync).
+      properties:
+        id: { type: string }
+        documento: { type: string }
+        nombre: { type: string }
+        apellido: { type: string }
+        sexo: { type: string }
+        cuit: { type: string }
+        habilitado: { type: boolean }
+        profesiones:
+          type: array
+          items:
+            type: object
+            properties:
+              profesion:
+                type: object
+                properties:
+                  codigo: { type: number }
+                  nombre: { type: string }
+              matriculado: { type: boolean }
+              matriculacion:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    matriculaNumero: { type: number }
+                    inicio: { type: string }
+                    fin: { type: string }
+                    baja:
+                      type: object
+                      properties:
+                        motivo: { type: string }
+                        fecha: { type: string, nullable: true }
+
+    AndesPharmacy:
+      type: object
+      description: Farmacia devuelta por `GET /core/tm/farmacias` (subconjunto usado para sync).
+      properties:
+        _id: { type: string }
+        cuit: { type: string }
+        denominacion: { type: string }
+        razonSocial: { type: string }
+        DTResponsable: { type: string }
+        matriculaDTResponsable: { type: string }
+        disposicionHabilitacion: { type: string }
+        vencimientoHabilitacion: { type: string }
+
     AndesDispenseRequest:
       type: object
       required: [recetaId, descripcion, cantidad]

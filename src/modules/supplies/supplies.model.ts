@@ -9,7 +9,7 @@ const snomedConceptSchema = new mongoose.Schema({
 }, { _id: false });
 
 const supplyCodeSchema = new mongoose.Schema({
-    source: { type: String, enum: ['SIFAHO', 'SNOMED'] },
+    source: { type: String, enum: ['SIFAHO', 'SNOMED', 'ALFABETA'] },
     value: { type: String },
 }, { _id: false });
 

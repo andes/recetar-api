@@ -8,7 +8,7 @@ const snomedConceptSchema = z.object({
 });
 
 const supplyCodeSchema = z.object({
-    source: z.enum(['SIFAHO', 'SNOMED']).optional(),
+    source: z.enum(['SIFAHO', 'SNOMED', 'ALFABETA']).optional(),
     value: z.string().optional(),
 });
 

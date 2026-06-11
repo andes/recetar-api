@@ -9,6 +9,9 @@ export interface IUser extends Document {
     emailConfirmationToken?: string;
     emailConfirmationExpires?: Date;
     businessName: string;
+    firstName?: string;
+    lastName?: string;
+    razonSocial?: string;
     enrollment?: string;
     cuil?: string;
     password: string;
@@ -32,6 +35,8 @@ export interface IUser extends Document {
         profesion: string;
         codigoProfesion: string;
         numeroMatricula: string;
+        vencimiento?: Date;
+        estado?: 'vigente' | 'vencida' | 'suspendida' | 'sin-matricula' | 'baja';
     }>;
     organizaciones: Array<{
         _id: string;
@@ -41,6 +46,22 @@ export interface IUser extends Document {
     authorizationExpiration?: Date;
     authorizationDisposition?: string;
     responsibleDTEnrollment?: string;
+    securityPin?: {
+        hash: string;
+        isActive: boolean;
+    };
+    webauthnCredentials?: Array<{
+        credentialId: string;
+        publicKey: string;
+        counter: number;
+        deviceType: string;
+        backedUp: boolean;
+        transport: string[];
+        createdAt: Date;
+        lastUsedAt?: Date;
+    }>;
+    webauthnChallenge?: string;
+    webauthnChallengeExpires?: Date;
     isValidPassword(password: string): Promise<boolean>;
 }
 
@@ -91,6 +112,15 @@ export const userSchema = new Schema({
         type: String
     },
     businessName: {
+        type: String
+    },
+    firstName: {
+        type: String
+    },
+    lastName: {
+        type: String
+    },
+    razonSocial: {
         type: String
     },
     password: {
@@ -163,15 +193,23 @@ export const userSchema = new Schema({
             type: String,
             required: '{PATH} is required'
         },
+        vencimiento: {
+            type: Date
+        },
+        estado: {
+            type: String,
+            enum: ['vigente', 'vencida', 'suspendida', 'sin-matricula', 'baja']
+        },
     }],
     organizaciones: [
         {
             _id: {
-                type: Schema.Types.ObjectId,
-                default: () => new mongoose.Types.ObjectId()
+                type: String,
+                default: () => new mongoose.Types.ObjectId().toString()
             },
             nombre: String,
             direccion: String,
+            provincia: String,
         }
     ],
     authorizationExpiration: {
@@ -182,6 +220,53 @@ export const userSchema = new Schema({
     },
     responsibleDTEnrollment: {
         type: String
+    },
+    securityPin: {
+        hash: {
+            type: String
+        },
+        isActive: {
+            type: Boolean,
+            default: false
+        }
+    },
+    webauthnCredentials: [{
+        credentialId: {
+            type: String,
+            required: true
+        },
+        publicKey: {
+            type: String,
+            required: true
+        },
+        counter: {
+            type: Number,
+            default: 0
+        },
+        deviceType: {
+            type: String,
+            default: 'singleDevice'
+        },
+        backedUp: {
+            type: Boolean,
+            default: false
+        },
+        transport: [{
+            type: String
+        }],
+        createdAt: {
+            type: Date,
+            default: Date.now
+        },
+        lastUsedAt: {
+            type: Date
+        }
+    }],
+    webauthnChallenge: {
+        type: String
+    },
+    webauthnChallengeExpires: {
+        type: Date
     }
 });
 

@@ -66,7 +66,9 @@ export class SupplyController {
                 res.status(400).json(ApiResponse.error('VALIDATION_ERROR', 'Parámetro search es requerido'));
                 return;
             }
-            const result = await this.supplyService.searchSnomedConcepts(search);
+            const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
+            const limit = Math.max(1, parseInt(req.query.limit as string, 10) || 10);
+            const result = await this.supplyService.searchSnomedConcepts(search, offset, limit);
             res.status(200).json(ApiResponse.success(result));
         } catch (error) {
             next(error);

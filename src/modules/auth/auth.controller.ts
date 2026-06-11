@@ -10,6 +10,7 @@ import {
     SetValidationTokenDTO,
     GetTokenDTO,
     GetProfessionalsAndesDTO,
+    GetMatriculasDTO,
 } from './auth.dto';
 import { getStringQueryParam } from '../../shared/utils/query';
 
@@ -121,6 +122,20 @@ export class AuthController {
                 profesionCodigo: getStringQueryParam(req.query.profesionCodigo),
             };
             const result = await this.authService.getProfessionalsAndes(dto);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    getMatriculas = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { documento } = req.query as unknown as GetMatriculasDTO;
+            // eslint-disable-next-line no-console
+            console.log('[matriculas] documento solicitado:', documento);
+            const result = await this.authService.getMatriculas(documento);
+            // eslint-disable-next-line no-console
+            console.log('[matriculas] resultado:', JSON.stringify(result));
             res.status(200).json(ApiResponse.success(result));
         } catch (error) {
             next(error);

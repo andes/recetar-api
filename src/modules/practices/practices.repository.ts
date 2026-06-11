@@ -40,6 +40,11 @@ export class PracticeRepository {
         return { practices, total };
     }
 
+    async findByUserIdAndPatientDni(userId: string, patientDni: string, limit = 10): Promise<IPractice[]> {
+        return Practice.find({ 'professional.userId': userId, 'patient.dni': patientDni })
+            .sort({ createdAt: -1 }).limit(limit).exec();
+    }
+
     async create(data: Partial<IPractice>): Promise<IPractice> {
         return Practice.create(data);
     }

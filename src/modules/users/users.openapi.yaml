@@ -200,6 +200,9 @@ components:
         username: { type: string }
         email: { type: string }
         businessName: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        razonSocial: { type: string }
         isActive: { type: boolean }
         createdAt:
           type: string
@@ -237,6 +240,9 @@ components:
         username: { type: string }
         password: { type: string, minLength: 8 }
         businessName: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        razonSocial: { type: string }
         enrollment: { type: string }
         cuil: { type: string }
         roles:
@@ -251,12 +257,19 @@ components:
               profesion: { type: string }
               codigoProfesion: { type: string }
               numeroMatricula: { type: string }
+              vencimiento: { type: string, format: date }
+              estado:
+                type: string
+                enum: [vigente, vencida, suspendida, sin-matricula, baja]
     UpdateUserRequest:
       type: object
       properties:
         email: { type: string }
         username: { type: string }
         businessName: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        razonSocial: { type: string }
         enrollment: { type: string }
         cuil: { type: string }
         roles:

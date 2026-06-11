@@ -1,0 +1,16 @@
+{
+    "extends": "../tsconfig.json",
+    "include": [
+        "./**/*"
+    ],
+    "compilerOptions": {
+        "target": "es2020",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "types": [
+            "node",
+            "jest"
+        ],
+        "noEmit": true
+    }
+}
