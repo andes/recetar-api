@@ -112,7 +112,7 @@ export interface GetPrescriptionsByProfessionalParams {
 
 export interface GetPrescriptionsByDniParams {
     dni: string;
-    sexo: string;
+    sexo?: string;
     status?: string;
     dateFrom?: string;
     dateTo?: string;
@@ -260,4 +260,28 @@ export interface AndesCoverage {
     codigoPuco?: number;
     idObraSocial?: number;
     prepaga?: boolean;
+}
+
+export interface ValidatedPatient {
+    dni: string;
+    nombre: string;
+    apellido: string;
+    sexo: string;
+    fechaNacimiento: string;
+    cuil?: string;
+    idMPI?: string;
+}
+
+export interface ValidationResponse {
+    documento: string;
+    nombre: string;
+    apellido: string;
+    sexo: string;
+    fechaNacimiento?: string;
+    genero?: string;
+    cuil?: string;
+    estado?: string;
+    foto?: string;
+    idTramite?: string;
+    errorData?: boolean;
 }

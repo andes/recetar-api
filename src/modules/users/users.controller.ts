@@ -87,4 +87,47 @@ export class UsersController {
             next(error);
         }
     };
+
+    organizationsSisa = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const name = getStringQueryParam(req.query.name);
+            if (!name) {
+                res.status(400).json(ApiResponse.error('VALIDATION_ERROR', 'Parameter name is required'));
+                return;
+            }
+            const result = await this.usersService.organizationsSisa(name);
+            res.status(200).json(result);
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    organizationSisaDetail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { codigo } = req.params;
+            if (!codigo) {
+                res.status(400).json(ApiResponse.error('VALIDATION_ERROR', 'Parameter codigo is required'));
+                return;
+            }
+            const result = await this.usersService.organizationSisaDetail(codigo);
+            if (!result) {
+                res.status(404).json(ApiResponse.error('NOT_FOUND', 'Organization not found'));
+                return;
+            }
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    addSisaOrganizacion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const userId = (req.user as any)._id.toString();
+            const { codigo } = req.body;
+            const result = await this.usersService.addSisaOrganizacion(userId, codigo);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
 }

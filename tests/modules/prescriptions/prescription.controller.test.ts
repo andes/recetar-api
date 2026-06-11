@@ -40,7 +40,7 @@ beforeEach(async () => {
 function createTestPrescription(overrides = {}) {
     return Prescription.create({
         patient: { firstName: 'Juan', lastName: 'Pérez', dni: '12345678', sex: 'Masculino' },
-        professional: { userId: 'prof123', businessName: 'Dr. Gómez' },
+        professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
         supplies: [{ supply: { name: 'Ibuprofeno 400mg', type: 'device' }, quantity: 10 }],
         status: 'Pendiente',
         date: new Date(),
@@ -75,9 +75,9 @@ describe('Prescriptions Controller', () => {
     describe('GET /api/prescriptions/user/:id', () => {
         it('returns 200', async () => {
             const { token } = await createAuthenticatedUser();
-            await createTestPrescription({ professional: { userId: 'prof123', businessName: 'Dr.' } });
+            await createTestPrescription({ professional: { userId: '000000000000000000000001', businessName: 'Dr.' } });
             const res = await request(app)
-                .get('/api/prescriptions/user/prof123')
+                .get('/api/prescriptions/user/000000000000000000000001')
                 .set('Authorization', `Bearer ${token}`);
             expect(res.status).toBe(200);
             expect(res.body.data.prescriptions).toHaveLength(1);
@@ -101,7 +101,7 @@ describe('Prescriptions Controller', () => {
             const { token } = await createAuthenticatedUser();
             await createTestPrescription({
                 status: 'Dispensada',
-                dispensedBy: { cuil: '20-12345678-9', userId: 'farm123', businessName: 'Farm.' },
+                dispensedBy: { cuil: '20-12345678-9', userId: '000000000000000000000003', businessName: 'Farm.' },
             });
             const res = await request(app)
                 .get('/api/prescriptions/dispensed-by/20-12345678-9')
@@ -140,7 +140,7 @@ describe('Prescriptions Controller', () => {
                 .set('Authorization', `Bearer ${token}`)
                 .send({
                     patient: { firstName: 'Juan', lastName: 'Pérez', dni: '12345678', sex: 'Masculino' },
-                    professional: { userId: 'prof123', businessName: 'Dr. Gómez' },
+                    professional: { userId: '000000000000000000000001', businessName: 'Dr. Gómez' },
                     supplies: [{ supply: { name: 'Ibuprofeno 400mg' }, quantity: 10 }],
                 });
             expect(res.status).toBe(201);
@@ -186,7 +186,7 @@ describe('Prescriptions Controller', () => {
             const res = await request(app)
                 .patch(`/api/prescriptions/${created._id}/dispense`)
                 .set('Authorization', `Bearer ${token}`)
-                .send({ userId: 'farm123', businessName: 'Farm. López' });
+                .send({ userId: '000000000000000000000003', businessName: 'Farm. López' });
             expect(res.status).toBe(200);
             expect(res.body.data.status).toBe('Dispensada');
         });
@@ -207,8 +207,31 @@ describe('Prescriptions Controller', () => {
             const res = await request(app)
                 .patch(`/api/prescriptions/${created._id}/dispense`)
                 .set('Authorization', `Bearer ${token}`)
-                .send({ userId: 'farm123', businessName: 'Farm.' });
+                .send({ userId: '000000000000000000000003', businessName: 'Farm.' });
             expect(res.status).toBe(409);
+        });
+
+        it('stores replacement as current medication and keeps the original in replacedMedication', async () => {
+            const { token } = await createAuthenticatedUser();
+            const created = await createTestPrescription({
+                supplies: [{ supply: { name: 'Ibuprofeno 400mg', snomedConcept: { conceptId: '111', term: 'Ibuprofeno' } }, quantity: 10 }],
+            });
+            const res = await request(app)
+                .patch(`/api/prescriptions/${created._id}/dispense`)
+                .set('Authorization', `Bearer ${token}`)
+                .send({
+                    userId: '000000000000000000000003',
+                    businessName: 'Farm. López',
+                    replacement: { name: 'Ibuprofeno 600mg', quantity: 20, snomedConcept: { conceptId: '222', term: 'Ibuprofeno 600mg' } },
+                });
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.status).toBe('Dispensada');
+            expect(res.body.data.supplies[0].supply.name).toBe('Ibuprofeno 600mg');
+            expect(res.body.data.supplies[0].quantity).toBe(20);
+            expect(res.body.data.replacedMedication.name).toBe('Ibuprofeno 400mg');
+            expect(res.body.data.replacedMedication.quantity).toBe(10);
+            expect(res.body.data.replacedMedication.supply.snomedConcept.term).toBe('Ibuprofeno');
         });
     });
 
@@ -217,11 +240,11 @@ describe('Prescriptions Controller', () => {
             const { token } = await createAuthenticatedUser();
             const created = await createTestPrescription({
                 status: 'Dispensada',
-                dispensedBy: { userId: 'farm123', businessName: 'Farm. López' },
+                dispensedBy: { userId: '000000000000000000000003', businessName: 'Farm. López' },
                 dispensedAt: new Date(),
             });
             const res = await request(app)
-                .patch(`/api/prescriptions/${created._id}/cancel-dispense?userId=farm123`)
+                .patch(`/api/prescriptions/${created._id}/cancel-dispense?userId=000000000000000000000003`)
                 .set('Authorization', `Bearer ${token}`);
             expect(res.status).toBe(200);
             expect(res.body.data.status).toBe('Pendiente');

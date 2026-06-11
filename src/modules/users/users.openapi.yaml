@@ -251,6 +251,7 @@ components:
               profesion: { type: string }
               codigoProfesion: { type: string }
               numeroMatricula: { type: string }
+              vencimiento: { type: string, format: date }
     UpdateUserRequest:
       type: object
       properties:

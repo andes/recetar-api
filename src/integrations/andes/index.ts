@@ -31,6 +31,8 @@ export type {
     AndesCoverage,
     AndesOrganization,
     AndesSnomedConcept,
+    ValidatedPatient,
+    ValidationResponse,
     GetPrescriptionsByPatientParams,
     GetPrescriptionsByProfessionalParams,
     GetPrescriptionsByDniParams,

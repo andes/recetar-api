@@ -8,7 +8,7 @@ const snomedConceptSchema = z.object({
 });
 
 const supplyCodeSchema = z.object({
-    source: z.enum(['SIFAHO', 'SNOMED']).optional(),
+    source: z.enum(['SIFAHO', 'SNOMED', 'ALFABETA']).optional(),
     value: z.string().optional(),
 });
 
@@ -19,6 +19,10 @@ const supplySchema = z.object({
     type: z.enum(['device', 'nutrition', 'magistral']).optional(),
     requiresSpecification: z.boolean().optional(),
     specification: z.string().optional(),
+    activePrinciple: z.string().optional(),
+    power: z.string().optional(),
+    firstPresentation: z.string().optional(),
+    barCode: z.string().optional(),
 });
 
 const supplyEntrySchema = z.object({
@@ -33,6 +37,11 @@ const supplyEntrySchema = z.object({
         serie: z.string().optional(),
         numero: z.number().optional(),
     }).optional(),
+    obraSocial: z.object({
+        nombre: z.string().optional(),
+        codigoPuco: z.string().optional(),
+        numeroAfiliado: z.string().optional(),
+    }).optional(),
 });
 
 export const createPrescriptionSchema = z.object({
@@ -41,18 +50,19 @@ export const createPrescriptionSchema = z.object({
         lastName: z.string().min(1, 'errors.validation.requiredField'),
         dni: z.string().min(1, 'errors.validation.requiredField'),
         sex: z.string().min(1, 'errors.validation.requiredField'),
-        obraSocial: z.object({
-            nombre: z.string().optional(),
-            numeroAfiliado: z.string().optional(),
-        }).optional(),
         fechaNac: z.string().optional(),
-        idMPI: z.string().optional(),
+        idMPI: z.string().nullable().optional(),
     }),
     professional: z.object({
         userId: z.string().min(1, 'errors.validation.requiredField'),
         businessName: z.string().min(1, 'errors.validation.requiredField'),
         cuil: z.string().optional(),
         enrollment: z.string().optional(),
+        profesionGrado: z.array(z.object({
+            profesion: z.string().optional(),
+            codigoProfesion: z.string().optional(),
+            numeroMatricula: z.string().optional(),
+        })).optional(),
     }),
     supplies: z.array(supplyEntrySchema).min(1, 'errors.validation.invalidSupplies'),
     ambito: z.enum(['publico', 'privado']).optional(),
@@ -79,6 +89,14 @@ export const dispensePrescriptionSchema = z.object({
     userId: z.string().min(1, 'errors.validation.requiredField'),
     businessName: z.string().min(1, 'errors.validation.requiredField'),
     cuil: z.string().optional(),
+    replacement: z.object({
+        name: z.string().optional(),
+        quantity: z.number().optional(),
+        snomedConcept: z.object({
+            conceptId: z.string().optional(),
+            term: z.string().optional(),
+        }).optional(),
+    }).optional(),
 });
 
 export const cancelDispensePrescriptionSchema = z.object({

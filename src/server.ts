@@ -1,5 +1,4 @@
 import express from 'express';
-import { apiReference } from '@scalar/express-api-reference';
 import cors from 'cors';
 import { errorHandler } from './shared/middlewares/error-handler';
 import { env } from './config/config';
@@ -27,6 +26,7 @@ class Server {
         this.app.use(express.json());
         this.app.use(cors());
 
+        const { apiReference } = await import('@scalar/express-api-reference');
         this.app.use('/api-docs', apiReference({
             spec: { content: apiSpec },
             metaData: { title: 'RecetAR API - Documentación' },

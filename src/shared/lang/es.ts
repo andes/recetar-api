@@ -11,6 +11,7 @@ export const messages = {
             certificate: 'Certificado no encontrado',
             stock: 'Stock no encontrado',
             user: 'Usuario no encontrado',
+            role: 'Rol no encontrado',
             default: 'Recurso no encontrado',
         },
         validation: {
@@ -23,6 +24,12 @@ export const messages = {
             duplicateUser: 'El usuario ya existe',
             invalidSupplies: 'Insumos inválidos',
             invalidObjectId: 'ID inválido',
+            emailTaken: 'El email ya está en uso',
+            usernameTaken: 'El nombre de usuario ya está en uso',
+            unavailable: 'El servicio de validación no está disponible',
+        },
+        patient: {
+            duplicateDni: 'Ya existe un paciente con ese DNI',
         },
         auth: {
             default: 'No autorizado',
@@ -33,10 +40,12 @@ export const messages = {
             invalidConnection: 'Conexión inválida',
             tokenExpired: 'Token expirado',
             invalidToken: 'Token inválido',
+            userInactive: 'El usuario está inactivo',
         },
         forbidden: {
             default: 'Acceso denegado',
             noPermission: 'No tiene permisos para realizar esta acción',
+            selfUpdate: 'No puedes modificar tu propio usuario',
         },
         internal: {
             default: 'Error interno del servidor',
@@ -49,6 +58,18 @@ export const messages = {
             alreadyCancelled: 'La dispensa ya fue cancelada',
             prescriptionNotFound: 'Prescripción no encontrada',
             patientNotFound: 'Paciente no encontrado',
+        },
+        security: {
+            invalidPassword: 'Contraseña incorrecta',
+            invalidPin: 'PIN incorrecto',
+            pinAlreadyActive: 'El PIN ya está configurado',
+            pinNotActive: 'El PIN no está activo',
+            credentialNotFound: 'Credencial biométrica no encontrada',
+            invalidWebAuthnResponse: 'Respuesta biométrica inválida',
+            challengeExpired: 'El challenge ha expirado, intenta nuevamente',
+            invalidToken: 'Token de seguridad inválido',
+            tokenExpired: 'Token de seguridad expirado',
+            pinRequired: 'PIN de seguridad requerido',
         },
     },
     server: {

@@ -26,6 +26,30 @@ paths:
           in: query
           schema:
             type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: sexo
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: searchTerm
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: Lista paginada de recetas
@@ -149,6 +173,14 @@ paths:
           in: query
           schema:
             type: string
+        - name: sexo
+          in: query
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: Lista de recetas del paciente
@@ -178,6 +210,20 @@ paths:
                   type: string
                 cuil:
                   type: string
+                replacement:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    quantity:
+                      type: number
+                    snomedConcept:
+                      type: object
+                      properties:
+                        conceptId:
+                          type: string
+                        term:
+                          type: string
       responses:
         "200":
           description: Receta dispensada

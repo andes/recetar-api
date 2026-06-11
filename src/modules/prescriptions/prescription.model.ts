@@ -16,12 +16,13 @@ const supplySubSchema = new mongoose.Schema({
         semanticTag: String,
     },
     code: {
-        source: { type: String, enum: ['SIFAHO', 'SNOMED'] },
+        source: { type: String, enum: ['SIFAHO', 'SNOMED', 'ALFABETA'] },
         value: String,
     },
     type: { type: String, enum: ['device', 'nutrition', 'magistral'] },
     requiresSpecification: { type: Boolean },
     specification: { type: String },
+    barCode: { type: String },
 }, { _id: false });
 
 const supplyEntrySubSchema = new mongoose.Schema({
@@ -37,7 +38,24 @@ const supplyEntrySubSchema = new mongoose.Schema({
         serie: String,
         numero: Number,
     },
+    obraSocial: {
+        nombre: String,
+        codigoPuco: String,
+        numeroAfiliado: String,
+    },
 });
+
+const replacedMedicationSchema = new mongoose.Schema({
+    name: { type: String },
+    quantity: { type: Number },
+    supply: { type: supplySubSchema },
+    snomedConcept: {
+        conceptId: String,
+        term: String,
+        fsn: String,
+        semanticTag: String,
+    },
+}, { _id: false });
 
 const prescriptionSchema = new mongoose.Schema({
     prescriptionId: { type: String, unique: true, sparse: true },
@@ -54,7 +72,7 @@ const prescriptionSchema = new mongoose.Schema({
         idMPI: String,
     },
     professional: {
-        userId: String,
+        userId: { type: mongoose.Schema.Types.ObjectId },
         businessName: { type: String, required: true },
         cuil: String,
         enrollment: String,
@@ -65,11 +83,12 @@ const prescriptionSchema = new mongoose.Schema({
         }],
     },
     dispensedBy: {
-        userId: String,
+        userId: { type: mongoose.Schema.Types.ObjectId },
         businessName: String,
         cuil: String,
     },
     dispensedAt: Date,
+    replacedMedication: { type: replacedMedicationSchema },
     supplies: [supplyEntrySubSchema],
     status: {
         type: String,

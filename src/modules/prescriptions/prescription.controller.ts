@@ -1,21 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
 import { PrescriptionService } from './prescription.service';
+import { SecurityService } from '../security/security.service';
 import { ApiResponse } from '../../shared/api-response';
 import {
     CreatePrescriptionDTO, UpdatePrescriptionDTO,
     DispensePrescriptionDTO,
 } from './prescription.dto';
+import { PRESCRIPTION_SEARCH_LIMIT } from './prescription.types';
 import { AndesDispenseDTO, AndesCancelDispenseDTO, AndesSuspendDTO } from '../../integrations/andes';
 import { getStringQueryParam } from '../../shared/utils/query';
+import { PinRequiredError, InvalidPinError, SecurityTokenInvalidError } from '../security/security.errors';
 
 export class PrescriptionController {
-    constructor(private readonly prescriptionService: PrescriptionService) {}
+    constructor(
+        private readonly prescriptionService: PrescriptionService,
+        private readonly securityService: SecurityService
+    ) {}
 
     index = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const skip = parseInt(getStringQueryParam(req.query.skip) || '0', 10);
-            const limit = parseInt(getStringQueryParam(req.query.limit) || '20', 10);
-            const result = await this.prescriptionService.index(skip, limit);
+            const skip = parseInt(getStringQueryParam(req.query.offset) || getStringQueryParam(req.query.skip) || '0', 10);
+            const limit = Math.min(parseInt(getStringQueryParam(req.query.limit) || String(PRESCRIPTION_SEARCH_LIMIT), 10), PRESCRIPTION_SEARCH_LIMIT);
+            const status = getStringQueryParam(req.query.status);
+            const sexo = getStringQueryParam(req.query.sexo);
+            const dateFrom = getStringQueryParam(req.query.dateFrom);
+            const dateTo = getStringQueryParam(req.query.dateTo);
+            const searchTerm = getStringQueryParam(req.query.searchTerm);
+            const filters = { status, sexo, dateFrom, dateTo, searchTerm };
+            const result = await this.prescriptionService.index(skip, limit, filters);
             res.status(200).json(ApiResponse.success(result));
         } catch (error) {
             next(error);
@@ -37,7 +49,12 @@ export class PrescriptionController {
             const ambito = getStringQueryParam(req.query.ambito);
             const skip = parseInt(getStringQueryParam(req.query.skip) || '0', 10);
             const limit = parseInt(getStringQueryParam(req.query.limit) || '20', 10);
-            const result = await this.prescriptionService.getByUserId(userId, ambito, skip, limit);
+            const patient = getStringQueryParam(req.query.patient);
+            const dateFrom = getStringQueryParam(req.query.dateFrom);
+            const dateTo = getStringQueryParam(req.query.dateTo);
+            const status = getStringQueryParam(req.query.status);
+            const filters = { patient, dateFrom, dateTo, status };
+            const result = await this.prescriptionService.getByUserId(userId, ambito, skip, limit, filters);
             res.status(200).json(ApiResponse.success(result));
         } catch (error) {
             next(error);
@@ -47,12 +64,13 @@ export class PrescriptionController {
     findByPatient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const dni = req.params.patientId;
-            const startDate = getStringQueryParam(req.query.startDate);
-            const endDate = getStringQueryParam(req.query.endDate);
+            const startDate = getStringQueryParam(req.query.startDate) || getStringQueryParam(req.query.dateFrom);
+            const endDate = getStringQueryParam(req.query.endDate) || getStringQueryParam(req.query.dateTo);
             const status = getStringQueryParam(req.query.status);
-            const skip = parseInt(getStringQueryParam(req.query.skip) || '0', 10);
-            const limit = parseInt(getStringQueryParam(req.query.limit) || '20', 10);
-            const result = await this.prescriptionService.findByPatient(dni, startDate, endDate, status, skip, limit);
+            const sexo = getStringQueryParam(req.query.sexo);
+            const skip = parseInt(getStringQueryParam(req.query.offset) || getStringQueryParam(req.query.skip) || '0', 10);
+            const limit = Math.min(parseInt(getStringQueryParam(req.query.limit) || String(PRESCRIPTION_SEARCH_LIMIT), 10), PRESCRIPTION_SEARCH_LIMIT);
+            const result = await this.prescriptionService.findByPatient(dni, startDate, endDate, status, sexo, skip, limit);
             res.status(200).json(ApiResponse.success(result));
         } catch (error) {
             next(error);
@@ -73,6 +91,29 @@ export class PrescriptionController {
 
     create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            const userId = (req.user as any)._id.toString();
+            const securityPin = req.headers['x-security-pin'] as string | undefined;
+            const securityToken = req.headers['x-security-token'] as string | undefined;
+
+            const hasPin = await this.securityService.hasPinActive(userId);
+            const hasBiometric = await this.securityService.hasWebAuthnCredentials(userId);
+
+            if (hasPin || hasBiometric) {
+                if (securityPin) {
+                    const isValid = await this.securityService.verifyPin(userId, securityPin);
+                    if (!isValid) {
+                        throw new InvalidPinError();
+                    }
+                } else if (securityToken) {
+                    const isValid = await this.securityService.verifySecurityToken(userId, securityToken);
+                    if (!isValid) {
+                        throw new SecurityTokenInvalidError();
+                    }
+                } else {
+                    throw new PinRequiredError();
+                }
+            }
+
             const prescription = await this.prescriptionService.create(req.body as CreatePrescriptionDTO);
             res.status(201).json(ApiResponse.success(prescription));
         } catch (error) {

@@ -1,0 +1,304 @@
+openapi: 3.0.0
+info:
+  title: Security API
+  version: 1.0.0
+  description: Endpoints para gestión de PIN de seguridad y autenticación biométrica (WebAuthn)
+
+paths:
+  /me/security-pin/status:
+    get:
+      summary: Obtener estado del PIN de seguridad
+      tags:
+        - Security PIN
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Estado del PIN
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isActive:
+                    type: boolean
+                    example: true
+
+  /me/security-pin/setup:
+    post:
+      summary: Activar PIN de seguridad
+      tags:
+        - Security PIN
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - pin
+              properties:
+                currentPassword:
+                  type: string
+                  description: Contraseña actual del usuario
+                pin:
+                  type: string
+                  pattern: '^\d{4}$'
+                  description: PIN de 4 dígitos
+      responses:
+        '200':
+          description: PIN activado exitosamente
+        '401':
+          description: Contraseña incorrecta
+        '409':
+          description: PIN ya está activo
+
+  /me/security-pin:
+    patch:
+      summary: Cambiar PIN de seguridad
+      tags:
+        - Security PIN
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPin
+                - newPin
+              properties:
+                currentPin:
+                  type: string
+                  pattern: '^\d{4}$'
+                  description: PIN actual
+                newPin:
+                  type: string
+                  pattern: '^\d{4}$'
+                  description: Nuevo PIN
+      responses:
+        '200':
+          description: PIN actualizado exitosamente
+        '401':
+          description: PIN actual incorrecto
+        '409':
+          description: PIN no está activo
+
+    delete:
+      summary: Desactivar PIN de seguridad
+      tags:
+        - Security PIN
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  description: Contraseña del usuario
+      responses:
+        '200':
+          description: PIN desactivado exitosamente
+        '401':
+          description: Contraseña incorrecta
+
+  /me/webauthn/credentials:
+    get:
+      summary: Listar credenciales biométricas registradas
+      tags:
+        - WebAuthn
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de credenciales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    deviceType:
+                      type: string
+                    backedUp:
+                      type: boolean
+                    transport:
+                      type: array
+                      items:
+                        type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+                    lastUsedAt:
+                      type: string
+                      format: date-time
+
+  /me/webauthn/register/options:
+    post:
+      summary: Obtener opciones para registro de credencial biométrica
+      tags:
+        - WebAuthn
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Nombre opcional para la credencial
+      responses:
+        '200':
+          description: Opciones de registro generadas
+
+  /me/webauthn/register/verify:
+    post:
+      summary: Verificar respuesta de registro biométrico
+      tags:
+        - WebAuthn
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - rawId
+                - type
+                - response
+              properties:
+                id:
+                  type: string
+                rawId:
+                  type: string
+                type:
+                  type: string
+                response:
+                  type: object
+                  properties:
+                    clientDataJSON:
+                      type: string
+                    attestationObject:
+                      type: string
+                    transports:
+                      type: array
+                      items:
+                        type: string
+                authenticatorAttachment:
+                  type: string
+      responses:
+        '200':
+          description: Credencial registrada exitosamente
+        '400':
+          description: Respuesta biométrica inválida o challenge expirado
+
+  /me/webauthn/authenticate/options:
+    post:
+      summary: Obtener opciones para autenticación biométrica
+      tags:
+        - WebAuthn
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Opciones de autenticación generadas
+        '404':
+          description: No hay credenciales registradas
+
+  /me/webauthn/authenticate/verify:
+    post:
+      summary: Verificar respuesta de autenticación biométrica
+      tags:
+        - WebAuthn
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - rawId
+                - type
+                - response
+              properties:
+                id:
+                  type: string
+                rawId:
+                  type: string
+                type:
+                  type: string
+                response:
+                  type: object
+                  properties:
+                    clientDataJSON:
+                      type: string
+                    authenticatorData:
+                      type: string
+                    signature:
+                      type: string
+                    userHandle:
+                      type: string
+                authenticatorAttachment:
+                  type: string
+      responses:
+        '200':
+          description: Autenticación exitosa, retorna securityToken
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  securityToken:
+                    type: string
+        '400':
+          description: Respuesta biométrica inválida o challenge expirado
+        '404':
+          description: Credencial no encontrada
+
+  /me/webauthn/credentials/{credentialId}:
+    delete:
+      summary: Eliminar credencial biométrica
+      tags:
+        - WebAuthn
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: credentialId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Credencial eliminada
+        '404':
+          description: Credencial no encontrada
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

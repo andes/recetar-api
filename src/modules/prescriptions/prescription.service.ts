@@ -1,7 +1,7 @@
 import { PrescriptionRepository } from './prescription.repository';
 import { AndesClient, PrescriptionAndesRepository, PrescriptionAndesNotFoundError } from '../../integrations/andes';
 import { Logger } from '../../shared/logger/logger.interface';
-import { IPrescription } from './prescription.types';
+import { IPrescription, PRESCRIPTION_SEARCH_LIMIT } from './prescription.types';
 import { IPrescriptionAndes } from '../../integrations/andes';
 import {
     CreatePrescriptionDTO, UpdatePrescriptionDTO,
@@ -15,7 +15,7 @@ import {
     PrescriptionCancelTimeExceededError,
     PrescriptionAlreadyCancelledError,
 } from './prescription.errors';
-import { generatePrescriptionId } from './prescription.utils';
+import { generatePrescriptionId, mapPrescriptionStatus } from './prescription.utils';
 import { AndesPrescription } from '../../integrations/andes/andes.types';
 
 export class PrescriptionService {
@@ -26,8 +26,13 @@ export class PrescriptionService {
         private readonly logger: Logger,
     ) {}
 
-    async index(skip = 0, limit = 20): Promise<{ prescriptions: IPrescription[]; total: number }> {
-        return this.prescriptionRepository.findAll(skip, limit);
+    async index(
+        skip = 0,
+        limit = 20,
+        filters?: { status?: string; sexo?: string; dateFrom?: string; dateTo?: string; searchTerm?: string },
+    ): Promise<{ prescriptions: IPrescription[]; total: number }> {
+        await this.prescriptionRepository.expireOldPrescriptions();
+        return this.prescriptionRepository.findWithFilters(filters, skip, limit);
     }
 
     async show(id: string): Promise<IPrescription> {
@@ -43,10 +48,11 @@ export class PrescriptionService {
         ambito?: string,
         skip = 0,
         limit = 20,
+        filters?: { patient?: string; dateFrom?: string; dateTo?: string; status?: string }
     ): Promise<{ prescriptions: (IPrescription | AndesPrescription)[]; total: number }> {
         await this.prescriptionRepository.expireOldPrescriptions();
 
-        const local = await this.prescriptionRepository.findByUserId(userId, skip, limit);
+        const local = await this.prescriptionRepository.findByUserId(userId, skip, limit, filters);
 
         if (ambito === 'publico') {
             try {
@@ -59,7 +65,7 @@ export class PrescriptionService {
                     const dateB = (b as IPrescription).createdAt || (b as AndesPrescription).fechaRegistro;
                     return new Date(dateB).getTime() - new Date(dateA).getTime();
                 });
-                return { prescriptions: combined.slice(skip, skip + limit), total: combined.length };
+                return { prescriptions: combined, total: local.total + andesResult.length };
             } catch (error) {
                 this.logger.logError(new Error('Error fetching ANDES prescriptions'));
                 return { prescriptions: local.prescriptions, total: local.total };
@@ -84,29 +90,34 @@ export class PrescriptionService {
         startDate?: string,
         endDate?: string,
         status?: string,
+        sexo?: string,
         skip = 0,
         limit = 20,
     ): Promise<{ prescriptions: (IPrescription | AndesPrescription)[]; total: number }> {
         await this.prescriptionRepository.expireOldPrescriptions();
 
+        const mappedStatus = mapPrescriptionStatus(status);
+        const cappedLimit = Math.max(0, Math.min(limit, PRESCRIPTION_SEARCH_LIMIT - skip));
         const local = await this.prescriptionRepository.findByPatientDniAndDateRange(
-            dni, startDate, endDate, status, skip, limit,
+            dni, startDate, endDate, mappedStatus, sexo, skip, cappedLimit,
         );
 
         try {
             const andesResult = await this.andesClient.getPrescriptionsByDni({
                 dni,
-                sexo: '',
+                sexo,
                 status,
                 dateFrom: startDate,
                 dateTo: endDate,
             });
+            const remaining = Math.max(0, cappedLimit - local.prescriptions.length);
+            const andesCapped = andesResult.slice(0, remaining);
             return {
-                prescriptions: [...local.prescriptions, ...andesResult.map((p) => ({ ...p, isFromAndes: true }))],
-                total: local.total + andesResult.length,
+                prescriptions: [...local.prescriptions, ...andesCapped.map((p) => ({ ...p, isFromAndes: true }))],
+                total: Math.min(local.total + andesResult.length, PRESCRIPTION_SEARCH_LIMIT),
             };
         } catch {
-            return { prescriptions: local.prescriptions, total: local.total };
+            return { prescriptions: local.prescriptions, total: Math.min(local.total, PRESCRIPTION_SEARCH_LIMIT) };
         }
     }
 
@@ -119,12 +130,18 @@ export class PrescriptionService {
         const prescriptions: IPrescription[] = [];
 
         for (const supply of dto.supplies) {
+            const patient = { ...dto.patient } as IPrescription['patient'];
+            if (supply.obraSocial?.nombre) {
+                patient.obraSocial = {
+                    nombre: supply.obraSocial.nombre,
+                    numeroAfiliado: supply.obraSocial.numeroAfiliado,
+                };
+            }
             const data: Partial<IPrescription> = {
                 prescriptionId: generatePrescriptionId(now),
-                patient: dto.patient as IPrescription['patient'],
+                patient,
                 professional: {
                     ...dto.professional,
-                    profesionGrado: [],
                 },
                 supplies: [supply],
                 status: 'Pendiente',
@@ -142,12 +159,18 @@ export class PrescriptionService {
                 const futureDate = new Date(now);
                 futureDate.setDate(futureDate.getDate() + i * 30);
                 for (const supply of dto.supplies) {
+                    const patient = { ...dto.patient } as IPrescription['patient'];
+                    if (supply.obraSocial?.nombre) {
+                        patient.obraSocial = {
+                            nombre: supply.obraSocial.nombre,
+                            numeroAfiliado: supply.obraSocial.numeroAfiliado,
+                        };
+                    }
                     const data: Partial<IPrescription> = {
                         prescriptionId: generatePrescriptionId(futureDate),
-                        patient: dto.patient as IPrescription['patient'],
+                        patient,
                         professional: {
                             ...dto.professional,
-                            profesionGrado: [],
                         },
                         supplies: [supply, { ...supply, triplicate: true, duplicate: true }],
                         status: 'Pendiente',
@@ -204,19 +227,64 @@ export class PrescriptionService {
         }
 
         const updated = await this.prescriptionRepository.update(id, {
-            status: 'Dispensada',
-            dispensedBy: {
-                userId: dto.userId,
-                businessName: dto.businessName,
-                cuil: dto.cuil,
+            $set: {
+                status: 'Dispensada',
+                dispensedBy: {
+                    userId: dto.userId,
+                    businessName: dto.businessName,
+                    cuil: dto.cuil,
+                },
+                dispensedAt: new Date(),
+                ...this.buildReplacementData(prescription, dto),
             },
-            dispensedAt: new Date(),
-        } as Partial<IPrescription>);
+        } as unknown as Partial<IPrescription>);
 
         if (!updated || updated.status !== 'Dispensada') {
             throw new PrescriptionNotDispensableError();
         }
         return updated;
+    }
+
+    private buildReplacementData(
+        prescription: IPrescription,
+        dto: DispensePrescriptionDTO,
+    ): Partial<IPrescription> {
+        if (!dto.replacement) {
+            return {};
+        }
+
+        const plain = (prescription as unknown as { toObject(): Record<string, unknown> }).toObject() as unknown as IPrescription;
+        const original = plain.supplies?.[0];
+        const originalSupply = original?.supply;
+        const replacement = dto.replacement;
+
+        const replacedMedication: Partial<IPrescription>['replacedMedication'] = {
+            name: originalSupply?.name,
+            quantity: original?.quantity,
+            supply: originalSupply,
+            snomedConcept: originalSupply?.snomedConcept,
+        };
+
+        const newSupply: IPrescription['supplies'][number]['supply'] = {
+            ...(originalSupply || {}),
+            name: replacement.name || originalSupply?.name,
+            snomedConcept: replacement.snomedConcept
+                ? { ...(originalSupply?.snomedConcept || {}), ...replacement.snomedConcept }
+                : originalSupply?.snomedConcept,
+        };
+
+        const supplies = (plain.supplies || []).map((entry, index) => {
+            if (index !== 0) {
+                return entry;
+            }
+            return {
+                ...entry,
+                supply: newSupply,
+                quantity: replacement.quantity ?? entry.quantity,
+            };
+        });
+
+        return { replacedMedication, supplies };
     }
 
     async cancelDispense(id: string, userId: string, isAdmin = false): Promise<IPrescription> {

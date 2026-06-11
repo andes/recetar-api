@@ -26,6 +26,7 @@ import {
     GetProfessionalsAndesDTO,
 } from './auth.dto';
 import { IUser } from '../../models/user.model';
+import ProfesionAutorizada from '../../models/profesionAutorizada.model';
 
 interface TokenPayload {
     iss: string;
@@ -183,6 +184,7 @@ export class AuthService {
             profesion: p.profesion.nombre,
             codigoProfesion: p.profesion.codigo,
             numeroMatricula: p.matriculacion[p.matriculacion.length - 1].matriculaNumero,
+            vencimiento: p.matriculacion[p.matriculacion.length - 1].fin,
         }));
 
         const newUser = await this.authRepository.createUser({
@@ -373,7 +375,6 @@ export class AuthService {
     }
 
     async getAuthorizedProfessions(): Promise<any> {
-        const { default: ProfesionAutorizada } = await import('../../models/profesionAutorizada.model');
         return ProfesionAutorizada.find().exec();
     }
 

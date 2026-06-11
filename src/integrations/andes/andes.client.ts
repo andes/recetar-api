@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { InternalError } from '../../shared/errors';
 import { andesMessages } from './lang';
+import { AndesMapper } from './andes.mapper';
 import {
     AndesPrescription,
     AndesStockItem,
@@ -10,6 +11,8 @@ import {
     AndesCoverage,
     AndesOrganization,
     AndesSnomedConcept,
+    ValidatedPatient,
+    ValidationResponse,
     GetPrescriptionsByPatientParams,
     GetPrescriptionsByProfessionalParams,
     GetPrescriptionsByDniParams,
@@ -192,6 +195,14 @@ export class AndesClient {
         return response.data;
     }
 
+    async searchCoverages(query: string): Promise<AndesCoverage[]> {
+        this.ensureConfigured();
+        const response = await this.client.get<AndesCoverage[]>('/modules/obraSocial/obrasSociales', {
+            params: { nombre: query },
+        });
+        return response.data;
+    }
+
     async searchOrganizations(nombre: string): Promise<AndesOrganization[]> {
         this.ensureConfigured();
         const response = await this.client.get<AndesOrganization[]>('/core/tm/organizaciones', {
@@ -207,5 +218,17 @@ export class AndesClient {
             params: { expression, search },
         });
         return response.data;
+    }
+
+    async validatePatient(dni: string, sexo: string): Promise<ValidatedPatient | null> {
+        this.ensureConfigured();
+        const response = await this.client.post<ValidationResponse>('/core-v2/mpi/validacion', {
+            documento: dni,
+            sexo: sexo.toLowerCase(),
+        });
+        if (response.data && response.data.documento) {
+            return AndesMapper.toValidatedPatientFromResponse(response.data);
+        }
+        return null;
     }
 }

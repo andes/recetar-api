@@ -7,6 +7,8 @@ import {
     AndesPatient,
     AndesMPIPatient,
     AndesSnomedConcept,
+    ValidatedPatient,
+    ValidationResponse,
 } from './andes.types';
 
 export interface LocalPatient {
@@ -49,6 +51,7 @@ export interface LocalPrescriptionSupply {
         serie?: number | string;
         numero?: number | string;
     };
+    obraSocial?: { nombre?: string; codigoPuco?: string; numeroAfiliado?: string };
 }
 
 export interface LocalPrescription {
@@ -183,9 +186,11 @@ export class AndesMapper {
                 documento: patient.dni || '',
                 sexo: patient.sex ? patient.sex.toLowerCase() : '',
                 fechaNacimiento: patient.fechaNac ? new Date(patient.fechaNac).toISOString() : undefined,
-                obraSocial: patient.obraSocial
-                    ? { nombre: patient.obraSocial.nombre || '', numeroAfiliado: patient.obraSocial.numeroAfiliado }
-                    : undefined,
+                obraSocial: (supplyInfo.obraSocial?.nombre
+                    ? { nombre: supplyInfo.obraSocial.nombre, numeroAfiliado: supplyInfo.obraSocial.numeroAfiliado }
+                    : patient.obraSocial
+                        ? { nombre: patient.obraSocial.nombre || '', numeroAfiliado: patient.obraSocial.numeroAfiliado }
+                        : undefined),
             },
             origenExterno: {
                 id: prescription._id.toString(),
@@ -242,9 +247,11 @@ export class AndesMapper {
                 documento: patient.dni || '',
                 sexo: patient.sex ? patient.sex.toLowerCase() : '',
                 fechaNacimiento: patient.fechaNac ? new Date(patient.fechaNac).toISOString() : undefined,
-                obraSocial: patient.obraSocial
-                    ? { nombre: patient.obraSocial.nombre || '', numeroAfiliado: patient.obraSocial.numeroAfiliado }
-                    : undefined,
+                obraSocial: (supplyInfo.obraSocial?.nombre
+                    ? { nombre: supplyInfo.obraSocial.nombre, numeroAfiliado: supplyInfo.obraSocial.numeroAfiliado }
+                    : patient.obraSocial
+                        ? { nombre: patient.obraSocial.nombre || '', numeroAfiliado: patient.obraSocial.numeroAfiliado }
+                        : undefined),
             },
             medicamento: {
                 diagnostico: supplyInfo.diagnostic || andesMessages.mapper.withoutDiagnosis,
@@ -289,6 +296,29 @@ export class AndesMapper {
             nroDocumentoExtranjero: mpiPatient.numeroIdentificacion || '',
             estado: mpiPatient.estado,
             cuil: mpiPatient.cuil || null,
+        };
+    }
+
+    static toValidatedPatient(mpiPatient: AndesMPIPatient): ValidatedPatient {
+        return {
+            dni: mpiPatient.documento,
+            nombre: mpiPatient.nombre,
+            apellido: mpiPatient.apellido,
+            sexo: mpiPatient.sexo.charAt(0).toUpperCase() + mpiPatient.sexo.slice(1).toLowerCase(),
+            fechaNacimiento: mpiPatient.fechaNacimiento || '',
+            cuil: mpiPatient.cuil,
+            idMPI: mpiPatient.id,
+        };
+    }
+
+    static toValidatedPatientFromResponse(data: ValidationResponse): ValidatedPatient {
+        return {
+            dni: data.documento,
+            nombre: data.nombre,
+            apellido: data.apellido,
+            sexo: data.sexo.charAt(0).toUpperCase() + data.sexo.slice(1).toLowerCase(),
+            fechaNacimiento: data.fechaNacimiento || '',
+            cuil: data.cuil,
         };
     }
 
