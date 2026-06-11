@@ -59,3 +59,8 @@ export const getProfessionalsAndesSchema = z.object({
     profesionCodigo: z.string().optional(),
 });
 export type GetProfessionalsAndesDTO = z.infer<typeof getProfessionalsAndesSchema>;
+
+export const getMatriculasSchema = z.object({
+    documento: z.string().min(1, 'errors.validation.requiredField'),
+});
+export type GetMatriculasDTO = z.infer<typeof getMatriculasSchema>;

@@ -54,6 +54,32 @@ export class UsersRepository {
         return User.findOne({ username, _id: { $ne: excludeId } }).exec();
     }
 
+    async findByCuilOrUsername(value: string): Promise<Array<{
+        _id: Types.ObjectId;
+        businessName?: string;
+        cuil?: string;
+        username?: string;
+        email?: string;
+    }>> {
+        const digits = (value || '').replace(/\D/g, '');
+        if (!digits) { return []; }
+        const digitsRegex = new RegExp(`^\\D*${digits.split('').join('\\D*')}\\D*$`);
+        const users = await User.find({
+            $or: [
+                { cuil: digitsRegex },
+                { username: value },
+                { username: digits },
+            ],
+        }, { _id: 1, businessName: 1, cuil: 1, username: 1, email: 1 }).lean().exec();
+        return users.map((user) => ({
+            _id: user._id,
+            businessName: user.businessName,
+            cuil: user.cuil,
+            username: user.username,
+            email: user.email,
+        }));
+    }
+
     async findOneByEmailConfirmationToken(token: string): Promise<IUser | null> {
         return User.findOne({
             emailConfirmationToken: token,
@@ -72,6 +98,18 @@ export class UsersRepository {
             projection: { password: 0, refreshToken: 0, authenticationToken: 0 },
             runValidators: false,
         }).populate('roles', 'role').exec();
+    }
+
+    async deleteById(id: string): Promise<IUser | null> {
+        return User.findByIdAndDelete(id).exec();
+    }
+
+    async pullUserFromRoles(userId: string): Promise<void> {
+        const userObjectId = new Types.ObjectId(userId);
+        await Role.updateMany(
+            { users: userObjectId },
+            { $pull: { users: userObjectId } },
+        ).exec();
     }
 
     async findRolesByIds(ids: string[]): Promise<any[]> {

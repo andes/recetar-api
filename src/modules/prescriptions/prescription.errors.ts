@@ -29,3 +29,9 @@ export class PrescriptionAlreadyCancelledError extends BusinessError {
         super('errors.business.alreadyCancelled');
     }
 }
+
+export class TreatmentRequiresMedicationsError extends BusinessError {
+    constructor() {
+        super('errors.business.treatmentRequiresMedications');
+    }
+}

@@ -6,8 +6,9 @@ tags:
       - **Recetas locales**: CRUD completo + dispensa + cancelación de dispensa con ventana de 2h.
       - **Recetas ANDES**: cache local de prescripciones de ANDES, dispensa, cancelación y suspensión con sincronización.
       - **Sincronización**: ámbito público envía a ANDES; ámbito privado es solo local.
-      - **Trimestral**: genera 3 recetas (inmediata + 30 + 60 días).
-      - **Búsquedas**: por profesional, por paciente (DNI), por rango de fechas, por CUIL del farmacéutico.
+      - **Magistrales**: los suministros con `supply.type = magistral` se aceptan en cualquier ámbito (público o privado).
+      - **Tratamiento prolongado**: `tratamientoProlongado` (2 a 12) se define **por medicamento** (en cada `supply`) y genera una receta por mes (día 0, +30, +60, ...) para ese medicamento. Cada medicamento sin tratamiento genera una única receta. Solo aplica a medicamentos; un tratamiento explícito sobre un insumo se rechaza (409). Los campos raíz `tratamientoProlongado` y `trimestral` son un fallback deprecado (aplican a los medicamentos sin valor propio e ignoran insumos). Las N recetas de un mismo tratamiento comparten `treatmentGroupId` (generado por el servidor) para poder agruparlas.
+      - **Búsquedas**: por profesional, por paciente (DNI), por rango de fechas, por CUIT/CUIL de la farmacia.
       - **Verificación**: consulta recetas activas locales + ANDES por DNI + conceptId.
 
 paths:
@@ -26,6 +27,30 @@ paths:
           in: query
           schema:
             type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: sexo
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: searchTerm
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: Lista paginada de recetas
@@ -40,9 +65,80 @@ paths:
           application/json:
             schema:
               type: object
+              properties:
+                patient:
+                  type: object
+                professional:
+                  type: object
+                ambito:
+                  type: string
+                  enum: [publico, privado]
+                  description: Ámbito de la receta. Un magistral requiere `publico`.
+                tratamientoProlongado:
+                  type: integer
+                  minimum: 2
+                  maximum: 12
+                  deprecated: true
+                  description: |
+                    Fallback deprecado: aplica a todos los medicamentos que no definan su
+                    propio `tratamientoProlongado`. Se recomienda enviarlo por supply. Ignora insumos.
+                  example: 6
+                trimestral:
+                  type: boolean
+                  deprecated: true
+                  description: "Alias legacy. `true` equivale a `tratamientoProlongado: 3`. No se persiste."
+                organizacion:
+                  type: object
+                  properties:
+                    _id: { type: string }
+                    nombre: { type: string }
+                    direccion: { type: string }
+                supplies:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      supply:
+                        type: object
+                        properties:
+                          name: { type: string }
+                          type:
+                            type: string
+                            enum: [device, nutrition, magistral]
+                          code:
+                            type: object
+                            properties:
+                              source:
+                                type: string
+                                enum: [SIFAHO, SNOMED, ALFABETA, ANDES]
+                              value: { type: string }
+                      quantity:
+                        type: number
+                      tratamientoProlongado:
+                        type: integer
+                        minimum: 2
+                        maximum: 12
+                        description: |
+                          Cantidad de meses del tratamiento prolongado para este medicamento.
+                          Genera una receta por mes (base + 30 días por cada mes adicional).
+                          Solo válido para medicamentos; si el supply es un insumo (`device`/`nutrition`)
+                          se responde 409.
+                        example: 6
+                      obraSocial:
+                        type: object
+                        properties:
+                          nombre:
+                            type: string
+                          codigoPuco:
+                            type: integer
+                            description: Código PUCO de ANDES (fuente autoritativa, numérico)
+                          numeroAfiliado:
+                            type: string
       responses:
         "201":
           description: Receta creada
+        "409":
+          description: Error de negocio (ej. tratamiento prolongado con insumos)
         "422":
           description: Error de validación
 
@@ -149,9 +245,50 @@ paths:
           in: query
           schema:
             type: string
+        - name: sexo
+          in: query
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: Lista de recetas del paciente
+
+  /prescriptions/dispensed-by/{cuil}:
+    get:
+      tags: [Prescripciones]
+      summary: Recetas dispensadas por farmacia
+      description: |
+        Devuelve las recetas dispensadas por una farmacia, identificada por su
+        CUIT/CUIL (acepta separadores). Resuelve la farmacia por `cuil`/`username` y
+        filtra por `dispensedBy.cuil` o `dispensedBy.userId`, por lo que también
+        recupera dispensas históricas sin `cuil` guardado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cuil
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: skip
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: |
+            Lista paginada de recetas dispensadas por la farmacia. Incluye `dispenser`
+            con los datos del usuario farmacia/farmacéutico (`businessName`, `cuil`,
+            `username`, `email`) cuando se lo puede resolver por el CUIT/CUIL, o
+            derivado de la receta cuando no hay usuario asociado.
 
   /prescriptions/{id}/dispense:
     patch:
@@ -178,6 +315,13 @@ paths:
                   type: string
                 cuil:
                   type: string
+                replacement:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    quantity:
+                      type: number
       responses:
         "200":
           description: Receta dispensada

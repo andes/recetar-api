@@ -7,6 +7,12 @@ import {
     AndesPatient,
     AndesMPIPatient,
     AndesSnomedConcept,
+    ValidatedPatient,
+    ValidationResponse,
+    AndesProfesionalDetalle,
+    AndesFarmacia,
+    AndesFormacionGrado,
+    MatriculaEstado,
 } from './andes.types';
 
 export interface LocalPatient {
@@ -16,7 +22,7 @@ export interface LocalPatient {
     fechaNac?: Date | null;
     sex: string;
     idMPI?: string;
-    obraSocial?: { nombre?: string; numeroAfiliado?: string };
+    obraSocial?: { nombre?: string; codigoPuco?: number; numeroAfiliado?: string };
     nombreAutopercibido?: string;
 }
 
@@ -24,9 +30,53 @@ export interface LocalProfessional {
     idAndes?: string;
     username: string;
     businessName: string;
+    firstName?: string;
+    lastName?: string;
     enrollment?: string;
     cuil?: string;
     profesionGrado?: Array<{ profesion?: string }>;
+}
+
+export interface SyncableProfessional {
+    cuil?: string;
+    firstName?: string;
+    lastName?: string;
+    businessName?: string;
+    idAndes?: string;
+    profesionGrado: Array<{
+        profesion: string;
+        codigoProfesion: string;
+        numeroMatricula: string;
+        vencimiento?: Date;
+        estado: MatriculaEstado;
+    }>;
+}
+
+export interface SyncablePharmacist {
+    cuil?: string;
+    razonSocial?: string;
+    responsibleDTEnrollment?: string;
+    businessName?: string;
+    idAndes?: string;
+}
+
+export interface MatriculaGrado {
+    profesion: string;
+    codigo: number | string;
+    numero: number | string;
+    inicio?: string;
+    fin?: string;
+    baja?: { motivo?: string; fecha?: string | null } | null;
+    estado: MatriculaEstado;
+}
+
+export interface MatriculasEstadoResponse {
+    documento: string;
+    nombre: string;
+    apellido: string;
+    profesionalMatriculado: boolean;
+    estadoGeneral: MatriculaEstado;
+    matriculas: MatriculaGrado[];
 }
 
 export interface LocalSupply {
@@ -49,6 +99,7 @@ export interface LocalPrescriptionSupply {
         serie?: number | string;
         numero?: number | string;
     };
+    obraSocial?: { nombre?: string; codigoPuco?: number; numeroAfiliado?: string };
 }
 
 export interface LocalPrescription {
@@ -56,6 +107,7 @@ export interface LocalPrescription {
     date: string;
     supplies: LocalPrescriptionSupply[];
     organizacion?: { _id?: string; nombre?: string; direccion?: string };
+    tratamientoProlongado?: number;
     trimestral?: boolean;
 }
 
@@ -82,6 +134,120 @@ export class AndesMapper {
         return cuit;
     }
 
+    static resolveNameParts(professional: LocalProfessional): NameParts {
+        if (professional.firstName || professional.lastName) {
+            return {
+                nombre: professional.firstName || '',
+                apellido: professional.lastName || '',
+            };
+        }
+        return this.splitBusinessName(professional.businessName);
+    }
+
+    static normalizeProfessionalBusinessName(apellido: string, nombre: string): string {
+        return [apellido, nombre]
+            .filter(part => !!part && part.trim().length > 0)
+            .join(' ')
+            .trim()
+            .toUpperCase();
+    }
+
+    static estadoMatricula(formacion: AndesFormacionGrado): MatriculaEstado {
+        const matriculaciones = (formacion?.matriculacion || []).filter(Boolean);
+        if (!matriculaciones.length) {
+            return 'sin-matricula';
+        }
+        if (formacion.matriculado === false) {
+            return 'suspendida';
+        }
+        const ultima = matriculaciones[matriculaciones.length - 1];
+        if (ultima.baja && ultima.baja.fecha) {
+            return 'baja';
+        }
+        if (ultima.fin && new Date(ultima.fin).getTime() < Date.now()) {
+            return 'vencida';
+        }
+        return 'vigente';
+    }
+
+    static estadoGeneral(estados: MatriculaEstado[]): MatriculaEstado {
+        if (estados.includes('vigente')) { return 'vigente'; }
+        if (estados.includes('vencida')) { return 'vencida'; }
+        if (estados.includes('suspendida')) { return 'suspendida'; }
+        if (estados.includes('baja')) { return 'baja'; }
+        return 'sin-matricula';
+    }
+
+    static toProfesionGrado(profesional: AndesProfesionalDetalle): SyncableProfessional['profesionGrado'] {
+        const formaciones = profesional?.profesiones || [];
+        return formaciones
+            .filter(formacion => formacion?.matriculacion?.length)
+            .map(formacion => {
+                const matriculaciones = formacion.matriculacion || [];
+                const ultima = matriculaciones[matriculaciones.length - 1];
+                return {
+                    profesion: formacion.profesion?.nombre || '',
+                    codigoProfesion: formacion.profesion?.codigo != null ? String(formacion.profesion.codigo) : '',
+                    numeroMatricula: ultima?.matriculaNumero != null ? String(ultima.matriculaNumero) : '',
+                    vencimiento: ultima?.fin ? new Date(ultima.fin) : undefined,
+                    estado: this.estadoMatricula(formacion),
+                };
+            })
+            .filter(entry => entry.profesion && entry.codigoProfesion && entry.numeroMatricula);
+    }
+
+    static toSyncableProfessional(profesional: AndesProfesionalDetalle): SyncableProfessional {
+        const nombre = profesional?.nombre || '';
+        const apellido = profesional?.apellido || '';
+        return {
+            cuil: profesional?.cuit || undefined,
+            firstName: nombre || undefined,
+            lastName: apellido || undefined,
+            businessName: this.normalizeProfessionalBusinessName(apellido, nombre) || undefined,
+            idAndes: profesional?.id || undefined,
+            profesionGrado: this.toProfesionGrado(profesional),
+        };
+    }
+
+    static toSyncablePharmacist(farmacia: AndesFarmacia): SyncablePharmacist {
+        const businessName = farmacia?.razonSocial || farmacia?.denominacion || '';
+        return {
+            cuil: farmacia?.cuit || undefined,
+            razonSocial: farmacia?.razonSocial || undefined,
+            responsibleDTEnrollment: farmacia?.matriculaDTResponsable || undefined,
+            businessName: businessName || undefined,
+            idAndes: farmacia?._id || farmacia?.id || undefined,
+        };
+    }
+
+    static toMatriculasEstado(profesional: AndesProfesionalDetalle): MatriculasEstadoResponse {
+        const profesiones = profesional?.profesiones || [];
+        const matriculas: MatriculaGrado[] = profesiones
+            .filter(formacion => formacion?.matriculacion?.length)
+            .map(formacion => {
+                const matriculaciones = formacion.matriculacion || [];
+                const ultima = matriculaciones[matriculaciones.length - 1];
+                return {
+                    profesion: formacion.profesion?.nombre || '',
+                    codigo: formacion.profesion?.codigo ?? '',
+                    numero: ultima?.matriculaNumero ?? '',
+                    inicio: ultima?.inicio,
+                    fin: ultima?.fin,
+                    baja: ultima?.baja || null,
+                    estado: this.estadoMatricula(formacion),
+                };
+            });
+
+        return {
+            documento: profesional?.documento || '',
+            nombre: profesional?.nombre || '',
+            apellido: profesional?.apellido || '',
+            profesionalMatriculado: profesiones.length > 0,
+            estadoGeneral: this.estadoGeneral(matriculas.map(m => m.estado)),
+            matriculas,
+        };
+    }
+
     static toLocalPatient(andesPatient: AndesPatient): Partial<LocalPatient> {
         return {
             dni: andesPatient.documento,
@@ -92,6 +258,7 @@ export class AndesMapper {
             fechaNac: andesPatient.fechaNacimiento ? new Date(andesPatient.fechaNacimiento) : undefined,
             obraSocial: andesPatient.obraSocial ? {
                 nombre: andesPatient.obraSocial.nombre,
+                codigoPuco: andesPatient.obraSocial.codigoPuco,
                 numeroAfiliado: andesPatient.obraSocial.numeroAfiliado,
             } : undefined,
         };
@@ -115,7 +282,7 @@ export class AndesMapper {
         documento: string; profesion: string; matricula: string; especialidad: string;
         cuil?: string;
     } {
-        const { nombre, apellido } = this.splitBusinessName(professional.businessName);
+        const { nombre, apellido } = this.resolveNameParts(professional);
         return {
             id: professional.idAndes || '',
             nombre,
@@ -137,7 +304,7 @@ export class AndesMapper {
         const supplyInfo = prescription.supplies[0];
         const supply = supplyInfo.supply;
         const originalSupplyId = originalSupply?._id || originalSupply?.id || supply._id || supply.id || '';
-        const { nombre, apellido } = this.splitBusinessName(professional.businessName);
+        const { nombre, apellido } = this.resolveNameParts(professional);
 
         return {
             organizacion: {
@@ -183,9 +350,11 @@ export class AndesMapper {
                 documento: patient.dni || '',
                 sexo: patient.sex ? patient.sex.toLowerCase() : '',
                 fechaNacimiento: patient.fechaNac ? new Date(patient.fechaNac).toISOString() : undefined,
-                obraSocial: patient.obraSocial
-                    ? { nombre: patient.obraSocial.nombre || '', numeroAfiliado: patient.obraSocial.numeroAfiliado }
-                    : undefined,
+                obraSocial: (supplyInfo.obraSocial?.nombre
+                    ? { nombre: supplyInfo.obraSocial.nombre, codigoPuco: supplyInfo.obraSocial.codigoPuco, numeroAfiliado: supplyInfo.obraSocial.numeroAfiliado }
+                    : patient.obraSocial
+                        ? { nombre: patient.obraSocial.nombre || '', codigoPuco: patient.obraSocial.codigoPuco, numeroAfiliado: patient.obraSocial.numeroAfiliado }
+                        : undefined),
             },
             origenExterno: {
                 id: prescription._id.toString(),
@@ -202,7 +371,7 @@ export class AndesMapper {
     ): AndesMedicamentoPayload {
         const supplyInfo = prescription.supplies[0];
         const supply = supplyInfo.supply;
-        const { nombre, apellido } = this.splitBusinessName(professional.businessName);
+        const { nombre, apellido } = this.resolveNameParts(professional);
 
         const indication = supplyInfo.indication || '';
         const spec = supply.specification || '';
@@ -216,6 +385,8 @@ export class AndesMapper {
 
         const serie = supplyInfo.triplicateData?.serie?.toString() || '';
         const numero = supplyInfo.triplicateData?.numero?.toString() || '';
+
+        const mesesTratamiento = prescription.tratamientoProlongado ?? (prescription.trimestral ? 3 : undefined);
 
         return {
             organizacion: {
@@ -242,9 +413,11 @@ export class AndesMapper {
                 documento: patient.dni || '',
                 sexo: patient.sex ? patient.sex.toLowerCase() : '',
                 fechaNacimiento: patient.fechaNac ? new Date(patient.fechaNac).toISOString() : undefined,
-                obraSocial: patient.obraSocial
-                    ? { nombre: patient.obraSocial.nombre || '', numeroAfiliado: patient.obraSocial.numeroAfiliado }
-                    : undefined,
+                obraSocial: (supplyInfo.obraSocial?.nombre
+                    ? { nombre: supplyInfo.obraSocial.nombre, codigoPuco: supplyInfo.obraSocial.codigoPuco, numeroAfiliado: supplyInfo.obraSocial.numeroAfiliado }
+                    : patient.obraSocial
+                        ? { nombre: patient.obraSocial.nombre || '', codigoPuco: patient.obraSocial.codigoPuco, numeroAfiliado: patient.obraSocial.numeroAfiliado }
+                        : undefined),
             },
             medicamento: {
                 diagnostico: supplyInfo.diagnostic || andesMessages.mapper.withoutDiagnosis,
@@ -258,8 +431,10 @@ export class AndesMapper {
                     dias: null,
                     notaMedica: notaMedica || undefined,
                 },
-                tratamientoProlongado: !!prescription.trimestral,
-                tiempoTratamiento: prescription.trimestral ? { id: '3', nombre: '3 meses' } : null,
+                tratamientoProlongado: !!mesesTratamiento,
+                tiempoTratamiento: mesesTratamiento
+                    ? { id: String(mesesTratamiento), nombre: `${mesesTratamiento} meses` }
+                    : null,
                 tipoReceta,
                 serie,
                 numero,
@@ -274,22 +449,70 @@ export class AndesMapper {
 
     static toLocalPatientFromMPI(mpiPatient: AndesMPIPatient): Record<string, unknown> {
         return {
+            _id: mpiPatient._id || mpiPatient.id,
             dni: mpiPatient.documento,
             firstName: mpiPatient.nombre,
             lastName: mpiPatient.apellido,
             fechaNac: mpiPatient.fechaNacimiento ? new Date(mpiPatient.fechaNacimiento) : undefined,
-            sex: mpiPatient.sexo.charAt(0).toUpperCase() + mpiPatient.sexo.slice(1).toLowerCase(),
+            sex: mpiPatient.sexo
+                ? mpiPatient.sexo.charAt(0).toUpperCase() + mpiPatient.sexo.slice(1).toLowerCase()
+                : '',
             status: mpiPatient.estado
                 ? mpiPatient.estado.charAt(0).toUpperCase() + mpiPatient.estado.slice(1).toLowerCase()
                 : undefined,
             genero: mpiPatient.genero,
             nombreAutopercibido: mpiPatient.alias || '',
-            idMPI: mpiPatient.id,
+            idMPI: mpiPatient.id || mpiPatient._id,
             tipoDocumentoExtranjero: mpiPatient.tipoIdentificacion || '',
             nroDocumentoExtranjero: mpiPatient.numeroIdentificacion || '',
             estado: mpiPatient.estado,
             cuil: mpiPatient.cuil || null,
         };
+    }
+
+    static toValidatedPatient(mpiPatient: AndesMPIPatient): ValidatedPatient {
+        return {
+            dni: mpiPatient.documento,
+            nombre: mpiPatient.nombre,
+            apellido: mpiPatient.apellido,
+            sexo: mpiPatient.sexo.charAt(0).toUpperCase() + mpiPatient.sexo.slice(1).toLowerCase(),
+            fechaNacimiento: mpiPatient.fechaNacimiento || '',
+            cuil: mpiPatient.cuil,
+            idMPI: mpiPatient.id,
+        };
+    }
+
+    static toValidatedPatientFromResponse(data: ValidationResponse): ValidatedPatient {
+        return {
+            dni: data.documento,
+            nombre: data.nombre,
+            apellido: data.apellido,
+            sexo: data.sexo.charAt(0).toUpperCase() + data.sexo.slice(1).toLowerCase(),
+            fechaNacimiento: data.fechaNacimiento || '',
+            cuil: data.cuil,
+        };
+    }
+
+    static toAndesValidatedPatient(validated: ValidatedPatient): AndesPatientPayload {
+        const sexo = (validated.sexo || '').toLowerCase();
+        return {
+            nombre: validated.nombre,
+            apellido: validated.apellido,
+            documento: validated.dni,
+            sexo,
+            genero: sexo,
+            fechaNacimiento: validated.fechaNacimiento || undefined,
+            cuil: validated.cuil || undefined,
+            estado: 'validado',
+        };
+    }
+
+    static isMPICreateSugeridos(
+        response: unknown,
+    ): response is { sugeridos: unknown[] } {
+        return !!response
+            && typeof response === 'object'
+            && Array.isArray((response as { sugeridos?: unknown[] }).sugeridos);
     }
 
     private static buildSpecification(supplyInfo: LocalPrescriptionSupply, supply: LocalSupply): string {

@@ -1,8 +1,11 @@
-import { connectTestDB, clearCollections, disconnectTestDB } from '../../helpers/db';
-import { PatientRepository } from '../../../src/modules/patients/patients.repository';
+import { connectTestDB, disconnectTestDB } from '../../helpers/db';
 import { PatientService } from '../../../src/modules/patients/patients.service';
-import { PatientNotFoundError } from '../../../src/modules/patients/patients.errors';
-import { AndesClient, AndesMPIPatient, AndesCoverage } from '../../../src/integrations/andes';
+import {
+    PatientNotFoundError,
+    PatientValidationNotFoundError,
+    PatientAndesUnavailableError,
+} from '../../../src/modules/patients/patients.errors';
+import { AndesClient, AndesMPIPatient } from '../../../src/integrations/andes';
 
 jest.setTimeout(15000);
 
@@ -12,166 +15,145 @@ const logger = {
     logWarn: (..._args: unknown[]) => {},
 };
 
+const mpiPatient = (overrides: Partial<AndesMPIPatient> = {}): AndesMPIPatient => ({
+    id: 'andes-1',
+    _id: 'andes-1',
+    documento: '12345678',
+    nombre: 'Juan',
+    apellido: 'Pérez',
+    sexo: 'masculino',
+    estado: 'validado',
+    fechaNacimiento: '1990-01-15',
+    cuil: '20-12345678-9',
+    ...overrides,
+});
+
 class AndesClientStub {
-    async searchPatientInMPI(_dni: string, _sexo: string): Promise<AndesMPIPatient[]> {
-        return [];
+    public searchCalls: unknown[] = [];
+    public createdPayloads: Record<string, unknown>[] = [];
+    public searchResult: AndesMPIPatient[] = [mpiPatient()];
+    public searchImpl?: (params: unknown) => Promise<AndesMPIPatient[]>;
+    public validateResult: unknown = { documento: '12345678', nombre: 'Juan', apellido: 'Pérez', sexo: 'masculino' };
+    public validateImpl?: () => Promise<unknown>;
+    public createdPatient = mpiPatient();
+
+    async searchPatients(params: unknown): Promise<AndesMPIPatient[]> {
+        this.searchCalls.push(params);
+        if (this.searchImpl) { return this.searchImpl(params); }
+        return this.searchResult;
     }
-    async createPatientInMPI(_data: Record<string, unknown>, _ignoreSuggestions?: boolean): Promise<AndesMPIPatient> {
-        return {} as AndesMPIPatient;
+
+    async getPatientFromMPI(id: string): Promise<AndesMPIPatient> {
+        return mpiPatient({ id, _id: id });
     }
-    async getPatientFromMPI(_id: string): Promise<AndesMPIPatient> {
-        return {} as AndesMPIPatient;
+
+    async updatePatientInMPI(id: string, data: Record<string, unknown>): Promise<AndesMPIPatient> {
+        return mpiPatient({ id, _id: id, ...data } as Partial<AndesMPIPatient>);
     }
-    async updatePatientInMPI(_id: string, _data: Record<string, unknown>): Promise<void> {
+
+    async validatePatient(): Promise<unknown> {
+        if (this.validateImpl) { return this.validateImpl(); }
+        return this.validateResult;
     }
-    async listCoverages(): Promise<AndesCoverage[]> {
-        return [{ nombre: 'OSDE', codigoPuco: 12345 }] as AndesCoverage[];
-    }
-    async getPatientCoverage(_dni: string, _sexo: string): Promise<AndesCoverage> {
-        return { nombre: 'OSDE', codigoPuco: 12345 } as AndesCoverage;
+
+    async createPatientInMPI(data: Record<string, unknown>): Promise<unknown> {
+        this.createdPayloads.push(data);
+        return this.createdPatient;
     }
 }
 
-let repository: PatientRepository;
+let stub: AndesClientStub;
 let service: PatientService;
 
 beforeAll(async () => {
     await connectTestDB();
-    repository = new PatientRepository();
-    service = new PatientService(repository, new AndesClientStub() as unknown as AndesClient, logger as any);
 });
 
 afterAll(async () => {
     await disconnectTestDB();
 });
 
-beforeEach(async () => {
-    await clearCollections();
+beforeEach(() => {
+    stub = new AndesClientStub();
+    service = new PatientService(stub as unknown as AndesClient, logger as any);
 });
 
-describe('PatientService', () => {
-    const patientData = {
-        dni: '12345678',
-        firstName: 'Juan',
-        lastName: 'Pérez',
-        sex: 'Masculino' as const,
-    };
-
-    describe('list', () => {
-        it('returns empty list when no patients', async () => {
-            const result = await service.list();
-            expect(result).toEqual([]);
-        });
-
-        it('returns all patients', async () => {
-            await service.create(patientData);
-            await service.create({ ...patientData, dni: '87654321', firstName: 'María' });
-
-            const result = await service.list();
-            expect(result).toHaveLength(2);
-        });
-    });
-
-    describe('show', () => {
-        it('returns patient by id', async () => {
-            const created = await service.create(patientData);
-
-            const result = await service.show(created._id.toString());
-            expect(result.dni).toBe('12345678');
-        });
-
-        it('throws PatientNotFoundError for non-existent id', async () => {
-            await expect(service.show('000000000000000000000000')).rejects.toThrow(PatientNotFoundError);
-        });
-    });
-
-    describe('create', () => {
-        it('creates a patient with all fields', async () => {
-            const dto = {
-                ...patientData,
-                fechaNac: '1990-01-15',
-                nombreAutopercibido: 'Juancito',
-                genero: 'masculino',
-                cuil: '20-12345678-9',
-            };
-
-            const result = await service.create(dto);
-            expect(result.dni).toBe('12345678');
-            expect(result.firstName).toBe('Juan');
-            expect(result.lastName).toBe('Pérez');
-            expect(result.sex).toBe('Masculino');
-            expect(result.nombreAutopercibido).toBe('Juancito');
-            expect(result.genero).toBe('masculino');
-            expect(result.cuil).toBe('20-12345678-9');
-            expect(result.fechaNac).toBeInstanceOf(Date);
-        });
-    });
-
-    describe('update', () => {
-        it('updates patient fields', async () => {
-            const created = await service.create(patientData);
-
-            const updated = await service.update(created._id.toString(), { firstName: 'Carlos' });
-            expect(updated.firstName).toBe('Carlos');
-            expect(updated.dni).toBe('12345678');
-        });
-
-        it('throws PatientNotFoundError for non-existent id', async () => {
-            await expect(service.update('000000000000000000000000', { firstName: 'X' })).rejects.toThrow(PatientNotFoundError);
-        });
-    });
-
-    describe('updatePartial', () => {
-        it('updates allowed fields', async () => {
-            const created = await service.create(patientData);
-
-            const updated = await service.updatePartial(created._id.toString(), { firstName: 'Pedro', sex: 'Femenino' });
-            expect(updated.firstName).toBe('Pedro');
-            expect(updated.sex).toBe('Femenino');
-        });
-
-        it('ignores non-allowed fields', async () => {
-            const created = await service.create(patientData);
-
-            const updated = await service.updatePartial(created._id.toString(), {
-                firstName: 'Pedro',
-                cuil: 'should-be-ignored',
-            });
-            expect(updated.firstName).toBe('Pedro');
-        });
-
-        it('throws PatientNotFoundError for non-existent id', async () => {
-            await expect(service.updatePartial('000000000000000000000000', { firstName: 'X' })).rejects.toThrow(PatientNotFoundError);
-        });
-    });
-
+describe('PatientService (Andes como fuente de verdad)', () => {
     describe('findByDni', () => {
-        it('returns local patient when found', async () => {
-            await service.create(patientData);
-
+        it('consulta Andes y mapea el resultado', async () => {
             const result = await service.findByDni('12345678');
+            expect(stub.searchCalls[0]).toMatchObject({ documento: '12345678' });
             expect(result).toHaveLength(1);
             expect(result[0].dni).toBe('12345678');
+            expect(result[0].idMPI).toBe('andes-1');
         });
 
-        it('falls back to MPI stub (empty) when not found locally', async () => {
+        it('devuelve [] si Andes no encuentra', async () => {
+            stub.searchImpl = async () => [];
             const result = await service.findByDni('99999999');
             expect(result).toEqual([]);
         });
     });
 
-    describe('getCoverages', () => {
-        it('delegates to AndesClient stub', async () => {
-            const result = await service.getCoverages() as AndesCoverage[];
-            expect(Array.isArray(result)).toBe(true);
-            expect(result[0].nombre).toBe('OSDE');
+    describe('create', () => {
+        it('reutiliza el paciente existente sin crear', async () => {
+            const result = await service.create({ dni: '12345678', sex: 'Masculino' });
+            expect(result.idMPI).toBe('andes-1');
+            expect(stub.createdPayloads).toHaveLength(0);
+        });
+
+        it('valida con RENAPER y crea en Andes cuando no existe', async () => {
+            stub.searchResult = [];
+            const result = await service.create({ dni: '12345678', sex: 'Masculino' });
+            expect(stub.createdPayloads).toHaveLength(1);
+            expect(stub.createdPayloads[0]).toMatchObject({ estado: 'validado' });
+            expect(result.idMPI).toBe('andes-1');
+        });
+
+        it('lanza 422 si RENAPER no encuentra ciudadano', async () => {
+            stub.searchResult = [];
+            stub.validateImpl = async () => null;
+            await expect(service.create({ dni: '12345678', sex: 'Masculino' }))
+                .rejects.toThrow(PatientValidationNotFoundError);
+        });
+
+        it('si Andes devuelve sugeridos, reutiliza el match exacto', async () => {
+            let searchCount = 0;
+            stub.searchImpl = async () => {
+                searchCount += 1;
+                return searchCount === 1 ? [] : [mpiPatient()];
+            };
+            stub.createdPatient = { sugeridos: [{ documento: '12345678' }] };
+            const result = await service.create({ dni: '12345678', sex: 'Masculino' });
+            expect(result.idMPI).toBe('andes-1');
         });
     });
 
-    describe('getCoverage', () => {
-        it('delegates to AndesClient stub', async () => {
-            const result = await service.getCoverage('12345678', 'femenino') as AndesCoverage;
-            expect(result.nombre).toBe('OSDE');
+    describe('errores de disponibilidad', () => {
+        it('lanza 502 cuando Andes falla', async () => {
+            stub.searchImpl = async () => { throw { response: { status: 500 } }; };
+            await expect(service.findByDni('12345678')).rejects.toThrow(PatientAndesUnavailableError);
+        });
+    });
+
+    describe('show', () => {
+        it('lanza 404 si no existe en Andes', async () => {
+            stub.getPatientFromMPI = async () => { throw { response: { status: 404 } }; };
+            await expect(service.show('000000000000000000000000')).rejects.toThrow(PatientNotFoundError);
+        });
+    });
+
+    describe('resolveSnapshot', () => {
+        it('devuelve snapshot hidratado desde Andes', async () => {
+            const snapshot = await service.resolveSnapshot('12345678', 'femenino');
+            expect(snapshot).toMatchObject({ dni: '12345678', firstName: 'Juan', idMPI: 'andes-1' });
+            expect(snapshot?.fechaNac).toBeInstanceOf(Date);
+        });
+
+        it('devuelve null si el paciente no existe', async () => {
+            stub.searchImpl = async () => [];
+            const snapshot = await service.resolveSnapshot('99999999', 'femenino');
+            expect(snapshot).toBeNull();
         });
     });
 });

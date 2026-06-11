@@ -3,8 +3,21 @@ import { connectTestDB, clearCollections, disconnectTestDB } from '../../helpers
 import { createAuthenticatedUser } from '../../helpers/auth';
 import { createApp } from '../../helpers/app';
 import Certificate from '../../../src/modules/certificates/certificates.model';
+import { setPatientService, PatientService } from '../../../src/modules/patients';
 
 jest.setTimeout(15000);
+
+const patientStub = {
+    resolveSnapshot: async (dni: string, sex: string) => ({
+        firstName: 'Juan',
+        lastName: 'Perez',
+        dni,
+        sex: sex ? sex.charAt(0).toUpperCase() + sex.slice(1).toLowerCase() : '',
+        idMPI: 'andes-1',
+    }),
+} as unknown as PatientService;
+
+setPatientService(patientStub);
 
 let app: ReturnType<typeof createApp>;
 

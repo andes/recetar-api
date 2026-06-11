@@ -12,6 +12,12 @@ export class UserNotFoundError extends NotFoundError {
     }
 }
 
+export class ProfessionalNotFoundError extends NotFoundError {
+    constructor() {
+        super('errors.notFound.professional');
+    }
+}
+
 export class UserAlreadyExistsError extends BusinessError {
     constructor() {
         super('errors.validation.duplicateUser');

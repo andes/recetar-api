@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { EmailService, EmailTemplateService, MailOptions } from '../../integrations/email';
 import { AndesClient } from '../../integrations/andes';
+import { SisaClient, SisaMapper } from '../../integrations/sisa';
 import { UsersRepository } from './users.repository';
 import {
     UserNotFoundError,
@@ -9,8 +10,10 @@ import {
     UsernameAlreadyTakenError,
     InvalidEmailTokenError,
     SelfUpdateForbiddenError,
+    SelfDeleteForbiddenError,
     RoleNotFoundError,
 } from './users.errors';
+import { NotFoundError } from '../../shared/errors';
 import {
     CreateUserDTO,
     UpdateUserDTO,
@@ -25,6 +28,7 @@ export class UsersService {
     constructor(
         private readonly repository: UsersRepository,
         private readonly andesClient: AndesClient,
+        private readonly sisaClient: SisaClient,
         private readonly emailService?: EmailService,
         private readonly emailTemplateService?: EmailTemplateService,
     ) {
@@ -60,7 +64,7 @@ export class UsersService {
         if (!user.isActive) {
             throw new UserNotActiveError();
         }
-        return {
+        const result = {
             id: user._id,
             username: user.username,
             email: user.email,
@@ -73,7 +77,15 @@ export class UsersService {
             lastLogin: user.lastLogin,
             isActive: user.isActive,
             organizaciones: user.organizaciones,
+            idAndes: user.idAndes,
+            profesionGrado: user.profesionGrado,
+            authorizationExpiration: user.authorizationExpiration,
+            authorizationDisposition: user.authorizationDisposition,
+            responsibleDTEnrollment: user.responsibleDTEnrollment,
         };
+        // eslint-disable-next-line no-console
+        console.log('[users.getById]', user.username, '| profesionGrado:', JSON.stringify(user.profesionGrado));
+        return result;
     }
 
     async create(dto: CreateUserDTO, creator: IUser) {
@@ -215,7 +227,25 @@ export class UsersService {
         return result;
     }
 
-    async updateOwnOrganizaciones(userId: string, organizaciones: Array<{ nombre: string; direccion?: string }>) {
+    async delete(id: string, requester: IUser): Promise<void> {
+        const user = await this.repository.findById(id);
+        if (!user) {
+            throw new UserNotFoundError();
+        }
+
+        if (requester._id.toString() === id) {
+            throw new SelfDeleteForbiddenError();
+        }
+
+        const deleted = await this.repository.deleteById(id);
+        if (!deleted) {
+            throw new UserNotFoundError();
+        }
+
+        await this.repository.pullUserFromRoles(id);
+    }
+
+    async updateOwnOrganizaciones(userId: string, organizaciones: Array<{ _id?: string; nombre: string; direccion?: string; provincia?: string; ambito?: 'publico' | 'privado' }>) {
         const user = await this.repository.findByIdWithPassword(userId);
         if (!user) {
             throw new UserNotFoundError();
@@ -230,6 +260,31 @@ export class UsersService {
             throw new UserNotFoundError();
         }
         return result;
+    }
+
+    async addSisaOrganizacion(userId: string, codigoSisa: string) {
+        const user = await this.repository.findByIdWithPassword(userId);
+        if (!user) {
+            throw new UserNotFoundError();
+        }
+
+        const detail = await this.sisaClient.getOrganizationDetail(codigoSisa);
+        if (!detail) {
+            throw new NotFoundError('Organización no encontrada en SISA');
+        }
+
+        const org = SisaMapper.detailToSubOrganization(detail);
+        const organizaciones = [...(user.organizaciones || []), org];
+
+        const result = await this.repository.updateById(userId, {
+            organizaciones,
+            updatedAt: new Date(),
+        });
+
+        if (!result) {
+            throw new UserNotFoundError();
+        }
+        return org;
     }
 
     async requestEmailUpdate(userId: string, newEmail: string) {
@@ -280,6 +335,17 @@ export class UsersService {
 
     async organizacionesAndes(nombre: string) {
         return this.andesClient.searchOrganizations(nombre);
+    }
+
+    async organizationsSisa(name: string) {
+        const sisaOrgs = await this.sisaClient.searchOrganizations(name);
+        return SisaMapper.toAppOrganizationList(sisaOrgs);
+    }
+
+    async organizationSisaDetail(codigo: string) {
+        const detail = await this.sisaClient.getOrganizationDetail(codigo);
+        if (!detail) { return null; }
+        return SisaMapper.detailToAppOrganization(detail);
     }
 
     private async sendEmailUpdateConfirmation(user: IUser, newEmail: string, token: string) {

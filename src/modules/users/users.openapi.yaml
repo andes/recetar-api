@@ -110,6 +110,23 @@ paths:
                   ok: { type: boolean }
                   data:
                     $ref: '#/components/schemas/UserSummary'
+    delete:
+      tags: [Usuarios]
+      summary: Eliminar un usuario
+      x-description-file: docs/paths/users/delete.md
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Usuario eliminado
+        '403':
+          description: No se puede eliminar el propio usuario
+        '404':
+          description: Usuario no encontrado
 
   /users/me/organizaciones:
     patch:
@@ -130,8 +147,14 @@ paths:
                   items:
                     type: object
                     properties:
+                      _id: { type: string }
                       nombre: { type: string }
                       direccion: { type: string }
+                      provincia: { type: string }
+                      ambito:
+                        type: string
+                        enum: [publico, privado]
+                        description: Ámbito de la organización (derivado de SISA al agregarla).
       responses:
         '200':
           description: Organizaciones actualizadas
@@ -191,8 +214,59 @@ paths:
         '200':
           description: Lista de organizaciones
 
+  /users/organizations-sisa:
+    get:
+      tags: [Usuarios]
+      summary: Buscar organizaciones en SISA
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Lista de organizaciones de SISA con el ámbito derivado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrganizationWithAmbito'
+
+  /users/me/organizaciones/sisa:
+    post:
+      tags: [Usuarios]
+      summary: Agregar una organización de SISA al usuario autenticado
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codigo]
+              properties:
+                codigo: { type: string }
+      responses:
+        '200':
+          description: Organización agregada con su ámbito derivado
+
 components:
   schemas:
+    OrganizationWithAmbito:
+      type: object
+      properties:
+        _id: { type: string }
+        nombre: { type: string }
+        direccion:
+          type: object
+          properties:
+            valor: { type: string }
+        ambito:
+          type: string
+          enum: [publico, privado]
+          description: Ámbito derivado de los datos de SISA (por defecto privado).
     UserSummary:
       type: object
       properties:
@@ -200,6 +274,9 @@ components:
         username: { type: string }
         email: { type: string }
         businessName: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        razonSocial: { type: string }
         isActive: { type: boolean }
         createdAt:
           type: string
@@ -229,6 +306,11 @@ components:
                   _id: { type: string }
                   nombre: { type: string }
                   direccion: { type: string }
+                  provincia: { type: string }
+                  ambito:
+                    type: string
+                    enum: [publico, privado]
+                    description: Ámbito de la organización (derivado de SISA).
     CreateUserRequest:
       type: object
       required: [password, roles]
@@ -237,6 +319,9 @@ components:
         username: { type: string }
         password: { type: string, minLength: 8 }
         businessName: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        razonSocial: { type: string }
         enrollment: { type: string }
         cuil: { type: string }
         roles:
@@ -251,12 +336,19 @@ components:
               profesion: { type: string }
               codigoProfesion: { type: string }
               numeroMatricula: { type: string }
+              vencimiento: { type: string, format: date }
+              estado:
+                type: string
+                enum: [vigente, vencida, suspendida, sin-matricula, baja]
     UpdateUserRequest:
       type: object
       properties:
         email: { type: string }
         username: { type: string }
         businessName: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        razonSocial: { type: string }
         enrollment: { type: string }
         cuil: { type: string }
         roles:

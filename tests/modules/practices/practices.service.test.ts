@@ -2,6 +2,7 @@ import { connectTestDB, clearCollections, disconnectTestDB } from '../../helpers
 import { PracticeRepository } from '../../../src/modules/practices/practices.repository';
 import { PracticeService } from '../../../src/modules/practices/practices.service';
 import { PracticeNotFoundError } from '../../../src/modules/practices/practices.errors';
+import { PatientService } from '../../../src/modules/patients';
 
 jest.setTimeout(15000);
 
@@ -11,13 +12,23 @@ const logger = {
     logWarn: (..._args: unknown[]) => {},
 };
 
+const patientStub = {
+    resolveSnapshot: async (dni: string, sex: string) => ({
+        firstName: 'Juan',
+        lastName: 'Perez',
+        dni,
+        sex,
+        idMPI: 'andes-1',
+    }),
+} as unknown as PatientService;
+
 let repository: PracticeRepository;
 let service: PracticeService;
 
 beforeAll(async () => {
     await connectTestDB();
     repository = new PracticeRepository();
-    service = new PracticeService(repository, logger as any);
+    service = new PracticeService(repository, patientStub, logger as any);
 });
 
 afterAll(async () => {
@@ -70,10 +81,10 @@ describe('PracticeService', () => {
     });
 
     describe('create', () => {
-        it('creates a practice', async () => {
+        it('creates a practice with an ObjectId professional userId', async () => {
             const result = await service.create(practiceData);
             expect(result.patient.firstName).toBe('Juan');
-            expect(result.professional.userId).toBe('000000000000000000000001');
+            expect(result.professional.userId.toString()).toBe('000000000000000000000001');
         });
     });
 

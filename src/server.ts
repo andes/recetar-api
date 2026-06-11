@@ -1,5 +1,4 @@
 import express from 'express';
-import { apiReference } from '@scalar/express-api-reference';
 import cors from 'cors';
 import { errorHandler } from './shared/middlewares/error-handler';
 import { env } from './config/config';
@@ -27,6 +26,16 @@ class Server {
         this.app.use(express.json());
         this.app.use(cors());
 
+        this.app.set('etag', false);
+
+        // Log temporal de requests entrantes (debug)
+        this.app.use((req, _res, next) => {
+            // eslint-disable-next-line no-console
+            console.log('[req]', req.method, req.originalUrl);
+            next();
+        });
+
+        const { apiReference } = await import('@scalar/express-api-reference');
         this.app.use('/api-docs', apiReference({
             spec: { content: apiSpec },
             metaData: { title: 'RecetAR API - Documentación' },

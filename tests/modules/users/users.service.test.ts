@@ -10,8 +10,10 @@ import {
     UsernameAlreadyTakenError,
     InvalidEmailTokenError,
     RoleNotFoundError,
+    SelfDeleteForbiddenError,
 } from '../../../src/modules/users/users.errors';
 import User from '../../../src/models/user.model';
+import Role from '../../../src/models/role.model';
 
 jest.setTimeout(15000);
 
@@ -158,6 +160,33 @@ describe('UsersService', () => {
         });
     });
 
+    describe('delete', () => {
+        it('deletes the user and removes it from roles', async () => {
+            const role = await createRole('professional');
+            const created = await createUser({ username: 'todelete', roles: [role._id] });
+            await Role.updateOne({ _id: role._id }, { $push: { users: created._id } });
+            const requester = { _id: '000000000000000000000001' } as any;
+
+            await service.delete(created._id.toString(), requester);
+
+            expect(await User.findById(created._id)).toBeNull();
+            const updatedRole = await Role.findById(role._id);
+            expect(updatedRole?.users.map(userId => userId.toString())).not.toContain(created._id.toString());
+        });
+
+        it('throws UserNotFoundError for non-existent id', async () => {
+            const requester = { _id: '000000000000000000000001' } as any;
+            await expect(service.delete('000000000000000000000000', requester)).rejects.toThrow(UserNotFoundError);
+        });
+
+        it('throws SelfDeleteForbiddenError when deleting own user', async () => {
+            const created = await createUser({ username: 'self' });
+            await expect(
+                service.delete(created._id.toString(), { _id: created._id } as any),
+            ).rejects.toThrow(SelfDeleteForbiddenError);
+        });
+    });
+
     describe('updateOwnOrganizaciones', () => {
         it('updates organizaciones', async () => {
             const created = await createUser({ username: 'testuser' });
@@ -168,6 +197,28 @@ describe('UsersService', () => {
             ]);
             const user = (result as any).toObject ? (result as any).toObject() : result;
             expect(user.organizaciones[0].nombre).toBe('Hospital Central');
+        });
+
+        it('persists the organization ambito', async () => {
+            const created = await createUser({ username: 'testuser' });
+            const userId = created._id.toString();
+
+            const result = await service.updateOwnOrganizaciones(userId, [
+                { _id: 'org-1', nombre: 'Hospital Público', ambito: 'publico' },
+            ]);
+            const user = (result as any).toObject ? (result as any).toObject() : result;
+            expect(user.organizaciones[0].ambito).toBe('publico');
+        });
+
+        it('defaults ambito to privado when omitted', async () => {
+            const created = await createUser({ username: 'testuser' });
+            const userId = created._id.toString();
+
+            const result = await service.updateOwnOrganizaciones(userId, [
+                { nombre: 'Centro Privado' },
+            ]);
+            const user = (result as any).toObject ? (result as any).toObject() : result;
+            expect(user.organizaciones[0].ambito).toBe('privado');
         });
 
         it('throws UserNotFoundError for non-existent id', async () => {

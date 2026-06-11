@@ -9,19 +9,14 @@ const supplySubSchema = new mongoose.Schema({
     unity: { type: String },
     firstPresentation: { type: String },
     secondPresentation: { type: String },
-    snomedConcept: {
-        conceptId: String,
-        term: String,
-        fsn: String,
-        semanticTag: String,
-    },
     code: {
-        source: { type: String, enum: ['SIFAHO', 'SNOMED'] },
+        source: { type: String, enum: ['SIFAHO', 'SNOMED', 'ALFABETA', 'ANDES'] },
         value: String,
     },
     type: { type: String, enum: ['device', 'nutrition', 'magistral'] },
     requiresSpecification: { type: Boolean },
     specification: { type: String },
+    barCode: { type: String },
 }, { _id: false });
 
 const supplyEntrySubSchema = new mongoose.Schema({
@@ -37,7 +32,18 @@ const supplyEntrySubSchema = new mongoose.Schema({
         serie: String,
         numero: Number,
     },
+    obraSocial: {
+        nombre: String,
+        codigoPuco: Number,
+        numeroAfiliado: String,
+    },
 });
+
+const replacedMedicationSchema = new mongoose.Schema({
+    name: { type: String },
+    quantity: { type: Number },
+    supply: { type: supplySubSchema },
+}, { _id: false });
 
 const prescriptionSchema = new mongoose.Schema({
     prescriptionId: { type: String, unique: true, sparse: true },
@@ -48,13 +54,14 @@ const prescriptionSchema = new mongoose.Schema({
         sex: { type: String, required: true },
         obraSocial: {
             nombre: String,
+            codigoPuco: Number,
             numeroAfiliado: String,
         },
         fechaNac: Date,
         idMPI: String,
     },
     professional: {
-        userId: String,
+        userId: { type: mongoose.Schema.Types.ObjectId },
         businessName: { type: String, required: true },
         cuil: String,
         enrollment: String,
@@ -65,11 +72,12 @@ const prescriptionSchema = new mongoose.Schema({
         }],
     },
     dispensedBy: {
-        userId: String,
+        userId: { type: mongoose.Schema.Types.ObjectId },
         businessName: String,
         cuil: String,
     },
     dispensedAt: Date,
+    replacedMedication: { type: replacedMedicationSchema },
     supplies: [supplyEntrySubSchema],
     status: {
         type: String,
@@ -78,6 +86,8 @@ const prescriptionSchema = new mongoose.Schema({
     },
     date: { type: Date, default: Date.now, required: true },
     ambito: { type: String, enum: ['publico', 'privado'], default: 'privado' },
+    tratamientoProlongado: { type: Number },
+    treatmentGroupId: { type: String },
     trimestral: Boolean,
     organizacion: {
         _id: String,
@@ -89,6 +99,15 @@ const prescriptionSchema = new mongoose.Schema({
 prescriptionSchema.index({ 'professional.userId': 1 });
 prescriptionSchema.index({ 'supplies.supply.type': 1 });
 prescriptionSchema.index({ status: 1, date: 1 });
+
+// Compatibilidad: las recetas viejas (legacy `trimestral`) se leen como tratamiento prolongado de 3 meses.
+// `trimestral` queda como dato de solo lectura; no se escribe desde la API nueva.
+prescriptionSchema.post('init', (doc) => {
+    const legacy = doc as unknown as IPrescription;
+    if (legacy.tratamientoProlongado == null && legacy.trimestral === true) {
+        legacy.tratamientoProlongado = 3;
+    }
+});
 
 const Prescription = mongoose.models.Prescription
     || mongoose.model<IPrescription>('Prescription', prescriptionSchema);

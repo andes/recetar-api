@@ -1,4 +1,5 @@
 export { AndesClient, AndesMapper } from './andes';
+export { SisaClient } from './sisa';
 export type {
     AndesPrescription,
     AndesPatient,

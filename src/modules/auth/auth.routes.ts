@@ -10,6 +10,7 @@ import {
     recoverPasswordSchema,
     setValidationTokenSchema,
     getTokenSchema,
+    getMatriculasSchema,
 } from './auth.dto';
 
 const router = Router();
@@ -25,6 +26,17 @@ router.post('/get-token', validate(getTokenSchema), authController.getToken);
 router.get('/jwt-login', checkAuth, authController.loginJwt);
 router.get('/pharmacies-andes', authController.getPharmacyAndes);
 router.get('/professionals-andes', authController.getProfessionalsAndes);
+router.get(
+    '/professionals-andes/matriculas',
+    (req, _res, next) => {
+        // eslint-disable-next-line no-console
+        console.log('[matriculas] request recibido:', req.originalUrl, req.query);
+        next();
+    },
+    checkAuth,
+    validate(getMatriculasSchema, 'query'),
+    authController.getMatriculas,
+);
 router.get('/authorizedProfessions', authController.getAuthorizedProfessions);
 router.get('/role-types', checkAuth, authController.getRoleTypes);
 

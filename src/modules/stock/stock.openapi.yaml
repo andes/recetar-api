@@ -42,8 +42,26 @@ paths:
             type: string
         - name: tipos
           in: query
+          description: Tipos de insumo separados por coma (dispositivo/device, nutricion/nutrition, magistral).
           schema:
             type: string
       responses:
         "200":
           description: Stock desde ANDES
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AndesStockItem'
+
+components:
+  schemas:
+    AndesStockItem:
+      type: object
+      description: Insumo devuelto por ANDES (incluye magistrales cuando `tipos=magistral`).
+      properties:
+        _id: { type: string }
+        nombre: { type: string }
+        tipo: { type: string }
+        cantidad: { type: number }

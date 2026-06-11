@@ -4,6 +4,23 @@ import { createUser } from '../../helpers/factories';
 import { createAuthenticatedUser } from '../../helpers/auth';
 import { createApp } from '../../helpers/app';
 
+jest.mock('../../../src/integrations/andes', () => {
+    const actual = jest.requireActual('../../../src/integrations/andes');
+    const mockAndesClient = {
+        getProfessionalByDocumento: jest.fn(),
+        getPharmacyByCuit: jest.fn(),
+    };
+    return {
+        ...actual,
+        AndesClient: jest.fn().mockImplementation(() => mockAndesClient),
+        mockAndesClient,
+    };
+});
+
+const { mockAndesClient } = jest.requireMock('../../../src/integrations/andes') as {
+    mockAndesClient: { getProfessionalByDocumento: jest.Mock; getPharmacyByCuit: jest.Mock };
+};
+
 jest.setTimeout(15000);
 
 let app: ReturnType<typeof createApp>;
@@ -19,6 +36,8 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await clearCollections();
+    mockAndesClient.getProfessionalByDocumento.mockReset();
+    mockAndesClient.getPharmacyByCuit.mockReset();
 });
 
 describe('Auth Controller', () => {
@@ -157,6 +176,80 @@ describe('Auth Controller', () => {
                 .send({ username: 'nobody' });
 
             expect(res.status).toBe(404);
+        });
+    });
+
+    describe('GET /api/auth/professionals-andes/matriculas', () => {
+        const profesional = {
+            id: 'prof1',
+            documento: '30123456',
+            nombre: 'Ana',
+            apellido: 'Pérez',
+            profesiones: [{
+                profesion: { codigo: 1, nombre: 'Médico' },
+                matriculado: true,
+                matriculacion: [{ matriculaNumero: 222, inicio: '2020-01-01', fin: '2099-01-01T00:00:00.000Z' }],
+            }],
+        };
+
+        it('returns 200 with estadoGeneral and matriculas', async () => {
+            const { token } = await createAuthenticatedUser();
+            mockAndesClient.getProfessionalByDocumento.mockResolvedValue(profesional);
+
+            const res = await request(app)
+                .get('/api/auth/professionals-andes/matriculas')
+                .query({ documento: '30123456' })
+                .set('Authorization', `Bearer ${token}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('success');
+            expect(res.body.data.estadoGeneral).toBe('vigente');
+            expect(res.body.data.matriculas).toHaveLength(1);
+        });
+
+        it('returns 404 when the professional is not found in Andes', async () => {
+            const { token } = await createAuthenticatedUser();
+            mockAndesClient.getProfessionalByDocumento.mockResolvedValue(null);
+
+            const res = await request(app)
+                .get('/api/auth/professionals-andes/matriculas')
+                .query({ documento: '99999999' })
+                .set('Authorization', `Bearer ${token}`);
+
+            expect(res.status).toBe(404);
+            expect(res.body.error.code).toBe('RECURSO_NOT_FOUND');
+        });
+
+        it('returns 502 when Andes fails', async () => {
+            const { token } = await createAuthenticatedUser();
+            mockAndesClient.getProfessionalByDocumento.mockRejectedValue(new Error('andes down'));
+
+            const res = await request(app)
+                .get('/api/auth/professionals-andes/matriculas')
+                .query({ documento: '30123456' })
+                .set('Authorization', `Bearer ${token}`);
+
+            expect(res.status).toBe(502);
+            expect(res.body.error.code).toBe('BAD_GATEWAY');
+        });
+
+        it('returns 422 when documento is missing', async () => {
+            const { token } = await createAuthenticatedUser();
+
+            const res = await request(app)
+                .get('/api/auth/professionals-andes/matriculas')
+                .set('Authorization', `Bearer ${token}`);
+
+            expect(res.status).toBe(422);
+            expect(res.body.error.code).toBe('VALIDATION_ERROR');
+        });
+
+        it('returns 401 without token', async () => {
+            const res = await request(app)
+                .get('/api/auth/professionals-andes/matriculas')
+                .query({ documento: '30123456' });
+
+            expect(res.status).toBe(401);
         });
     });
 });

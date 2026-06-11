@@ -1,6 +1,19 @@
 import mongoose, { Schema, Model } from 'mongoose';
 import { ICertificate } from './certificates.types';
-import { patientSubSchema } from '../patients/patients.model';
+
+const patientCertSubSchema = new Schema({
+    firstName: { type: String, required: '{PATH} is required' },
+    lastName: { type: String, required: '{PATH} is required' },
+    nombreAutopercibido: { type: String, default: '' },
+    dni: { type: String, default: '' },
+    fechaNac: { type: Date, default: null },
+    sex: { type: String, enum: ['Femenino', 'Masculino', 'Otro'], required: '{PATH} is required' },
+    obraSocial: {
+        nombre: { type: String, default: '' },
+        numeroAfiliado: { type: String, default: '' },
+    },
+    idMPI: { type: String, default: '' },
+}, { _id: false });
 
 const professionalCertSchema = new Schema({
     userId: { type: Schema.Types.ObjectId, required: true },
@@ -15,7 +28,7 @@ const professionalCertSchema = new Schema({
 }, { _id: false });
 
 const certificateSchema = new Schema({
-    patient: { type: patientSubSchema, required: true },
+    patient: { type: patientCertSubSchema, required: true },
     professional: { type: professionalCertSchema, required: true },
     certificate: { type: String },
     startDate: { type: Date, required: true },

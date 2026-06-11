@@ -1,5 +1,6 @@
 import Certificate from './certificates.model';
 import { ICertificate } from './certificates.types';
+import { toObjectId } from '../../shared/utils/object-id';
 
 export class CertificateRepository {
     async findAll(skip = 0, limit = 20): Promise<{ certificates: ICertificate[]; total: number }> {
@@ -15,7 +16,11 @@ export class CertificateRepository {
     }
 
     async findByUserId(userId: string, skip = 0, limit = 20): Promise<{ certificates: ICertificate[]; total: number }> {
-        const filter = { 'professional.userId': userId };
+        const professionalId = toObjectId(userId);
+        if (!professionalId) {
+            return { certificates: [], total: 0 };
+        }
+        const filter = { 'professional.userId': professionalId };
         const [certificates, total] = await Promise.all([
             Certificate.find(filter).sort({ startDate: -1 }).skip(skip).limit(limit).exec(),
             Certificate.countDocuments(filter).exec(),
@@ -24,9 +29,13 @@ export class CertificateRepository {
     }
 
     async searchByUserId(userId: string, searchTerm: string, skip = 0, limit = 20): Promise<{ certificates: ICertificate[]; total: number }> {
+        const professionalId = toObjectId(userId);
+        if (!professionalId) {
+            return { certificates: [], total: 0 };
+        }
         const regex = new RegExp(searchTerm, 'i');
         const filter = {
-            'professional.userId': userId,
+            'professional.userId': professionalId,
             $or: [
                 { 'patient.firstName': regex },
                 { 'patient.lastName': regex },
@@ -39,6 +48,15 @@ export class CertificateRepository {
             Certificate.countDocuments(filter).exec(),
         ]);
         return { certificates, total };
+    }
+
+    async findByUserIdAndPatientDni(userId: string, patientDni: string, limit = 10): Promise<ICertificate[]> {
+        const professionalId = toObjectId(userId);
+        if (!professionalId) {
+            return [];
+        }
+        return Certificate.find({ 'professional.userId': professionalId, 'patient.dni': patientDni })
+            .sort({ createdAt: -1 }).limit(limit).exec();
     }
 
     async create(data: Partial<ICertificate>): Promise<ICertificate> {

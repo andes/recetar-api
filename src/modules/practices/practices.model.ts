@@ -8,7 +8,7 @@ const profesionGradoSubSchema = new mongoose.Schema({
 }, { _id: false });
 
 const professionalSubSchema = new mongoose.Schema({
-    userId: { type: String, required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, required: true },
     enrollment: { type: String },
     cuil: { type: String },
     businessName: { type: String },
@@ -17,7 +17,7 @@ const professionalSubSchema = new mongoose.Schema({
 
 const obraSocialSubSchema = new mongoose.Schema({
     nombre: { type: String },
-    codigoPuco: { type: String },
+    codigoPuco: { type: Number },
     numeroAfiliado: { type: String },
 }, { _id: false });
 

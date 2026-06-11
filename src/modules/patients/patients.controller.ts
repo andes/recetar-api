@@ -7,9 +7,12 @@ import { getStringQueryParam } from '../../shared/utils/query';
 export class PatientController {
     constructor(private readonly patientService: PatientService) {}
 
-    list = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const patients = await this.patientService.list();
+            const q = getStringQueryParam(req.query.q) || '';
+            const patients = q
+                ? await this.patientService.search(q)
+                : await this.patientService.list();
             res.status(200).json(ApiResponse.success(patients));
         } catch (error) {
             next(error);
@@ -20,6 +23,16 @@ export class PatientController {
         try {
             const patient = await this.patientService.show(req.params.id);
             res.status(200).json(ApiResponse.success(patient));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const q = getStringQueryParam(req.query.q) || '';
+            const patients = await this.patientService.search(q);
+            res.status(200).json(ApiResponse.success(patients));
         } catch (error) {
             next(error);
         }
@@ -61,9 +74,12 @@ export class PatientController {
         }
     };
 
-    getCoverages = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    getCoverages = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const coverages = await this.patientService.getCoverages();
+            const q = getStringQueryParam(req.query.q) || '';
+            const coverages = q
+                ? await this.patientService.searchCoverages(q)
+                : await this.patientService.getCoverages();
             res.status(200).json(ApiResponse.success(coverages));
         } catch (error) {
             next(error);
@@ -76,6 +92,24 @@ export class PatientController {
             const sexo = getStringQueryParam(req.query.sexo) || '';
             const coverage = await this.patientService.getCoverage(dni, sexo);
             res.status(200).json(ApiResponse.success(coverage));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    validateIdentity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const { dni, sexo } = req.body;
+            if (!dni || !sexo) {
+                res.status(400).json(ApiResponse.error('BAD_REQUEST', 'dni and sexo are required'));
+                return;
+            }
+            const result = await this.patientService.validateIdentity(dni, sexo);
+            if (result) {
+                res.status(200).json(ApiResponse.success(result));
+            } else {
+                res.status(422).json(ApiResponse.error('PATIENT_VALIDATION_NOT_FOUND', 'Ciudadano no encontrado'));
+            }
         } catch (error) {
             next(error);
         }

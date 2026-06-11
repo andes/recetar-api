@@ -102,6 +102,19 @@ describe('Users Controller', () => {
             expect(res.status).toBe(422);
         });
 
+        it('returns 422 with translated validation details for invalid email', async () => {
+            const { token } = await createAuthenticatedUser();
+            const role = await createRole('professional');
+            const res = await request(app)
+                .post('/api/users')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ password: 'password123', roles: [role._id.toString()], email: 'not-an-email' });
+
+            expect(res.status).toBe(422);
+            const emailDetail = res.body.error.details.find((detail: { field: string }) => detail.field === 'email');
+            expect(emailDetail?.message).toBe('El email es incorrecto');
+        });
+
         it('returns 401 without token', async () => {
             const res = await request(app)
                 .post('/api/users')
@@ -136,6 +149,41 @@ describe('Users Controller', () => {
             const res = await request(app)
                 .patch('/api/users/000000000000000000000000')
                 .send({ businessName: 'X' });
+            expect(res.status).toBe(401);
+        });
+    });
+
+    describe('DELETE /api/users/:id', () => {
+        it('returns 204 and deletes the user', async () => {
+            const { token } = await createAuthenticatedUser();
+            const target = await createUser({ username: 'target', email: 'target@test.com' });
+
+            const res = await request(app)
+                .delete(`/api/users/${target._id}`)
+                .set('Authorization', `Bearer ${token}`);
+
+            expect(res.status).toBe(204);
+            expect(await User.findById(target._id)).toBeNull();
+        });
+
+        it('returns 404 for non-existent id', async () => {
+            const { token } = await createAuthenticatedUser();
+            const res = await request(app)
+                .delete('/api/users/000000000000000000000000')
+                .set('Authorization', `Bearer ${token}`);
+            expect(res.status).toBe(404);
+        });
+
+        it('returns 403 when deleting own user', async () => {
+            const { token, user } = await createAuthenticatedUser();
+            const res = await request(app)
+                .delete(`/api/users/${user._id}`)
+                .set('Authorization', `Bearer ${token}`);
+            expect(res.status).toBe(403);
+        });
+
+        it('returns 401 without token', async () => {
+            const res = await request(app).delete('/api/users/000000000000000000000000');
             expect(res.status).toBe(401);
         });
     });
