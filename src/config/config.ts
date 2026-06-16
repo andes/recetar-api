@@ -5,7 +5,7 @@ dotenv.config();
 export const env = {
     API_URI_PREFIX: '/api',
     JWT_SECRET: 'e18a33b0-9866-4867-800a-d6ffcd8f1cbd',
-    TOKEN_LIFETIME: 1,
+    TOKEN_LIFETIME: 72,
     MONGODB_CONNECTION: 'mongodb://localhost/recetar'
 };
 
@@ -19,4 +19,4 @@ export const httpCodes = {
     INTERNAL_SERVER_ERROR: 500,
     OK: 200,
     NOT_FOUND: 404,
-  };
+};
