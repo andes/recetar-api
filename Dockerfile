@@ -1,6 +1,11 @@
 FROM node:24-alpine AS builder
 WORKDIR /app
+
+COPY --from=andes-log . /tmp/andes-log
+RUN cd /tmp/andes-log && npm install && npm run build
+
 COPY package.json package-lock.json* ./
+RUN node -e "const p=require('./package.json');p.dependencies['@andes/log']='file:/tmp/andes-log';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))"
 RUN npm install --ignore-engines
 COPY . .
 RUN npx tsc --project tsconfig.json \

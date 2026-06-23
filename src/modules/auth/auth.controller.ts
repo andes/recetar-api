@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from './auth.service';
 import { ApiResponse } from '../../shared/api-response';
+import { enrichWideEventUser } from '@andes/log';
 import {
     LoginDTO,
     RegisterDTO,
@@ -27,6 +28,7 @@ export class AuthController {
 
     loginJwt = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            enrichWideEventUser(req, res);
             const result = await this.authService.loginWithJwt((req.user as any)._id.toString());
             res.status(200).json(ApiResponse.success(result));
         } catch (error) {

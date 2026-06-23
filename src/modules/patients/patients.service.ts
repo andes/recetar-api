@@ -1,7 +1,7 @@
 import { PatientRepository } from './patients.repository';
 import { AndesClient } from '../../integrations/andes';
 import { AndesMapper } from '../../integrations/andes';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 import { IPatient } from './patients.types';
 import { CreatePatientDTO, UpdatePatientDTO } from './patients.dto';
 import { PatientNotFoundError, DuplicateDniError } from './patients.errors';

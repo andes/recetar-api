@@ -13,6 +13,7 @@ import stockRoutes from '../modules/stock/stock.routes';
 import vademecumRoutes from './vademecum.routes';
 import usersRoutes from '../modules/users/users.routes';
 import securityRoutes from '../modules/security/security.routes';
+import logRoutes from './log.routes';
 
 const router = Router();
 
@@ -29,5 +30,6 @@ router.use('/certificates', certificatesRoutes);
 router.use('/prescriptions', prescriptionsRoutes);
 router.use('/stock', stockRoutes);
 router.use('/vademecum', vademecumRoutes);
+router.use('/', logRoutes);
 
 export default router;

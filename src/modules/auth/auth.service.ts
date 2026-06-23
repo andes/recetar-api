@@ -5,7 +5,7 @@ import needle from 'needle';
 import bcrypt from 'bcryptjs';
 import { AuthRepository } from './auth.repository';
 import { EmailService, EmailTemplateService, MailOptions } from '../../integrations/email';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 import {
     InvalidCredentialsError,
     UserNotFoundError,

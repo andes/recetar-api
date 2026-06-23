@@ -1,5 +1,5 @@
 import { PharmacistRepository } from './pharmacists.repository';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 import { IPharmacist, IPharmacy } from './pharmacists.types';
 import { CreatePharmacistDTO, UpdatePharmacistDTO, CreatePharmacyDTO, UpdatePharmacyDTO } from './pharmacists.dto';
 import { PharmacistNotFoundError, PharmacyNotFoundError } from './pharmacists.errors';

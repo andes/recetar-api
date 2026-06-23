@@ -1,16 +1,12 @@
 import { PharmacistRepository } from './pharmacists.repository';
 import { PharmacistService } from './pharmacists.service';
 import { PharmacistController } from './pharmacists.controller';
-import { Logger } from '../../shared/logger/logger.interface';
+import { createLogger } from '@andes/log';
 
-const defaultLogger: Logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+const logger = createLogger('pharmacists');
 
 const repository = new PharmacistRepository();
-const service = new PharmacistService(repository, defaultLogger);
+const service = new PharmacistService(repository, logger);
 const controller = new PharmacistController(service);
 
 export { controller as pharmacistController };

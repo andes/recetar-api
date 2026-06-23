@@ -2,14 +2,10 @@ import { StockRepository } from './stock.repository';
 import { StockService } from './stock.service';
 import { StockController } from './stock.controller';
 import { AndesClient } from '../../integrations/andes';
-import { Logger } from '../../shared/logger/logger.interface';
+import { createLogger } from '@andes/log';
 import { env } from '../../config/config';
 
-const defaultLogger: Logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+const logger = createLogger('stock');
 
 const repository = new StockRepository();
 const andesClient = new AndesClient({
@@ -17,7 +13,7 @@ const andesClient = new AndesClient({
     jwtMpiToken: env.JWT_MPI_TOKEN,
     mpiEndpoint: env.ANDES_MPI_ENDPOINT,
 });
-const service = new StockService(repository, andesClient, defaultLogger);
+const service = new StockService(repository, andesClient, logger);
 const controller = new StockController(service);
 
 export { controller as stockController };

@@ -1,15 +1,12 @@
 import { AuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { createLogger } from '@andes/log';
 
-const logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+const logger = createLogger('auth');
 
 const repository = new AuthRepository();
-const service = new AuthService(repository, logger as any);
+const service = new AuthService(repository, logger);
 const controller = new AuthController(service);
 
 export { controller as authController };

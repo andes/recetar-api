@@ -9,6 +9,15 @@ export const errorHandler = (
     response: Response,
     _next: NextFunction
 ): void => {
+    const wideEvent = response.locals.wideEvent as Record<string, unknown> | undefined;
+    if (wideEvent) {
+        wideEvent.error = {
+            type: error.constructor.name,
+            message: error.message,
+            code: error instanceof ApiError ? error.code : 'INTERNAL_ERROR',
+        };
+    }
+
     if (error instanceof ApiError) {
         const message = error.messageKey
             ? t(error.messageKey, error.message)

@@ -1,6 +1,6 @@
 import { PrescriptionRepository } from './prescription.repository';
 import { AndesClient, PrescriptionAndesRepository, PrescriptionAndesNotFoundError } from '../../integrations/andes';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 import { IPrescription } from './prescription.types';
 import { IPrescriptionAndes } from '../../integrations/andes';
 import {

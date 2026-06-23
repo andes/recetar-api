@@ -1,6 +1,6 @@
 import { StockRepository } from './stock.repository';
 import { AndesClient } from '../../integrations/andes';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 import { AndesStockItem } from '../../integrations/andes/andes.types';
 
 export class StockService {

@@ -1,5 +1,5 @@
 import { ProfessionalRepository } from './professionals.repository';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 import { IProfessional } from './professionals.types';
 import { CreateProfessionalDTO, UpdateProfessionalDTO } from './professionals.dto';
 import { ProfessionalNotFoundError } from './professionals.errors';

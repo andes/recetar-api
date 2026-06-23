@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { PrescriptionService } from './prescription.service';
 import { SecurityService } from '../security/security.service';
 import { ApiResponse } from '../../shared/api-response';
+import { enrichWideEvent, enrichWideEventUser } from '@andes/log';
 import {
     CreatePrescriptionDTO, UpdatePrescriptionDTO,
     DispensePrescriptionDTO,
@@ -52,12 +53,14 @@ export class PrescriptionController {
     findByPatient = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const dni = req.params.patientId;
+            enrichWideEvent(req, res, { paciente: { dni } });
             const startDate = getStringQueryParam(req.query.startDate);
             const endDate = getStringQueryParam(req.query.endDate);
             const status = getStringQueryParam(req.query.status);
             const skip = parseInt(getStringQueryParam(req.query.skip) || '0', 10);
             const limit = parseInt(getStringQueryParam(req.query.limit) || '20', 10);
             const result = await this.prescriptionService.findByPatient(dni, startDate, endDate, status, skip, limit);
+            enrichWideEvent(req, res, { result_count: result.total });
             res.status(200).json(ApiResponse.success(result));
         } catch (error) {
             next(error);
@@ -101,7 +104,13 @@ export class PrescriptionController {
                 }
             }
 
+            enrichWideEventUser(req, res);
             const prescription = await this.prescriptionService.create(req.body as CreatePrescriptionDTO);
+            enrichWideEvent(req, res, {
+                prescription: {
+                    id: (prescription as any)._id || (prescription as any).id,
+                },
+            });
             res.status(201).json(ApiResponse.success(prescription));
         } catch (error) {
             next(error);
@@ -128,7 +137,11 @@ export class PrescriptionController {
 
     dispense = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            enrichWideEventUser(req, res);
             const prescription = await this.prescriptionService.dispense(req.params.id, req.body as DispensePrescriptionDTO);
+            enrichWideEvent(req, res, {
+                prescription: { id: req.params.id },
+            });
             res.status(200).json(ApiResponse.success(prescription));
         } catch (error) {
             next(error);

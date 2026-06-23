@@ -1,15 +1,11 @@
 import { SupplyRepository } from './supplies.repository';
 import { SupplyService } from './supplies.service';
 import { SupplyController } from './supplies.controller';
-import { Logger } from '../../shared/logger/logger.interface';
+import { createLogger } from '@andes/log';
 import { AndesClient } from '../../integrations/andes';
 import { env } from '../../config/config';
 
-const logger: Logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+const logger = createLogger('supplies');
 
 const repository = new SupplyRepository();
 const andesClient = new AndesClient({

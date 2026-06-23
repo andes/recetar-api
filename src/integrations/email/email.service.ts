@@ -1,5 +1,5 @@
 import { MailOptions, EmailSender } from './email.types';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 
 export class EmailService {
     constructor(

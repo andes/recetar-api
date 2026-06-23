@@ -2,13 +2,10 @@ import { PatientRepository } from './patients.repository';
 import { PatientService } from './patients.service';
 import { PatientController } from './patients.controller';
 import { AndesClient } from '../../integrations/andes';
+import { createLogger } from '@andes/log';
 import { env } from '../../config/config';
 
-const logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+const logger = createLogger('patients');
 
 const repository = new PatientRepository();
 const andesClient = new AndesClient({
@@ -16,7 +13,7 @@ const andesClient = new AndesClient({
     jwtMpiToken: env.JWT_MPI_TOKEN,
     mpiEndpoint: env.ANDES_MPI_ENDPOINT,
 });
-const service = new PatientService(repository, andesClient, logger as any);
+const service = new PatientService(repository, andesClient, logger);
 const controller = new PatientController(service);
 
 export { controller as patientController };

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { PatientService } from './patients.service';
 import { ApiResponse } from '../../shared/api-response';
+import { enrichWideEvent } from '@andes/log';
 import { CreatePatientDTO, UpdatePatientDTO } from './patients.dto';
 import { getStringQueryParam } from '../../shared/utils/query';
 
@@ -37,6 +38,7 @@ export class PatientController {
 
     findByDni = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
+            enrichWideEvent(req, res, { paciente: { dni: req.params.dni } });
             const patients = await this.patientService.findByDni(req.params.dni);
             res.status(200).json(ApiResponse.success(patients));
         } catch (error) {

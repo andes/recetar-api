@@ -1,5 +1,5 @@
 import { SupplyRepository } from './supplies.repository';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 import { ISupply } from './supplies.types';
 import { CreateSupplyDTO, UpdateSupplyDTO } from './supplies.dto';
 import { SupplyNotFoundError } from './supplies.errors';

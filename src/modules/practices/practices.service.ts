@@ -1,5 +1,5 @@
 import { PracticeRepository } from './practices.repository';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 import { IPractice } from './practices.types';
 import { CreatePracticeDTO, UpdatePracticeDTO } from './practices.dto';
 import { PracticeNotFoundError } from './practices.errors';

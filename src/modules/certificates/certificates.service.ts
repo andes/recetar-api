@@ -1,5 +1,5 @@
 import { CertificateRepository } from './certificates.repository';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 import { ICertificate } from './certificates.types';
 import { CreateCertificateDTO, UpdateCertificateDTO } from './certificates.dto';
 import { CertificateNotFoundError } from './certificates.errors';

@@ -4,17 +4,20 @@ import cors from 'cors';
 import * as http from 'http';
 import pino from 'pino';
 import pinoHttp from 'pino-http';
+import { multistream } from 'pino';
 import { errorHandler } from './shared/middlewares/error-handler';
 import { env } from './config/config';
 import { buildOpenApiSpec } from './config/openapi';
 import { initializeMongo } from './database/dbconfig';
+import { setBaseLogger, createLogger, wideEventMiddleware } from '@andes/log';
 import routes from './routes/routes';
 
 const SERVICE_NAME = 'recetar-api';
 const INSTANCE_ID = process.env.INSTANCE_ID || '1';
 const PORT = parseInt(process.env.PORT || '4000', 10);
+const LOG_FILE = process.env.LOG_FILE || '';
 
-const logger = pino({
+const pinoConfig = {
     name: SERVICE_NAME,
     level: process.env.LOG_LEVEL || 'info',
     base: {
@@ -23,9 +26,18 @@ const logger = pino({
         host: process.env.HOSTNAME || 'unknown'
     },
     formatters: {
-        level: (label) => ({ level: label })
+        level: (label: string) => ({ level: label })
     }
-});
+};
+
+const logger = LOG_FILE
+    ? pino(pinoConfig, multistream([
+        { stream: process.stdout },
+        { stream: pino.destination({ dest: LOG_FILE, sync: false }) },
+    ]))
+    : pino(pinoConfig);
+
+setBaseLogger(logger);
 
 const apiSpec = buildOpenApiSpec();
 
@@ -45,9 +57,12 @@ class Server {
         await initializeMongo();
         this.app.set('port', PORT);
 
+        this.app.use(cors({
+            exposedHeaders: ['X-Request-Id'],
+        }));
         this.app.use(pinoHttp({ logger }));
+        this.app.use(wideEventMiddleware(createLogger('wide-event')));
         this.app.use(express.json());
-        this.app.use(cors());
 
         this.app.use('/api-docs', apiReference({
             spec: { content: apiSpec },

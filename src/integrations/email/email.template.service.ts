@@ -3,7 +3,7 @@ import * as path from 'path';
 import Handlebars from 'handlebars';
 import moment from 'moment';
 import { TemplateData } from './email.types';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger } from '@andes/log';
 
 Handlebars.registerHelper('datetime', (dateTime: string | Date) => {
     return moment(dateTime).format('D MMM YYYY [a las] H:mm [hs]');

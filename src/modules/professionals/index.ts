@@ -1,7 +1,7 @@
 import { ProfessionalRepository } from './professionals.repository';
 import { ProfessionalService } from './professionals.service';
 import { ProfessionalController } from './professionals.controller';
-import { Logger } from '../../shared/logger/logger.interface';
+import { Logger, createLogger } from '@andes/log';
 
 export const createProfessionalModule = (appLogger: Logger) => {
     const repo = new ProfessionalRepository();
@@ -10,14 +10,10 @@ export const createProfessionalModule = (appLogger: Logger) => {
     return { controller: ctrl, service: svc, repository: repo };
 };
 
-const logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+const logger = createLogger('professionals');
 
 const repository = new ProfessionalRepository();
-const service = new ProfessionalService(repository, logger as any);
+const service = new ProfessionalService(repository, logger);
 const controller = new ProfessionalController(service);
 
 export { controller as professionalController };
