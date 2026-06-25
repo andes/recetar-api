@@ -1,6 +1,20 @@
 import { Document } from 'mongoose';
 import IObraSocial from './obraSocial.interface';
 
+export interface IPatientSub {
+    dni?: string;
+    lastName: string;
+    firstName: string;
+    fechaNac?: Date | null;
+    sex: string;
+    nombreAutopercibido?: string;
+    idMPI?: string;
+    obraSocial?: {
+        nombre?: string;
+        numeroAfiliado?: string;
+    } | IObraSocial;
+}
+
 export default interface IPatient extends Document {
     dni?: string;
     lastName: string;

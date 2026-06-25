@@ -20,6 +20,8 @@ import snomedSupplyController from '../controllers/snomed.controller';
 import andesPrescriptionController from '../controllers/andesPrescription.controller';
 import certificateController from '../controllers/certificate.controller';
 import practiceController from '../controllers/practice.controller';
+import andesStockController from '../controllers/andesStock.controller';
+import stockController from '../controllers/stock.controller';
 class PrivateRoutes {
 
     constructor(private router: Router = Router()) { }
@@ -37,7 +39,7 @@ class PrivateRoutes {
         this.router.get(`/prescriptions/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.index);
         this.router.get('/prescriptions/user/:id', prescriptionController.getByUserId);
         this.router.get('/prescriptions/user/:id/search', prescriptionController.searchByTerm);
-        this.router.get('/prescriptions/find/:patient_id&:date?', prescriptionController.getPrescriptionsByDateOrPatientId);
+        this.router.get('/prescriptions/find/:patient_id', prescriptionController.getPrescriptionsByDateOrPatientId);
         this.router.get(`/prescriptions/:id`, hasPermissionIn('readAny', 'prescription'), prescriptionController.show);
         this.router.post(`/prescriptions/`, hasPermissionIn('createAny', 'prescription'), prescriptionController.create);
         this.router.post(`/prescriptions/get-csv/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.getCsv);
@@ -57,6 +59,7 @@ class PrivateRoutes {
 
         // Andes prescriptions
         this.router.get('/andes-prescriptions/from-andes/', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.getFromAndes);
+        this.router.get('/andes-prescriptions/verificar', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.verificarReceta);
         this.router.get('/andes-prescriptions/:id', hasPermissionIn('readAny', 'prescription'), andesPrescriptionController.show);
         this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
         this.router.patch('/andes-prescriptions/cancel-dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.cancelDispense);
@@ -65,6 +68,10 @@ class PrivateRoutes {
         // Andes search
         this.router.get('/andes/professionals', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchProfessionals);
         this.router.get('/andes/pharmacies', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchPharmacies);
+        // Andes Stock
+        this.router.get('/stock/andes', andesStockController.getStock);
+        this.router.get('/stock/andes/search', andesStockController.search);
+        this.router.get('/stock', stockController.getStock);
 
         // practices
         this.router.get(`/practices/:id`, hasPermissionIn('readAny', 'prescription'), practiceController.getById);
@@ -107,6 +114,7 @@ class PrivateRoutes {
         this.router.post('/users/create', hasPermissionIn('createAny', 'user'), usersController.create);
         this.router.post('/users/update', hasPermissionIn('updateAny', 'user'), usersController.update);
         this.router.post('/users/update-own', hasPermissionIn('updateOwn', 'user'), usersController.updateOwn);
+        this.router.post('/users/request-update', hasPermissionIn('updateOwn', 'user'), usersController.requestEmailUpdate);
         this.router.get('/organizaciones-andes', hasPermissionIn('readOwn', 'user'), usersController.organizacionesAndes);
 
         // pharmacy

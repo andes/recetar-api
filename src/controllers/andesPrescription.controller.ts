@@ -6,6 +6,22 @@ import User from '../models/user.model';
 import IUser from '../interfaces/user.interface';
 import prescriptionController from './prescription.controller';
 import AndesService from '../services/andesService';
+import moment = require('moment');
+import needle from 'needle';
+
+/**
+ * Función helper para obtener prescripciones de ANDES por DNI
+ * Esta función puede ser llamada desde otros controladores
+ */
+export const getAndesPrescriptionsByDni = async (
+    dni: string,
+    sexo: string,
+    status?: string,
+    dateFrom?: string,
+    dateTo?: string
+): Promise<IPrescriptionAndes[]> => {
+    return AndesService.getPrescriptionsByDni(dni, sexo, status, dateFrom, dateTo);
+};
 
 
 class AndesPrescriptionController implements BaseController {
@@ -83,105 +99,15 @@ class AndesPrescriptionController implements BaseController {
     };
 
     public getFromAndes = async (req: Request, res: Response): Promise<Response> => {
-        try {
-            if (!req.query.dni) { return res.status(400).json({ mensaje: 'Missing required params!' }); }
-            const dni = req.query.dni as string;
-            const sexo = req.query.sexo ? (req.query.sexo as any) : undefined;
-            let prescriptions: IPrescriptionAndes[] | null = [];
-            let andesPrescriptions: IPrescriptionAndes[] | null = null;
-
-            andesPrescriptions = await AndesService.getPrescriptionsByPatient({ documento: dni, estado: 'vigente', sexo });
-
-            if (andesPrescriptions) {
-                andesPrescriptions = andesPrescriptions.map(aPrescription => {
-                    aPrescription.idAndes = aPrescription._id;
-                    return aPrescription;
-                });
-                prescriptions = [...prescriptions, ...andesPrescriptions];
-            }
-
-            const savedPrescriptions: IPrescriptionAndes[] | null = await PrescriptionAndes.find({ 'paciente.documento': dni });
-            if (savedPrescriptions) {
-                prescriptions = [...prescriptions, ...savedPrescriptions];
-            }
-            return res.status(200).json(prescriptions);
-        } catch (e) {
-            return res.status(500).json({ error: e });
-        }
+        return AndesService.getFromAndes(req, res);
     };
 
     public searchProfessionals = async (req: Request, res: Response): Promise<Response> => {
-        const { documento } = req.query;
-
-        if (!documento) {
-            return res.status(400).json({
-                ok: false,
-                message: 'El parámetro "documento" es requerido'
-            });
-        }
-
-        try {
-            const professionals = await AndesService.searchProfessionalsGuide(documento as string);
-
-            if (professionals && professionals.length > 0) {
-                return res.status(200).json({
-                    ok: true,
-                    message: 'Profesionales encontrados',
-                    data: professionals,
-                    total: professionals.length
-                });
-            } else {
-                return res.status(200).json({
-                    ok: false,
-                    message: 'No se encontraron profesionales con el documento proporcionado',
-                    data: [],
-                    total: 0
-                });
-            }
-        } catch (error) {
-            return res.status(500).json({
-                ok: false,
-                message: 'Error al buscar profesionales en Andes',
-                error
-            });
-        }
+        return AndesService.searchProfessionals(req, res);
     };
 
     public searchPharmacies = async (req: Request, res: Response): Promise<Response> => {
-        const { cuit } = req.query;
-
-        if (!cuit) {
-            return res.status(400).json({
-                ok: false,
-                message: 'El parámetro "cuit" es requerido'
-            });
-        }
-
-        try {
-            const pharmacies = await AndesService.searchPharmaciesCore(cuit as string);
-
-            if (pharmacies && pharmacies.length > 0) {
-                return res.status(200).json({
-                    ok: true,
-                    message: 'Farmacias encontradas',
-                    data: pharmacies,
-                    total: pharmacies.length
-                });
-            } else {
-                return res.status(200).json({
-                    ok: false,
-                    message: 'No se encontraron farmacias con el CUIT proporcionado',
-                    data: [],
-                    total: 0
-                });
-            }
-        } catch (error) {
-            return res.status(500).json({
-                ok: false,
-                message: 'Error al buscar farmacias en Andes',
-                error
-            });
-        }
+        return AndesService.searchPharmacies(req, res);
     };
 
     public dispense = async (req: Request, res: Response): Promise<Response> => {
@@ -311,6 +237,44 @@ class AndesPrescriptionController implements BaseController {
 
         } catch (e) {
             return res.status(500).json({ mensaje: 'Error', error: e });
+        }
+    };
+
+    public verificarReceta = async (req: Request, res: Response): Promise<Response> => {
+        const { dni, conceptId, sexo } = req.query;
+
+        if (!dni || !conceptId) {
+            return res.status(400).json({ mensaje: 'Se requieren los parámetros dni y conceptId' });
+        }
+
+        if (!sexo) {
+            return res.status(400).json({ mensaje: 'Se requiere el parámetro sexo del paciente' });
+        }
+
+        try {
+            // Consulta la DB local por DNI del paciente (identificador común entre sistemas)
+            const estadosValidos = ['vigente', 'pendiente'];
+            const estadosDispensaExcluidos = ['dispensada'];
+
+            const recetasLocales = await PrescriptionAndes.find({
+                'paciente.documento': dni,
+                'medicamento.concepto.conceptId': conceptId,
+                'estadoActual.tipo': { $in: estadosValidos },
+                'estadoDispensaActual.tipo': { $nin: estadosDispensaExcluidos }
+            }).lean();
+
+            // Consulta a Andes por documento, conceptId y sexo utilizando el endpoint especifico
+            const verificacionAndes = await AndesService.verificarRecetaExistente(dni as string, conceptId as string, sexo as string).catch(() => null);
+            const recetasAndes = verificacionAndes && verificacionAndes.existe && verificacionAndes.receta
+                ? [verificacionAndes.receta]
+                : [];
+
+            // Combinar resultados
+            const allRecetas = [...recetasLocales, ...recetasAndes];
+
+            return res.status(200).json(allRecetas);
+        } catch (e) {
+            return res.status(500).json({ mensaje: 'Error al verificar receta', error: e });
         }
     };
 

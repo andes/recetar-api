@@ -16,7 +16,8 @@ const csv = require('fast-csv');
 import needle from 'needle';
 import axios from 'axios';
 import AndesService from '../services/andesService';
-
+import { AndesInsumoDTO } from '../dtos/andes-insumo.dto';
+import { getAndesPrescriptionsByDni } from './andesPrescription.controller';
 
 class PrescriptionController implements BaseController {
 
@@ -148,9 +149,12 @@ class PrescriptionController implements BaseController {
 
     public create = async (req: Request, res: Response): Promise<Response> => {
         const { professional, patient, date, supplies, trimestral, ambito, organizacion } = req.body;
-        const myProfessional: IUser | null = await User.findOne({ _id: professional });
+        const professionalId = professional.userId ? professional.userId : professional;
+        const myProfessional: IUser | null = await User.findOne({ _id: professionalId });
         let myPatient: IPatient | null;
-        if (ambito === 'publico') {
+        const hasInsumo = supplies.some((sup: any) => sup.supply.type);
+
+        if (ambito === 'publico' || hasInsumo) {
             const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${myProfessional?.username}`);
             if ((resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
                 // Actualización del profesional
@@ -159,7 +163,7 @@ class PrescriptionController implements BaseController {
                     myProfessional.businessName = `${resp.body[0]?.apellido}, ${resp.body[0]?.nombre}`;
                     await myProfessional.save();
                 }
-                myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
+                myPatient = await Patient.schema.methods.findOrCreate(patient, 'publico');
             } else {
                 // eslint-disable-next-line no-console
                 console.log('No se encuentra el profesional.');
@@ -169,6 +173,17 @@ class PrescriptionController implements BaseController {
         } else {
             myPatient = await Patient.schema.methods.findOrCreate(patient, ambito);
         }
+
+        // Completa fecha de nacimiento solo cuando el paciente existente no la tiene.
+        const payloadBirthDate = patient?.fechaNac || patient?.fechaNacimiento;
+        if (myPatient && !myPatient.fechaNac && payloadBirthDate) {
+            const parsedBirthDate = new Date(payloadBirthDate);
+            if (!Number.isNaN(parsedBirthDate.getTime())) {
+                myPatient.fechaNac = parsedBirthDate;
+                await myPatient.save();
+            }
+        }
+
         if (myProfessional && patient && myPatient) {
             try {
                 const allPrescription: IPrescription[] = [];
@@ -197,11 +212,16 @@ class PrescriptionController implements BaseController {
                         organizacion: organizacion || undefined
                     });
                     let createAndes = false;
-                    if (ambito === 'publico') {
+                    if (ambito === 'publico' || sup.supply.type) {
                         // Solo crear en andes si el profesional tiene idAndes
                         if (myProfessional?.idAndes) {
-                            createAndes = await this.createPrescriptionAndes(newPrescription, myProfessional, myPatient);
+                            if (sup.supply.type) {
+                                createAndes = await this.createInsumoPrescriptionAndes(newPrescription, myProfessional, myPatient, sup);
+                            } else {
+                                createAndes = await this.createPrescriptionAndes(newPrescription, myProfessional, myPatient);
+                            }
                         }
+
                         // En caso de que no se haya podido crear en andes, se guarda localmente
                         if (!createAndes) {
                             console.log('No se pudo crear la prescripción en ANDES, se guarda localmente.');
@@ -264,6 +284,8 @@ class PrescriptionController implements BaseController {
                 return res.status(200).json(allPrescription);
 
             } catch (err) {
+                // eslint-disable-next-line no-console
+                console.log(err);
                 return res.status(500).json('Error al cargar la prescripción');
             }
         } else {
@@ -305,8 +327,8 @@ class PrescriptionController implements BaseController {
                 direccion: newPrescription.organizacion?.direccion || null,
             },
             medicamento: {
-                diagnostico: newPrescription.supplies[0].diagnostic,
-                concepto: newPrescription.supplies[0].supply.snomedConcept,
+                diagnostico: newPrescription.supplies[0].diagnostic || 'Sin diagnóstico',
+                concepto: newPrescription.supplies[0].supply.snomedConcept || (newPrescription.supplies[0].supply as any).concepto,
                 presentacion: '',
                 unidades: '',
                 cantidad: newPrescription.supplies[0].quantityPresentation ? newPrescription.supplies[0].quantityPresentation : 1,
@@ -314,7 +336,7 @@ class PrescriptionController implements BaseController {
                 dosisDiaria: {
                     dosis: null,
                     dias: null,
-                    notaMedica: newPrescription.supplies[0].indication ? newPrescription.supplies[0].indication : ''
+                    notaMedica: (newPrescription.supplies[0].indication || '') + (newPrescription.supplies[0].supply.specification ? ` - Especificación: ${newPrescription.supplies[0].supply.specification}` : '')
                 },
                 tratamientoProlongado: newPrescription.trimestral ? true : false,
                 tiempoTratamiento: !newPrescription.trimestral ? null : { id: '3', nombre: '3 meses' },
@@ -347,33 +369,93 @@ class PrescriptionController implements BaseController {
         return sendToAndes;
     };
 
+    private createInsumoPrescriptionAndes = async (newPrescription: IPrescription, profesional: IUser, patient: IPatient, originalSupply: any) => {
+        let sendToAndes = false;
+
+        try {
+            const payload = AndesInsumoDTO.transform(newPrescription, profesional, patient, originalSupply);
+            const Authorization = process.env.JWT_MPI_TOKEN || '';
+            const respAndes = await axios.post(`${process.env.ANDES_ENDPOINT}/modules/recetasInsumos`,
+                payload,
+                { headers: { Authorization } });
+            if (respAndes.status === 200 || respAndes.status === 201) {
+                sendToAndes = true;
+            }
+
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('Error al enviar insumo a ANDES:', e);
+        }
+        return sendToAndes;
+    };
+
     public getPrescriptionsByDateOrPatientId = async (req: Request, res: Response): Promise<Response> => {
         try {
             const filterPatient = req.params.patient_id;
-            const filterDate: string | null = req.params.date;
+            const { status, dateFrom, dateTo, sexo } = req.query;
 
-            // define a default date for retrieve all the documents if the date its not provided
-            const defaultStart = '1900-01-01';
-            let startDate: Date = moment(defaultStart, 'YYYY-MM-DD').startOf('day').toDate();
+            let startDate: Date = moment().subtract(1, 'month').toDate();
             let endDate: Date = moment(new Date()).endOf('day').toDate();
 
-            if (typeof (filterDate) !== 'undefined') {
-                startDate = moment(filterDate, 'YYYY-MM-DD').startOf('day').toDate();
-                endDate = moment(filterDate, 'YYYY-MM-DD').endOf('day').toDate();
+            if (dateFrom) {
+                startDate = moment(dateFrom, 'DD-MM-YYYY').startOf('day').toDate();
+            }
+
+            if (dateTo) {
+                endDate = moment(dateTo, 'DD-MM-YYYY').endOf('day').toDate();
             }
 
             await this.updateStatuses('', filterPatient);
 
-            const prescriptions: IPrescription[] | null = await Prescription.find({
+            const filters: any = {
                 'patient.dni': filterPatient,
                 date: { $gte: startDate, $lt: endDate }
-            }).sort({ field: 'desc', date: -1 });
+            };
 
-            if (prescriptions) {
-                await this.ensurePrescriptionIds(prescriptions);
+            if (status) {
+                if (status !== 'todas') {
+                    const validStatuses: Record<string, string> = {
+                        vigente: 'Vigente',
+                        pendiente: 'Pendiente',
+                        rechazada: 'Rechazada',
+                        dispensada: 'Dispensada',
+                        vencida: 'Vencida',
+                        finalizada: 'Finalizada',
+                        suspendida: 'Suspendida'
+                    };
+
+                    if (Object.keys(validStatuses).includes(status)) {
+                        filters.status = validStatuses[status];
+                    }
+                }
+            } else {
+                filters.status = 'Vigente';
             }
 
-            return res.status(200).json(prescriptions);
+            const localPrescriptions: IPrescription[] | null = await Prescription.find(filters)
+                .sort({ field: 'desc', date: -1 });
+
+            if (localPrescriptions) {
+                await this.ensurePrescriptionIds(localPrescriptions);
+            }
+
+            // Obtener prescripciones de ANDES
+            const sexoParam = sexo ? (sexo as string).toLowerCase() : '';
+            const andesPrescriptions = await getAndesPrescriptionsByDni(
+                filterPatient,
+                sexoParam,
+                status as string,
+                dateFrom as string,
+                dateTo as string
+            );
+
+            // Combinar prescripciones locales y de ANDES
+            const combinedPrescriptions = [
+                ...(localPrescriptions || []),
+                ...andesPrescriptions
+            ];
+
+            return res.status(200).json(combinedPrescriptions);
         } catch (err) {
             // eslint-disable-next-line no-console
             console.log(err);
@@ -385,19 +467,24 @@ class PrescriptionController implements BaseController {
     public getByUserId = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { id } = req.params;
-            const { offset = 0, limit = 10, ambito = 'privado' } = req.query;
+            const { offset = 0, limit = 10, ambito = 'privado', insumos = 'false' } = req.query;
 
             await this.updateStatuses(id, '');
 
+            const query: any = { 'professional.userId': id };
+            if (insumos === 'false' && ambito === 'privado') {
+                query['supplies.supply.type'] = { $exists: false };
+            }
+
             // Obtener prescripciones locales
-            const localPrescriptions: IPrescription[] | null = await Prescription.find({ 'professional.userId': id })
+            const localPrescriptions: IPrescription[] | null = await Prescription.find(query)
                 .sort({ date: -1 });
 
             if (localPrescriptions) {
                 await this.ensurePrescriptionIds(localPrescriptions);
             }
 
-            const localTotal = await Prescription.countDocuments({ 'professional.userId': id });
+            const localTotal = await Prescription.countDocuments(query);
 
             // Combinar con prescripciones de ANDES si es necesario
             const { combinedPrescriptions, totalPrescriptions } = await this.combineLocalAndAndesPrescriptions(

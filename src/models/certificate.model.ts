@@ -1,10 +1,10 @@
-import { Schema, Model, model } from 'mongoose';
-import { patientSchema } from './patient.model';
-import ICertificate from '../interfaces/certificate.interface';
+import { Schema, Model, model } from "mongoose";
+import { patientSubSchema } from "./patient.model";
+import ICertificate from "../interfaces/certificate.interface";
 
 
 const certificateSchema = new Schema({
-    patient: patientSchema,
+    patient: patientSubSchema,
     professional: {
         userId: Schema.Types.ObjectId,
         businessName: { type: String, required: true },
@@ -26,6 +26,11 @@ const certificateSchema = new Schema({
         }]
     },
     certificate: { type: String },
+    organizacion: {
+        _id: { type: Schema.Types.ObjectId },
+        nombre: { type: String },
+        direccion: { type: String }
+    },
     startDate: { type: Date, required: true },
     cantDias: { type: Number, required: true },
     createdAt: {

@@ -4,6 +4,43 @@ import needle from 'needle';
 import { obraSocialSchema } from './obraSocial.model';
 import axios from 'axios';
 
+
+export const patientSubSchema = new Schema({
+    firstName: {
+        type: String,
+        required: '{PATH} is required'
+    },
+    lastName: {
+        type: String,
+        required: '{PATH} is required'
+    },
+    nombreAutopercibido: {
+        type: String,
+        default: ''
+    },
+    dni: {
+        type: String,
+        default: ''
+    },
+    fechaNac: {
+        type: Date,
+        default: null
+    },
+    sex: {
+        type: String,
+        enum: ['Femenino', 'Masculino', 'Otro'],
+        required: '{PATH} is required'
+    },
+    obraSocial: {
+        nombre: { type: String, default: '' },
+        numeroAfiliado: { type: String, default: '' }
+    },
+    idMPI: {
+        type: String,
+        default: ''
+    }
+}, { _id: false });
+
 // Schema
 export const patientSchema = new Schema({
     dni: {

@@ -4,6 +4,9 @@ import IProfesionAutorizada from './profesionAutorizada.interface';
 export default interface IUser extends Document {
     username: string;
     email: string;
+    pendingEmail?: string;
+    emailConfirmationToken?: string;
+    emailConfirmationExpires?: Date;
     businessName: string;
     enrollment?: string;
     cuil?: string;
@@ -31,5 +34,8 @@ export default interface IUser extends Document {
     }];
     isValidPassword(thisUser: IUser, password: string): Promise<boolean>;
     idAndes?: string;
+    authorizationExpiration?: Date;
+    authorizationDisposition?: string;
+    responsibleDTEnrollment?: string;
     // eslint-disable-next-line semi
 }
