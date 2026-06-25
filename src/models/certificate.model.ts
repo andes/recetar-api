@@ -26,6 +26,11 @@ const certificateSchema = new Schema({
         }]
     },
     certificate: { type: String },
+    organizacion: {
+        _id: { type: Schema.Types.ObjectId },
+        nombre: { type: String },
+        direccion: { type: String }
+    },
     startDate: { type: Date, required: true },
     cantDias: { type: Number, required: true },
     createdAt: {
