@@ -15,7 +15,7 @@ class CertificateController implements BaseController {
     }
 
     public create = async (req: Request, res: Response): Promise<Response> => {
-        const { professional, patient, certificate, startDate, cantDias } = req.body;
+        const { professional, patient, certificate, startDate, cantDias, organizacion } = req.body;
         const myPatient: IPatient = await Patient.schema.methods.findOrCreate(patient);
         const myProfessional: IUser | null = await User.findOne({ _id: professional });
         try {
@@ -35,6 +35,7 @@ class CertificateController implements BaseController {
                 certificate,
                 startDate,
                 cantDias,
+                organizacion: organizacion || undefined,
             });
             await newCertificate.save();
             return res.status(200).json(newCertificate);

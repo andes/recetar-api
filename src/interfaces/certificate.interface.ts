@@ -15,6 +15,11 @@ export default interface ICertificate extends Document {
         }[];
     };
     certificate: string;
+    organizacion?: {
+        _id: string;
+        nombre: string;
+        direccion: string;
+    };
     status?: string;
     anulateReason?: string;
     anulateDate?: Date;
