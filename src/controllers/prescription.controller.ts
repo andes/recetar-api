@@ -357,7 +357,11 @@ class PrescriptionController implements BaseController {
             const respAndes = await axios.post(`${process.env.ANDES_ENDPOINT}/modules/recetas`,
                 payload,
                 { headers: { Authorization } });
-            if (respAndes.statusText === 'OK') {
+            if ((respAndes.status === 200 || respAndes.status === 201)
+                && respAndes.data
+                && !respAndes.data.status
+                && !respAndes.data.errors
+                && !respAndes.data.name) {
                 sendToAndes = true;
             }
 
@@ -378,7 +382,11 @@ class PrescriptionController implements BaseController {
             const respAndes = await axios.post(`${process.env.ANDES_ENDPOINT}/modules/recetasInsumos`,
                 payload,
                 { headers: { Authorization } });
-            if (respAndes.status === 200 || respAndes.status === 201) {
+            if ((respAndes.status === 200 || respAndes.status === 201)
+                && respAndes.data
+                && !respAndes.data.status
+                && !respAndes.data.errors
+                && !respAndes.data.name) {
                 sendToAndes = true;
             }
 
@@ -415,7 +423,7 @@ class PrescriptionController implements BaseController {
             if (status) {
                 if (status !== 'todas') {
                     const validStatuses: Record<string, string> = {
-                        vigente: 'Vigente',
+                        vigente: 'Pendiente',
                         pendiente: 'Pendiente',
                         rechazada: 'Rechazada',
                         dispensada: 'Dispensada',
@@ -425,11 +433,18 @@ class PrescriptionController implements BaseController {
                     };
 
                     if (Object.keys(validStatuses).includes(status)) {
-                        filters.status = validStatuses[status];
+                        if (status === 'dispensada') {
+                            filters['$or'] = [
+                                { status: 'Dispensada' },
+                                { status: 'Finalizada' }
+                            ];
+                        } else {
+                            filters.status = validStatuses[status];
+                        }
                     }
                 }
             } else {
-                filters.status = 'Vigente';
+                filters.status = 'Pendiente';
             }
 
             const localPrescriptions: IPrescription[] | null = await Prescription.find(filters)
