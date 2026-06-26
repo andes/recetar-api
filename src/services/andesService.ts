@@ -381,7 +381,9 @@ class AndesService {
             let estadoFiltro = 'vigente';
             const validEstados = ['pendiente', 'vigente', 'finalizada', 'vencida', 'suspendida', 'rechazada', 'dispensada', 'todas'];
 
-            if (status && validEstados.includes(status)) {
+            if (status === 'todas') {
+                estadoFiltro = 'pendiente,vigente,finalizada,vencida,suspendida,rechazada,dispensada';
+            } else if (status && validEstados.includes(status)) {
                 estadoFiltro = status;
             }
 

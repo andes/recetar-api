@@ -144,7 +144,7 @@ const createPatientInAndesMPI = async (patient: IPatient, ignoreSuggestions = fa
             fechaNacimiento: patient.fechaNac,
             ignoreSuggestions,
             estado: 'temporal',
-            alias: patient.nombreAutopercibido
+            alias: patient.nombreAutopercibido || ''
         }, { headers: { Authorization } });
 
         if (response.status !== 200) {
@@ -232,7 +232,11 @@ const createPatientForPublicScope = async (patientParam: IPatient): Promise<IPat
 
         return newPatient;
     } catch (error) {
-        throw new Error('Error al crear paciente para ámbito público');
+        // eslint-disable-next-line no-console
+        console.error('Error al crear paciente en ANDES MPI, se crea solo localmente:', error);
+        const newPatient = new Patient(patientParam);
+        await newPatient.save();
+        return newPatient;
     }
 };
 
@@ -303,10 +307,15 @@ Patient.schema.method('findOrCreate', async (patientParam: IPatient, ambito?: st
                     patient = await updateLocalPatientWithMPIData(patient, mpiPatientsForUpdate);
                 } else if (ambito === 'publico') {
                     // Si no existe en MPI y es ámbito público, crear en Andes y actualizar local
-                    const newAndesPatient = await createPatientInAndesMPI(patientParam);
-                    const updatedData = mapAndesPatientToLocal(newAndesPatient);
-                    await Patient.updateOne({ _id: patient._id }, updatedData);
-                    patient = await Patient.findById(patient._id) as IPatient;
+                    try {
+                        const newAndesPatient = await createPatientInAndesMPI(patientParam);
+                        const updatedData = mapAndesPatientToLocal(newAndesPatient);
+                        await Patient.updateOne({ _id: patient._id }, updatedData);
+                        patient = await Patient.findById(patient._id) as IPatient;
+                    } catch (andesError) {
+                        // eslint-disable-next-line no-console
+                        console.error('No se pudo crear paciente en ANDES MPI, se continúa con datos locales:', andesError);
+                    }
                 }
             }
             if (ambito === 'publico' && !patient.idLocalInMPI) {
@@ -345,7 +354,11 @@ Patient.schema.method('findOrCreate', async (patientParam: IPatient, ambito?: st
         return patient;
 
     } catch (err) {
-        throw new Error(`Error en findOrCreate: ${err}`);
+        // eslint-disable-next-line no-console
+        console.error('Error en findOrCreate, creando paciente localmente:', err);
+        const newPatient = new Patient(patientParam);
+        await newPatient.save();
+        return newPatient;
     }
 });
 
