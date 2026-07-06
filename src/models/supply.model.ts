@@ -26,10 +26,8 @@ export const supplySchema = new Schema({
     secondPresentation: {
         type: String
     },
-    code: {
-        source: { type: String, enum: ['SIFAHO', 'SNOMED'] },
-        value: String
-    },
+    code: Schema.Types.Mixed,
+    codigo: Schema.Types.Mixed,
     status: {
         type: String,
         enum: ['active', 'inactive'],
@@ -40,6 +38,9 @@ export const supplySchema = new Schema({
         term: String,
         fsn: String,
         semanticTag: String
+    },
+    description: {
+        type: String
     }
 }, {
     timestamps: true

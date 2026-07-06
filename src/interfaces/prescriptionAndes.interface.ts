@@ -40,7 +40,17 @@ export default interface IPrescriptionAndes extends Document {
     idPrestacion: String;
     idRegistro: String;
     medicamento: {
-        concepto: ISnomedConcept;
+        concepto?: ISnomedConcept;
+        esMagistral?: Boolean;
+        magistral?: {
+            codigo?: Array<{
+                fuente?: String;
+                valor?: String;
+            }>;
+            nombre: String;
+            unidadMedida?: String;
+            id?: ObjectID;
+        };
         dosisDiaria: {
             dosis: String;
             instervalo: {

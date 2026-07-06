@@ -110,6 +110,18 @@ const prescriptionAndesSchema = new Schema({
             fsn: String,
             semanticTag: String
         },
+        esMagistral: { type: Boolean, default: false },
+        magistral: {
+            codigo: [
+                {
+                    fuente: String,
+                    valor: String
+                }
+            ],
+            nombre: String,
+            unidadMedida: String,
+            id: Schema.Types.ObjectId
+        },
         dosisDiaria: {
             dosis: String,
             intervalo: {

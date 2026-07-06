@@ -68,7 +68,7 @@ class AndesPrescriptionController implements BaseController {
                                 cantidad: prescriptionAndes.medicamento.cantidad,
                                 presentacion: prescriptionAndes.medicamento.presentacion,
                                 unidades: prescriptionAndes.medicamento.unidades,
-                                medicamento: prescriptionAndes.medicamento.concepto,
+                                medicamento: prescriptionAndes.medicamento.concepto || (prescriptionAndes.medicamento.magistral ? { term: prescriptionAndes.medicamento.magistral.nombre } : null),
                                 descripcion: '',
                                 cantidadEnvases: prescriptionAndes.medicamento.cantEnvases
                             }],
@@ -126,7 +126,7 @@ class AndesPrescriptionController implements BaseController {
                 id: receta.id.toString(),
                 descripcion: '',
                 cantidad: receta.medicamento.cantidad,
-                medicamento: receta.medicamento.concepto,
+                medicamento: receta.medicamento.concepto || (receta.medicamento.magistral ? { term: receta.medicamento.magistral.nombre } : null),
                 presentacion: receta.medicamento.presentacion,
                 unidades: receta.medicamento.unidades,
                 cantidadEnvases: receta.medicamento.cantEnvases,
@@ -241,10 +241,16 @@ class AndesPrescriptionController implements BaseController {
     };
 
     public verificarReceta = async (req: Request, res: Response): Promise<Response> => {
-        const { dni, conceptId, sexo } = req.query;
+        const { dni, conceptId, sexo, esMagistral, codigoFuente, codigoValor, nombre } = req.query;
 
-        if (!dni || !conceptId) {
-            return res.status(400).json({ mensaje: 'Se requieren los parámetros dni y conceptId' });
+        if (!dni) {
+            return res.status(400).json({ mensaje: 'Se requiere el parámetro dni' });
+        }
+
+        const isMagistral = esMagistral === 'true' || esMagistral === true || (!conceptId && (!!codigoValor || !!nombre));
+
+        if (!conceptId && !isMagistral) {
+            return res.status(400).json({ mensaje: 'Se requieren los parámetros dni y (conceptId o datos de magistral)' });
         }
 
         if (!sexo) {
@@ -256,15 +262,42 @@ class AndesPrescriptionController implements BaseController {
             const estadosValidos = ['vigente', 'pendiente'];
             const estadosDispensaExcluidos = ['dispensada'];
 
-            const recetasLocales = await PrescriptionAndes.find({
+            const queryLocal: any = {
                 'paciente.documento': dni,
-                'medicamento.concepto.conceptId': conceptId,
                 'estadoActual.tipo': { $in: estadosValidos },
                 'estadoDispensaActual.tipo': { $nin: estadosDispensaExcluidos }
-            }).lean();
+            };
 
-            // Consulta a Andes por documento, conceptId y sexo utilizando el endpoint especifico
-            const verificacionAndes = await AndesService.verificarRecetaExistente(dni as string, conceptId as string, sexo as string).catch(() => null);
+            if (isMagistral) {
+                queryLocal['medicamento.esMagistral'] = true;
+                if (codigoFuente && codigoValor) {
+                    queryLocal['medicamento.magistral.codigo'] = {
+                        $elemMatch: { fuente: codigoFuente as string, valor: codigoValor as string }
+                    };
+                } else if (nombre) {
+                    queryLocal['medicamento.magistral.nombre'] = nombre as string;
+                }
+            } else {
+                queryLocal['medicamento.concepto.conceptId'] = conceptId as string;
+            }
+
+            const recetasLocales = await PrescriptionAndes.find(queryLocal).lean();
+
+            // Consulta a Andes por documento, conceptId / magistral y sexo utilizando el endpoint especifico
+            const extraParams: any = {};
+            if (isMagistral) {
+                extraParams.esMagistral = true;
+                if (codigoFuente) { extraParams.codigoFuente = codigoFuente; }
+                if (codigoValor) { extraParams.codigoValor = codigoValor; }
+                if (nombre) { extraParams.nombre = nombre; }
+            }
+            const verificacionAndes = await AndesService.verificarRecetaExistente(
+                dni as string,
+                conceptId as string | undefined,
+                sexo as string,
+                extraParams
+            ).catch(() => null);
+
             const recetasAndes = verificacionAndes && verificacionAndes.existe && verificacionAndes.receta
                 ? [verificacionAndes.receta]
                 : [];

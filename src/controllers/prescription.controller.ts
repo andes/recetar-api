@@ -69,20 +69,23 @@ class PrescriptionController implements BaseController {
                 return [];
             }
 
-            // Obtener prescripciones de ANDES
-            const andesPrescriptions = await AndesService.getPrescriptionsByProfessional({
-                professionalId: professional.idAndes
-            });
+            // Obtener prescripciones de medicamentos y de insumos de ANDES en paralelo
+            const [andesPrescriptions, andesInsumoPrescriptions] = await Promise.all([
+                AndesService.getPrescriptionsByProfessional({ professionalId: professional.idAndes }).catch(() => []),
+                AndesService.getInsumoPrescriptionsByProfessional({ professionalId: professional.idAndes }).catch(() => [])
+            ]);
+
+            const allAndes = [...(andesPrescriptions || []), ...(andesInsumoPrescriptions || [])];
 
             // Aplicar filtro si se proporciona (para búsquedas por término)
-            const filteredPrescriptions = filter ? filter(andesPrescriptions) : andesPrescriptions;
+            const filteredPrescriptions = filter ? filter(allAndes) : allAndes;
 
             // Transformar las prescripciones de ANDES al formato local
             return filteredPrescriptions.map(andesPrescription => ({
                 ...andesPrescription,
                 _id: andesPrescription.id || andesPrescription._id,
                 isFromAndes: true, // Marcador para identificar origen
-                date: new Date(andesPrescription.fechaRegistro),
+                date: new Date(andesPrescription.fechaRegistro || andesPrescription.fechaPrestacion || new Date()),
                 professional: {
                     userId: professional._id,
                     businessName: professional.businessName,
@@ -215,15 +218,16 @@ class PrescriptionController implements BaseController {
                     if (ambito === 'publico' || sup.supply.type) {
                         // Solo crear en andes si el profesional tiene idAndes
                         if (myProfessional?.idAndes) {
-                            if (sup.supply.type) {
+                            if (sup.supply.type === 'device' || sup.supply.type === 'nutrition') {
                                 createAndes = await this.createInsumoPrescriptionAndes(newPrescription, myProfessional, myPatient, sup);
                             } else {
-                                createAndes = await this.createPrescriptionAndes(newPrescription, myProfessional, myPatient);
+                                createAndes = await this.createPrescriptionAndes(newPrescription, myProfessional, myPatient, sup);
                             }
                         }
 
                         // En caso de que no se haya podido crear en andes, se guarda localmente
                         if (!createAndes) {
+                            // eslint-disable-next-line no-console
                             console.log('No se pudo crear la prescripción en ANDES, se guarda localmente.');
                             await newPrescription.save();
                             allPrescription.push(newPrescription);
@@ -305,7 +309,68 @@ class PrescriptionController implements BaseController {
             return res.status(500).json('Server Error');
         }
     };
-    private createPrescriptionAndes = async (newPrescription: IPrescription, profesional: IUser, patient: IPatient) => {
+    private createPrescriptionAndes = async (newPrescription: IPrescription, profesional: IUser, patient: IPatient, originalSupply?: any) => {
+        const supplyInfo = newPrescription.supplies[0];
+        const supply = supplyInfo.supply;
+
+        const getId = (item: any): string => {
+            if (!item) { return ''; }
+            if (typeof item === 'string') { return item; }
+            if (typeof item === 'object') {
+                if (item.conceptId) { return item.conceptId.toString(); }
+                if (item._id) { return item._id.toString(); }
+                if (item.id) { return item.id.toString(); }
+            }
+            return '';
+        };
+
+        const rawConcepto = supply.snomedConcept || (supply as any).concepto;
+        const conceptId =
+            rawConcepto?.conceptId ||
+            getId(originalSupply?.supply) ||
+            getId(originalSupply) ||
+            getId(supplyInfo?.supply) ||
+            getId(supply) ||
+            newPrescription._id.toString();
+
+        const term = rawConcepto?.term || supply.name || originalSupply?.supply?.name || originalSupply?.name || '';
+        const fsn = rawConcepto?.fsn || (supply as any).description || (originalSupply?.supply as any)?.description || term || '';
+        const supplyType = supply.type || originalSupply?.supply?.type || originalSupply?.type || '';
+        const isMagistral = supplyType === 'magistral' || !!(originalSupply as any)?.isMagistral || !!(supplyInfo as any)?.isMagistral;
+        const semanticTag = rawConcepto?.semanticTag || (isMagistral ? 'producto de formulación' : 'producto');
+
+        const concepto = isMagistral ? null : {
+            conceptId,
+            term,
+            fsn,
+            semanticTag
+        };
+
+        const getMagistralCodigo = (sup: any, origSup: any): any[] => {
+            const raw = sup?.codigo || sup?.code || origSup?.supply?.codigo || origSup?.supply?.code || origSup?.codigo || origSup?.code;
+            if (!raw) { return []; }
+            const list = Array.isArray(raw) ? raw : [raw];
+            const result: any[] = [];
+            list.forEach((item: any) => {
+                if (item && typeof item === 'object') {
+                    const fuente = item.fuente || item.source || item.fuenteCodigo || '';
+                    const valor = item.valor || item.value || item.codigoValor || '';
+                    if (fuente || valor) {
+                        result.push({ fuente, valor });
+                    }
+                }
+            });
+            return result;
+        };
+
+        const magistralCodigo = getMagistralCodigo(supply, originalSupply);
+
+        const magistral = isMagistral ? {
+            nombre: supply.name || originalSupply?.supply?.name || originalSupply?.name || term || '',
+            unidadMedida: supplyInfo.unidadMedida || supply.unity || '',
+            codigo: magistralCodigo.length > 0 ? magistralCodigo : undefined
+        } : null;
+
         const prescriptionAndes = {
             idPrestacion: newPrescription._id.toString(),
             idRegistro: newPrescription._id.toString(),
@@ -315,7 +380,7 @@ class PrescriptionController implements BaseController {
                 nombre: patient.firstName,
                 apellido: patient.lastName,
                 documento: patient.dni ? patient.dni : '',
-                sexo: patient.sex.toLowerCase(),
+                sexo: patient.sex ? patient.sex.toLowerCase() : '',
                 obraSocial: patient.obraSocial || null,
             },
             profesional: {
@@ -327,22 +392,24 @@ class PrescriptionController implements BaseController {
                 direccion: newPrescription.organizacion?.direccion || null,
             },
             medicamento: {
-                diagnostico: newPrescription.supplies[0].diagnostic || 'Sin diagnóstico',
-                concepto: newPrescription.supplies[0].supply.snomedConcept || (newPrescription.supplies[0].supply as any).concepto,
-                presentacion: '',
-                unidades: '',
-                cantidad: newPrescription.supplies[0].quantityPresentation ? newPrescription.supplies[0].quantityPresentation : 1,
-                cantEnvases: newPrescription.supplies[0].quantity || 1,
+                esMagistral: isMagistral,
+                magistral,
+                diagnostico: supplyInfo.diagnostic || 'Sin diagnóstico',
+                concepto,
+                presentacion: supplyInfo.unidadMedida || supply.firstPresentation || '',
+                unidades: supplyInfo.unidadMedida || '',
+                cantidad: supplyInfo.quantityPresentation ? supplyInfo.quantityPresentation : 1,
+                cantEnvases: supplyInfo.quantity || 1,
                 dosisDiaria: {
                     dosis: null,
                     dias: null,
-                    notaMedica: (newPrescription.supplies[0].indication || '') + (newPrescription.supplies[0].supply.specification ? ` - Especificación: ${newPrescription.supplies[0].supply.specification}` : '')
+                    notaMedica: (supplyInfo.indication || '') + (supply.specification ? ` - Especificación: ${supply.specification}` : '')
                 },
                 tratamientoProlongado: newPrescription.trimestral ? true : false,
                 tiempoTratamiento: !newPrescription.trimestral ? null : { id: '3', nombre: '3 meses' },
-                tipoReceta: newPrescription.supplies[0].triplicate ? 'triplicado' : (newPrescription.supplies[0].duplicate ? 'duplicado' : 'simple'),
-                serie: newPrescription.supplies[0].triplicateData?.serie ? newPrescription.supplies[0].triplicateData?.serie.toString() : '',
-                numero: newPrescription.supplies[0].triplicateData?.numero ? newPrescription.supplies[0].triplicateData?.numero.toString() : ''
+                tipoReceta: supplyInfo.triplicate ? 'triplicado' : (supplyInfo.duplicate ? 'duplicado' : 'simple'),
+                serie: supplyInfo.triplicateData?.serie ? supplyInfo.triplicateData?.serie.toString() : '',
+                numero: supplyInfo.triplicateData?.numero ? supplyInfo.triplicateData?.numero.toString() : ''
             },
             origenExterno: {
                 id: newPrescription._id.toString(),
@@ -353,6 +420,8 @@ class PrescriptionController implements BaseController {
         let sendToAndes = false;
         try {
             const payload = JSON.parse(JSON.stringify(prescriptionAndes));
+            // eslint-disable-next-line no-console
+            console.log('Payload para ANDES:', JSON.stringify(payload, null, 2));
             const Authorization = process.env.JWT_MPI_TOKEN || '';
             const respAndes = await axios.post(`${process.env.ANDES_ENDPOINT}/modules/recetas`,
                 payload,
@@ -508,7 +577,7 @@ class PrescriptionController implements BaseController {
 
             const query: any = { 'professional.userId': id };
             if (insumos === 'false' && ambito === 'privado') {
-                query['supplies.supply.type'] = { $exists: false };
+                query['supplies.supply.type'] = { $nin: ['device', 'nutrition'] };
             }
 
             // Obtener prescripciones locales
