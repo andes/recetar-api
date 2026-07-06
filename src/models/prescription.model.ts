@@ -45,6 +45,7 @@ const prescriptionSchema = new Schema({
         },
         quantity: Number,
         quantityPresentation: Number,
+        unidadMedida: { type: String },
         diagnostic: {
             type: String,
         },

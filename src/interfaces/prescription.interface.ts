@@ -6,6 +6,7 @@ export interface PrescriptionSupply {
     supply: ISupply;
     quantity: number;
     quantityPresentation?: number;
+    unidadMedida?: string;
     diagnostic?: string;
     indication?: string;
     duplicate?: boolean;
