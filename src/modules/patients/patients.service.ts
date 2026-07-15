@@ -4,7 +4,7 @@ import { AndesMapper } from '../../integrations/andes';
 import { Logger } from '../../shared/logger/logger.interface';
 import { IPatient } from './patients.types';
 import { CreatePatientDTO, UpdatePatientDTO } from './patients.dto';
-import { PatientNotFoundError } from './patients.errors';
+import { PatientNotFoundError, DuplicateDniError } from './patients.errors';
 
 export class PatientService {
     constructor(
@@ -25,6 +25,10 @@ export class PatientService {
         return patient;
     }
 
+    async search(term: string): Promise<IPatient[]> {
+        return this.patientRepository.search(term);
+    }
+
     async findByDni(dni: string): Promise<IPatient[]> {
         const patients = await this.patientRepository.findByDni(dni);
         if (patients.length > 0) {
@@ -39,6 +43,10 @@ export class PatientService {
     }
 
     async create(dto: CreatePatientDTO): Promise<IPatient> {
+        const existing = await this.patientRepository.findByDni(dto.dni);
+        if (existing.length > 0) {
+            throw new DuplicateDniError();
+        }
         const data = {
             dni: dto.dni,
             firstName: dto.firstName,
@@ -57,6 +65,12 @@ export class PatientService {
         if (!patient) {
             throw new PatientNotFoundError();
         }
+        if (dto.dni && dto.dni !== patient.dni) {
+            const existing = await this.patientRepository.findByDni(dto.dni);
+            if (existing.length > 0 && existing[0]._id.toString() !== id) {
+                throw new DuplicateDniError();
+            }
+        }
         const data = {
             ...dto,
             fechaNac: dto.fechaNac ? new Date(dto.fechaNac) : undefined,
@@ -72,6 +86,12 @@ export class PatientService {
         const patient = await this.patientRepository.findById(id);
         if (!patient) {
             throw new PatientNotFoundError();
+        }
+        if (body['dni'] && body['dni'] !== patient.dni) {
+            const existing = await this.patientRepository.findByDni(body['dni'] as string);
+            if (existing.length > 0 && existing[0]._id.toString() !== id) {
+                throw new DuplicateDniError();
+            }
         }
         const values: Record<string, unknown> = {};
         const allowedFields = ['dni', 'lastName', 'firstName', 'sex'];

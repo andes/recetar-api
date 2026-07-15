@@ -10,12 +10,15 @@ import practicesRoutes from '../modules/practices/practices.routes';
 import certificatesRoutes from '../modules/certificates/certificates.routes';
 import prescriptionsRoutes from '../modules/prescriptions/prescription.routes';
 import stockRoutes from '../modules/stock/stock.routes';
+import vademecumRoutes from './vademecum.routes';
 import usersRoutes from '../modules/users/users.routes';
+import securityRoutes from '../modules/security/security.routes';
 
 const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
+router.use('/users', securityRoutes);
 router.use('/patients', patientsRoutes);
 router.use('/professionals', professionalsRoutes);
 router.use('/pharmacists', pharmacistsRoutes);
@@ -25,5 +28,6 @@ router.use('/practices', practicesRoutes);
 router.use('/certificates', certificatesRoutes);
 router.use('/prescriptions', prescriptionsRoutes);
 router.use('/stock', stockRoutes);
+router.use('/vademecum', vademecumRoutes);
 
 export default router;

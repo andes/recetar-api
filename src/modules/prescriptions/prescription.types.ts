@@ -8,10 +8,11 @@ export interface IPrescriptionSupply {
         firstPresentation?: string;
         secondPresentation?: string;
         snomedConcept?: { conceptId?: string; term?: string; fsn?: string; semanticTag?: string };
-        code?: { source?: 'SIFAHO' | 'SNOMED'; value?: string };
+        code?: { source?: 'SIFAHO' | 'SNOMED' | 'ALFABETA'; value?: string };
         type?: 'device' | 'nutrition' | 'magistral';
         requiresSpecification?: boolean;
         specification?: string;
+        barCode?: string;
     };
     quantity?: number;
     quantityPresentation?: number;

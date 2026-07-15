@@ -24,6 +24,9 @@ export const messages = {
             invalidSupplies: 'Insumos inválidos',
             invalidObjectId: 'ID inválido',
         },
+        patient: {
+            duplicateDni: 'Ya existe un paciente con ese DNI',
+        },
         auth: {
             default: 'No autorizado',
             invalidCredentials: 'Credenciales inválidas',
@@ -49,6 +52,18 @@ export const messages = {
             alreadyCancelled: 'La dispensa ya fue cancelada',
             prescriptionNotFound: 'Prescripción no encontrada',
             patientNotFound: 'Paciente no encontrado',
+        },
+        security: {
+            invalidPassword: 'Contraseña incorrecta',
+            invalidPin: 'PIN incorrecto',
+            pinAlreadyActive: 'El PIN ya está configurado',
+            pinNotActive: 'El PIN no está activo',
+            credentialNotFound: 'Credencial biométrica no encontrada',
+            invalidWebAuthnResponse: 'Respuesta biométrica inválida',
+            challengeExpired: 'El challenge ha expirado, intenta nuevamente',
+            invalidToken: 'Token de seguridad inválido',
+            tokenExpired: 'Token de seguridad expirado',
+            pinRequired: 'PIN de seguridad requerido',
         },
     },
     server: {
