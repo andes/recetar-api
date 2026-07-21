@@ -22,66 +22,96 @@ const initializeMongo = (): void => {
     }).then(() => {
         // eslint-disable-next-line no-console
         console.log('DB is connected');
-        FixRceta().then(() => {
+        FixRcetaTrimestral().then(() => {
             mongoose.disconnect();
         });
     });
 };
 
-async function FixRceta() {
-    const andesPath = process.env.API_SNOMED || process.env.ANDES_ENDPOINT;
+async function FixRcetaTrimestral() {
     let migradas = 0;
+    const andesPath = process.env.API_SNOMED || process.env.ANDES_ENDPOINT;
     // eslint-disable-next-line no-console
-    console.log('>> INICIANDO PROCESO DE ACTUALIZACIÓN...');
+    console.log('>> INICIANDO PROCESO DE ACTUALIZACIÓN TRIMESTRAL...');
 
     try {
-        const prescription: IPrescription[] = await Prescription.find(
+        const prescriptions: IPrescription[] = await Prescription.find(
             {
                 ambito: 'publico',
+                trimestral: true,
                 'supplies.supply.snomedConcept.conceptId': {
                     $exists: false
                 },
-                status: 'Pendiente',
-                trimestral: false,
                 date: { $gte: new Date('2026-06-24') }
             }
         );
         // eslint-disable-next-line no-console
-        console.log(`>> CANTIDAD DE PRESCRIPCIONES A ACTUALIZAR EN BASE DE DATOS: ${prescription.length}`);
+        console.log(`>> CANTIDAD DE PRESCRIPCIONES TRIMESTRALES A PROCESAR: ${prescriptions.length}`);
+
+        // Agrupar por paciente + medicamento + ventana de 5 min de createdAt
+        const grouped = new Map<string, IPrescription[]>();
+        for (const p of prescriptions) {
+            if (!p.createdAt) {
+                // eslint-disable-next-line no-console
+                console.log(`ADVERTENCIA: Receta ${p._id} no tiene createdAt. Se agrupa con timeBucket 0.`);
+            }
+            const createdAt = p.createdAt ? new Date(p.createdAt).getTime() : 0;
+            const timeBucket = Math.floor(createdAt / (5 * 60 * 1000));
+            const key = `${p.patient.dni}||${p.supplies[0].supply.name}||${timeBucket}`;
+            if (!grouped.has(key)) {
+                grouped.set(key, []);
+            }
+            grouped.get(key)!.push(p);
+        }
+
+        // eslint-disable-next-line no-console
+        console.log(`>> GRUPOS TRIMESTRALES ENCONTRADOS: ${grouped.size}`);
         // eslint-disable-next-line no-console
         console.log('>> COMENZANDO ACTUALIZACIÓN....');
 
-        for (const p of prescription) {
+        for (const [key, group] of grouped) {
+            // Ordenar por fecha ascendente: 1ra, 2da, 3ra
+            group.sort((a, b) => a.date.getTime() - b.date.getTime());
+            const [first, ...rest] = group;
+
             // eslint-disable-next-line no-console
-            console.log('Procesando prescripción Id: ' + p._id);
+            console.log(`Procesando grupo ${key} con ${group.length} recetas. 1ra: ${first._id}`);
+
+            // Si la 1ra está dispensada, skip del grupo entero
+            if (first.status === 'Dispensada') {
+                // eslint-disable-next-line no-console
+                console.log(`La 1ra receta del grupo ${key} ya está dispensada. Se omite el grupo entero.`);
+                continue;
+            }
+
             try {
-                const s = p.supplies[0].supply.name;
+                const s = first.supplies[0].supply.name;
                 const encodedSearch = encodeURIComponent(s);
                 const resp = await needle('get', `${andesPath}/core/term/snomed?expression=<763158003:732943007=*,[0..0] 774159003=*, 763032000=*&search=${encodedSearch}`);
                 if (!resp.body || !resp.body[0] || !resp.body[0].conceptId) {
                     // eslint-disable-next-line no-console
-                    console.log(`No se encontró el concepto SNOMED para el medicamento: ${s} en la prescripción Id: ${p._id}`);
+                    console.log(`No se encontró el concepto SNOMED para el medicamento: ${s} en la prescripción Id: ${first._id}`);
                     continue;
                 }
                 const supplies: ISnomedConcept = resp.body[0];
-                p.supplies[0].supply.snomedConcept = supplies;
+                first.supplies[0].supply.snomedConcept = supplies;
 
-                const prof = await User.findOne({ _id: p.professional.userId });
+                const prof = await User.findOne({ _id: first.professional.userId });
                 if (!prof) {
                     // eslint-disable-next-line no-console
-                    console.log(`No se encontró el profesional con userId: ${p.professional.userId}`);
+                    console.log(`No se encontró el profesional con userId: ${first.professional.userId} para el grupo ${key}`);
                     continue;
                 }
                 if (prof.idAndes === undefined || prof.idAndes === null) {
                     // eslint-disable-next-line no-console
-                    console.log(`El profesional con userId: ${prof._id} no tiene idAndes definido`);
+                    console.log(`El profesional con userId: ${first.professional.userId} no tiene idAndes definido para el grupo ${key}`);
                     continue;
                 }
 
-                const patient = p.patient;
+                const patient = first.patient;
 
                 // Verificar si existe una receta en andes con el mismo medicamento y este vigente
-                const conceptId = p.supplies[0].supply.snomedConcept?.conceptId;
+                const conceptId = first.supplies[0].supply.snomedConcept?.conceptId;
                 if (conceptId && patient.dni) {
                     try {
                         const verifyResponse = await axios.get(`${process.env.ANDES_ENDPOINT}/modules/recetas/verificar`, {
@@ -94,7 +124,7 @@ async function FixRceta() {
                         });
                         if (verifyResponse.data?.existe) {
                             // eslint-disable-next-line no-console
-                            console.log(`Receta ya vigente en ANDES para paciente ${patient.dni} y conceptId ${conceptId}. Se omite.`);
+                            console.log(`Receta ya vigente en ANDES para paciente ${patient.dni} y conceptId ${conceptId}. Se omite grupo.`);
                             continue;
                         }
                     } catch (verifyErr) {
@@ -103,29 +133,35 @@ async function FixRceta() {
                     }
                 }
 
-                const sent = await createPrescriptionAndes(p, prof, patient);
+                const sent = await createPrescriptionAndes(first, prof, patient);
                 if (sent) {
-                    await Prescription.deleteOne({ _id: p._id });
                     // eslint-disable-next-line no-console
-                    console.log(`Receta ${p._id} enviada a ANDES y eliminada de recetar.`);
+                    console.log(`1ra receta ${first._id} enviada a ANDES. Eliminando las ${group.length} del grupo...`);
                     migradas++;
-                    const total = prescription.length;
+                    const total = grouped.size;
                     const pct = Math.round((migradas / total) * 100);
                     const barLen = 30;
                     const filled = Math.round((migradas / total) * barLen);
                     const bar = '█'.repeat(filled) + '░'.repeat(barLen - filled);
                     // eslint-disable-next-line no-console
-                    console.log(`[${bar}] ${migradas}/${total} (${pct}%)`);
+                    console.log(`[${bar}] ${migradas}/${total} grupos (${pct}%)`);
+                    await Prescription.deleteOne({ _id: first._id });
+                    for (const r of rest) {
+                        await Prescription.deleteOne({ _id: r._id });
+                    }
+                } else {
+                    // eslint-disable-next-line no-console
+                    console.log(`Fallo el envío de la 1ra receta ${first._id}. No se elimina ninguna del grupo.`);
                 }
 
             } catch (err) {
                 // eslint-disable-next-line no-console
-                console.log(`LA PRESCRIPCIÓN CON ID ${p._id} NO PUDO SER ACTUALIZADA ` + err);
+                console.log(`EL GRUPO ${key} NO PUDO SER ACTUALIZADO ` + err);
             }
         }
 
         // eslint-disable-next-line no-console
-        console.log(`Recetas migradas: ${migradas}`);
+        console.log(`Grupos procesados: ${grouped.size}`);
         // eslint-disable-next-line no-console
         console.log('>> FIN PROCESO =====================');
     } catch (err) {
@@ -195,8 +231,6 @@ const createPrescriptionAndes = async (newPrescription: IPrescription, profesion
             && !respAndes.data.name) {
             sendToAndes = true;
         }
-        // eslint-disable-next-line no-console
-        console.log(`Receta ${newPrescription._id} enviada a ANDES con status: ${respAndes.status}`);
 
     } catch (e) {
         // eslint-disable-next-line no-console

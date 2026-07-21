@@ -1,6 +1,7 @@
 import { Document } from 'mongoose';
 import ISupply from './supply.interface';
 import IPatient from './patient.interface';
+import IObraSocial from './obraSocial.interface';
 
 export interface PrescriptionSupply {
     supply: ISupply;
@@ -44,4 +45,6 @@ export default interface IPrescription extends Document {
         nombre: string;
         direccion: string;
     };
+    obraSocial?: IObraSocial;
 }
+
