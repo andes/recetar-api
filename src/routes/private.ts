@@ -22,6 +22,7 @@ import certificateController from '../controllers/certificate.controller';
 import practiceController from '../controllers/practice.controller';
 import andesStockController from '../controllers/andesStock.controller';
 import stockController from '../controllers/stock.controller';
+import andesInsumoPrescriptionController from '../controllers/andesInsumoPrescription.controller';
 class PrivateRoutes {
 
     constructor(private router: Router = Router()) { }
@@ -64,6 +65,10 @@ class PrivateRoutes {
         this.router.patch('/andes-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.dispense);
         this.router.patch('/andes-prescriptions/cancel-dispense', hasPermissionIn('updateAny', 'prescription'), andesPrescriptionController.cancelDispense);
         this.router.patch('/andes-prescriptions/suspend', hasPermissionIn('updateOwn', 'prescription'), andesPrescriptionController.suspend);
+
+        // Andes insumo prescriptions
+        this.router.patch('/andes-insumo-prescriptions/dispense', hasPermissionIn('updateAny', 'prescription'), andesInsumoPrescriptionController.dispense);
+        this.router.patch('/andes-insumo-prescriptions/cancel-dispense', hasPermissionIn('updateAny', 'prescription'), andesInsumoPrescriptionController.cancelDispense);
 
         // Andes search
         this.router.get('/andes/professionals', hasPermissionIn('readAny', 'user'), andesPrescriptionController.searchProfessionals);
