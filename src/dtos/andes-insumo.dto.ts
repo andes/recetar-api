@@ -12,7 +12,10 @@ export class AndesInsumoDTO {
         const parts = professional.businessName ? professional.businessName.split(',') : [];
         const apellido = parts[0] ? parts[0].trim() : '';
         const nombre = parts[1] ? parts[1].trim() : '';
-
+        const mapeoTipoInsumo: { [key: string]: string } = {
+            device: 'dispositivo',
+            nutrition: 'nutricion'
+        };
         const payload: any = {
             organizacion: {
                 id: prescription.organizacion?._id || null,
@@ -42,6 +45,7 @@ export class AndesInsumoDTO {
                     generico: {
                         id: originalSupplyId.toString(),
                         nombre: supply.name || '',
+                        tipo: supply.type ? mapeoTipoInsumo[supply.type] : '',
                         codigo: (() => {
                             const rawCode = originalSupply?.supply?.code || supply.code;
                             if (!rawCode || (Array.isArray(rawCode) && rawCode.length === 0)) { return []; }
