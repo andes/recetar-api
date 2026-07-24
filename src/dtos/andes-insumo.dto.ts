@@ -33,7 +33,7 @@ export class AndesInsumoDTO {
             idRegistro: prescription._id.toString(),
             diagnostico: supplyInfo.diagnostic || 'Sin diagnóstico',
             insumo: {
-                ...(supply.snomedConcept ? {
+                ...(supply.snomedConcept?.conceptId && supply.snomedConcept?.term ? {
                     concepto: {
                         conceptId: supply.snomedConcept.conceptId,
                         term: supply.snomedConcept.term
@@ -41,7 +41,18 @@ export class AndesInsumoDTO {
                 } : {
                     generico: {
                         id: originalSupplyId.toString(),
-                        nombre: supply.name || ''
+                        nombre: supply.name || '',
+                        codigo: (() => {
+                            const rawCode = originalSupply?.supply?.code || supply.code;
+                            if (!rawCode || (Array.isArray(rawCode) && rawCode.length === 0)) { return []; }
+                            const codeArr = Array.isArray(rawCode) ? rawCode : [rawCode];
+                            return codeArr
+                                .filter((c: any) => c.value || c.valor)
+                                .map((c: any) => ({
+                                    fuente: c.source || c.fuente || 'SNOMED',
+                                    valor: c.value || c.valor || ''
+                                }));
+                        })()
                     }
                 }),
                 cantidad: supplyInfo.quantity || 1,

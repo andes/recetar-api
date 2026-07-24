@@ -464,11 +464,31 @@ class PrescriptionController implements BaseController {
                 dateTo as string
             );
 
-            // Combinar prescripciones locales y de ANDES
+            // Obtener recetas de insumos de ANDES
+            let andesInsumoPrescriptions: any[] = [];
+            if (sexoParam) {
+                andesInsumoPrescriptions = await AndesService.getInsumoPrescriptionsByDni(
+                    filterPatient,
+                    sexoParam,
+                    status as string,
+                    dateFrom as string,
+                    dateTo as string
+                );
+            }
+
+            // Combinar prescripciones locales, de ANDES y de insumos de ANDES
             const combinedPrescriptions = [
                 ...(localPrescriptions || []),
-                ...andesPrescriptions
+                ...andesPrescriptions,
+                ...andesInsumoPrescriptions
             ];
+
+            // Ordenar por fecha descendente (mas recientes primero)
+            combinedPrescriptions.sort((a: any, b: any) => {
+                const dateA = new Date(a.date || a.fechaRegistro || a.fechaPrestacion || 0).getTime();
+                const dateB = new Date(b.date || b.fechaRegistro || b.fechaPrestacion || 0).getTime();
+                return dateB - dateA;
+            });
 
             return res.status(200).json(combinedPrescriptions);
         } catch (err) {

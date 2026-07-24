@@ -411,4 +411,59 @@ class AndesService {
             return [];
         }
     };
+    public async patchInsumoPrescription(body: any): Promise<any> {
+        try {
+            const url = `${this.baseURL}/modules/recetasInsumos`;
+            const response: AxiosResponse = await axios.patch(url, body, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error al realizar patch en recetasInsumos de ANDES:', error);
+            throw error;
+        }
+    }
+
+    public async getInsumoPrescriptionsByDni(
+        dni: string,
+        sexo: string,
+        status?: string,
+        dateFrom?: string,
+        dateTo?: string
+    ): Promise<any[]> {
+        try {
+            let url = `${this.baseURL}/modules/recetasInsumos/filtros?documento=${dni}&sexo=${sexo}`;
+
+            if (status) {
+                url += `&estado=${status}`;
+            }
+
+            if (dateFrom) { url += `&fechaInicio=${dateFrom}`; }
+            if (dateTo) { url += `&fechaFin=${dateTo}`; }
+
+            const response: AxiosResponse = await axios.get(url, {
+                headers: { Authorization: this.token }
+            });
+
+            const data = response.data;
+
+            if (!data || !Array.isArray(data)) {
+                return [];
+            }
+
+            const insumoPrescriptions = data.map((aPrescription: any) => {
+                aPrescription.idAndes = aPrescription._id;
+                return aPrescription;
+            });
+
+            return insumoPrescriptions;
+        } catch (error) {
+            console.error('Error al obtener recetas de insumos de ANDES por DNI:', error);
+            return [];
+        }
+    }
+
 } export default new AndesService();
