@@ -27,8 +27,17 @@ export const supplySchema = new Schema({
         type: String
     },
     code: {
-        source: { type: String, enum: ['SIFAHO', 'SNOMED'] },
+        source: { type: String, enum: ['SIFAHO', 'SNOMED', 'ALFABETA'] },
         value: String
+    },
+    barCode: {
+        type: String
+    },
+    price: {
+        type: Number
+    },
+    actionDesc: {
+        type: String
     },
     status: {
         type: String,

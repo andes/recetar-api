@@ -23,6 +23,7 @@ import practiceController from '../controllers/practice.controller';
 import andesStockController from '../controllers/andesStock.controller';
 import stockController from '../controllers/stock.controller';
 import andesInsumoPrescriptionController from '../controllers/andesInsumoPrescription.controller';
+import vademecumController from '../controllers/vademecum.controller';
 class PrivateRoutes {
 
     constructor(private router: Router = Router()) { }
@@ -109,6 +110,10 @@ class PrivateRoutes {
 
         // SNOMED
         this.router.get('/snomed/supplies/', hasPermissionIn('readAny', 'supplies'), snomedSupplyController.index);
+
+        // VADEMECUM
+        this.router.get('/vademecum/medications', hasPermissionIn('readAny', 'supplies'), vademecumController.index);
+        this.router.get('/vademecum/medications/:id', hasPermissionIn('readAny', 'supplies'), vademecumController.show);
 
         // Users
         this.router.get('/users/index', hasPermissionIn('readAny', 'user'), usersController.index);
