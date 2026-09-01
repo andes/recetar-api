@@ -4,6 +4,10 @@ dotenv.config();
 
 export const env = {
     API_URI_PREFIX: '/api',
+    EVWEB_ENDPOINT: process.env.EVWEB_ENDPOINT || '',
+    EVWEB_USERNAME: process.env.EVWEB_USERNAME || '',
+    EVWEB_PASSWORD: process.env.EVWEB_PASSWORD || '',
+    EVWEB_PROVINCIA: process.env.EVWEB_PROVINCIA || 'Neuquén',
 };
 
 export const httpCodes = {

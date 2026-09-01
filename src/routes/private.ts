@@ -23,6 +23,7 @@ import practiceController from '../controllers/practice.controller';
 import andesStockController from '../controllers/andesStock.controller';
 import stockController from '../controllers/stock.controller';
 import andesInsumoPrescriptionController from '../controllers/andesInsumoPrescription.controller';
+import evwebController from '../controllers/evweb.controller';
 class PrivateRoutes {
 
     constructor(private router: Router = Router()) { }
@@ -127,6 +128,15 @@ class PrivateRoutes {
         // this.router.get(`/pharmacies/:id`, hasPermissionIn('readAny','patient'), pharmacyController.show);
         // this.router.put(`/pharmacies/:id`, hasPermissionIn('updateAny','patient'), pharmacyController.update);
         // this.router.delete(`/pharmacies/:id`, hasPermissionIn('deleteAny','patient'), pharmacyController.delete);
+
+        // evWeb - Consultas de datos de referencia
+        this.router.get('/evweb/cie10', evwebController.searchCIE10);
+        this.router.get('/evweb/medicamentos', evwebController.searchMedicamentos);
+        this.router.get('/evweb/obras-sociales', evwebController.searchObrasSociales);
+        // evWeb - Consultas de recetas
+        this.router.get('/evweb/recetas/:id', evwebController.getRecetaById);
+        this.router.get('/evweb/recetas/afiliado/:dni', evwebController.getRecetasByAfiliado);
+        this.router.get('/evweb/recetas/medico/:cuit', evwebController.getRecetasByMedico);
 
 
         // test route: only requires authentication
