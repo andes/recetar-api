@@ -317,14 +317,55 @@ class AndesService {
     }
 
     /**
-     * Verifica si existe una receta vigente para un paciente y medicamento (por conceptId SNOMED) en ANDES
+     * Obtiene las prescripciones de insumos de un profesional desde ANDES
      */
-    public async verificarRecetaExistente(dni: string, conceptId: string, sexo: string): Promise<any> {
+    public async getInsumoPrescriptionsByProfessional(params: GetPrescriptionsParams): Promise<any[]> {
+        try {
+            const url = `${this.baseURL}/modules/recetasInsumos/profesional/${params.professionalId}`;
+            const queryParams = new URLSearchParams();
+
+            if (params.estadoReceta) {
+                queryParams.append('estadoReceta', params.estadoReceta);
+            }
+            if (params.desde) {
+                queryParams.append('desde', params.desde);
+            }
+            if (params.hasta) {
+                queryParams.append('hasta', params.hasta);
+            }
+            queryParams.append('origenExternoApp', 'recetar');
+            queryParams.append('excluirEstado', 'pendiente,eliminada');
+
+            const fullUrl = queryParams.toString() ? `${url}?${queryParams.toString()}` : url;
+
+            const response: AxiosResponse<any[]> = await axios.get(fullUrl, {
+                headers: {
+                    Authorization: this.token,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('Error al obtener prescripciones de insumos por profesional desde ANDES:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Verifica si existe una receta vigente para un paciente y medicamento (por conceptId SNOMED o por código/nombre de magistral) en ANDES
+     */
+    public async verificarRecetaExistente(dni: string, conceptId?: string, sexo?: string, extraParams?: any): Promise<any> {
         try {
             const url = `${this.baseURL}/modules/recetas/verificar`;
+            const params: any = { documento: dni, sexo, ...extraParams };
+            if (conceptId) {
+                params.conceptId = conceptId;
+            }
 
             const response: AxiosResponse<any> = await axios.get(url, {
-                params: { documento: dni, conceptId, sexo },
+                params,
                 headers: {
                     Authorization: this.token,
                     'Content-Type': 'application/json'
