@@ -77,7 +77,15 @@ class AccessControlLoader {
             { role: 'pharmacist', resource: 'supplies', action: 'read:any', attributes: '*' },
             { role: 'admin', resource: 'supplies', action: 'create:any', attributes: '*' },
             { role: 'admin', resource: 'supplies', action: 'update:any', attributes: '*' },
-            { role: 'andes', resource: 'andesPrescription', action: 'create:any', attributes: '*' }
+            { role: 'andes', resource: 'andesPrescription', action: 'create:any', attributes: '*' },
+
+            // app (tokens para aplicaciones externas - mismos permisos que pharmacist)
+            { role: 'app', resource: 'prescription', action: 'read:any', attributes: '*' },
+            { role: 'app', resource: 'prescription', action: 'update:any', attributes: '*, !views' },
+            { role: 'app', resource: 'patient', action: 'read:any', attributes: '*' },
+            { role: 'app', resource: 'supplies', action: 'read:any', attributes: '*' },
+            { role: 'app', resource: 'user', action: 'read:own', attributes: '*' },
+            { role: 'app', resource: 'user', action: 'update:own', attributes: '*' }
         ];
         this.accessControl.setGrants(grantList);
         // eslint-disable-next-line no-console
