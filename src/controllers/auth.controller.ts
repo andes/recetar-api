@@ -376,6 +376,52 @@ class AuthController {
         }
     };
 
+    public generateAppToken = async (req: Request, res: Response): Promise<Response> => {
+        const { userId, expiresInHours = 720 } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'userId es requerido' });
+        }
+
+        try {
+            const user: IUser | null = await User.findOne({ _id: userId, isActive: true }).populate({ path: 'roles', select: 'role' });
+
+            if (!user) {
+                return res.status(404).json({ message: 'Usuario no encontrado o inactivo' });
+            }
+
+            const roles: string[] = [];
+            await Promise.all(user.roles.map(async (role) => {
+                roles.push(role.role);
+            }));
+
+            const now = moment().unix();
+            const token = JWT.sign({
+                iss: 'recetar.andes',
+                sub: user._id,
+                usrn: user.username,
+                bsname: user.businessName,
+                rl: roles,
+                isAppToken: true,
+                iat: now,
+                exp: now + moment.duration(Number(expiresInHours), 'hours').asSeconds()
+            }, (process.env.JWT_SECRET || ''), {
+                algorithm: 'HS256'
+            });
+
+            return res.status(200).json({
+                jwt: token,
+                expiresInHours,
+                userId: user._id,
+                username: user.username
+            });
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.log(err);
+            return res.status(500).json('Server Error');
+        }
+    };
+
     private signInToken = (userId: string, username: string, businessName: string, role: string | string[]): any => {
         const now = moment().unix();
         const token = JWT.sign({

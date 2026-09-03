@@ -49,7 +49,7 @@ passport.use('jwt', new JwtStrategy({
             return done(null, false, { code: httpCodes.UNAUTHORIZED, message: 'El usuario está inactivo, debe volver a iniciar sesión' });
         }
 
-        if (isSessionExpired(user.lastLogin)) {
+        if (!payload.isAppToken && isSessionExpired(user.lastLogin)) {
             if (payload.sub) {
                 await User.updateOne({ _id: payload.sub }, { refreshToken: '' });
             }
