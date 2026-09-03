@@ -30,6 +30,7 @@ class PrivateRoutes {
     public routes(): Router {
         // Auth
         this.router.get('/user/get-token', hasPermissionIn('readAny', 'user'), authController.getToken);
+        this.router.post('/admin/generate-app-token', hasPermissionIn('updateAny', 'user'), authController.generateAppToken);
         this.router.get('/auth/user/find', hasPermissionIn('readAny', 'user'), authController.getUser);
         this.router.post('/auth/register', hasPermissionIn('updateAny', 'user'), authController.register);
         this.router.post('/auth/reset-password', authController.resetPassword);
