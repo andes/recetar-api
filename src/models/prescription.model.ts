@@ -2,6 +2,7 @@ import { Schema, Model, model } from 'mongoose';
 import IPrescription from '../interfaces/prescription.interface';
 import { supplySchema } from '../models/supply.model';
 import { patientSubSchema } from '../models/patient.model';
+import Counter from '../models/counter.model';
 
 // Schema
 const prescriptionSchema = new Schema({
@@ -101,25 +102,26 @@ const prescriptionSchema = new Schema({
 prescriptionSchema.post('save', async (prescription: IPrescription) => {
     // genera id unico si no tiene
     if (!prescription.prescriptionId) {
-        const id = generarIdDesdeFecha(prescription.createdAt);
+        const id = await generarIdSecuencial(prescription.createdAt, 1);
         await Prescription.updateOne({ _id: prescription._id }, { $set: { prescriptionId: id } });
     }
 
 });
 
-export function generarIdDesdeFecha(fecha = new Date()) {
-    // genera id unico de acuerdo a una fecha
+export async function generarIdSecuencial(fecha: Date = new Date(), plataforma: number): Promise<string> {
+    // genera id unico secuencial por mes: YY MM NNNNNNNN P
     const pad = (num: number, size: number) => num.toString().padStart(size, '0');
-    return String(
-        fecha.getFullYear().toString() +
-        pad(fecha.getMonth() + 1, 2) +
-        pad(fecha.getDate(), 2) +
-        pad(fecha.getHours(), 2) +
-        pad(fecha.getMinutes(), 2) +
-        pad(fecha.getSeconds(), 2) +
-        pad(fecha.getMilliseconds(), 3) +
-        pad(Math.floor(Math.random() * 999), 3)
+    const yy = fecha.getFullYear().toString().slice(-2);
+    const mm = pad(fecha.getMonth() + 1, 2);
+    const counterId = `prescription_${yy}_${mm}`;
+
+    const counter = await Counter.findOneAndUpdate(
+        { _id: counterId },
+        { $inc: { seq: 1 } },
+        { upsert: true, new: true }
     );
+
+    return `${yy}${mm}${pad(counter.seq, 8)}${plataforma}`;
 }
 // Model
 const Prescription: Model<IPrescription> = model<IPrescription>('Prescription', prescriptionSchema);
