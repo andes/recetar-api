@@ -1,5 +1,6 @@
 import { Schema, Model, model, SchemaTypes } from 'mongoose';
 import IPrescriptionAndes from '../interfaces/prescriptionAndes.interface';
+import { generarIdSecuencial } from './prescription.model';
 
 
 const sistemaSchema = {
@@ -80,6 +81,11 @@ const estadoDispensaSchema = new Schema({
 
 // Schema
 const prescriptionAndesSchema = new Schema({
+    idReceta: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
     id: Schema.Types.ObjectId,
     organizacion: {
         id: Schema.Types.ObjectId,
@@ -202,6 +208,13 @@ const prescriptionAndesSchema = new Schema({
         organizacion: {
             nombre: String
         }
+    }
+});
+
+prescriptionAndesSchema.post('save', async (prescription: IPrescriptionAndes) => {
+    if (!prescription.idReceta) {
+        const id = await generarIdSecuencial(prescription.createdAt || new Date(), 0);
+        await PrescriptionAndes.updateOne({ _id: prescription._id }, { $set: { idReceta: id } });
     }
 });
 
