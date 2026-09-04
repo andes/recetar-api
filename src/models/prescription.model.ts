@@ -113,15 +113,9 @@ export async function generarIdSecuencial(fecha: Date = new Date(), plataforma: 
     const pad = (num: number, size: number) => num.toString().padStart(size, '0');
     const yy = fecha.getFullYear().toString().slice(-2);
     const mm = pad(fecha.getMonth() + 1, 2);
-    const counterId = `prescription_${yy}_${mm}`;
-
-    const counter = await Counter.findOneAndUpdate(
-        { _id: counterId },
-        { $inc: { seq: 1 } },
-        { upsert: true, new: true }
-    );
-
-    return `${yy}${mm}${pad(counter.seq, 8)}${plataforma}`;
+    const name = `prescription_${yy}_${mm}`;
+    const seq = await Counter.getNextSeq(name);
+    return `${yy}${mm}${pad(seq, 8)}${plataforma}`;
 }
 // Model
 const Prescription: Model<IPrescription> = model<IPrescription>('Prescription', prescriptionSchema);

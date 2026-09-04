@@ -15,6 +15,7 @@ export interface IDispensa extends Document {
     };
 }
 export default interface IPrescriptionAndes extends Document {
+    idReceta?: string;
     idAndes: ObjectID;
     organizacion: {
         id: ObjectID;
@@ -175,4 +176,4 @@ export default interface IPrescriptionAndes extends Document {
             nombre: String;
         };
     };
-};;;;;;;;;;;;;;;;;;;;
+}
