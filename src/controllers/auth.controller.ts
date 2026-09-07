@@ -195,16 +195,47 @@ class AuthController {
                     await user.save();
                 }
 
-                const passwordExpired = moment(user.passwordCreatedAt).add(3, 'months').isBefore(moment());
+                const passwordExpired = moment(user.passwordCreatedAt).add(6, 'months').isBefore(moment());
 
                 if (passwordExpired) {
-                    // Enviar correo de cambio de contraseña
+                    // Enviar correo de cambio de contraseña (deduplicado)
                     await this.sendPasswordExpiryNotification(user.username);
 
                     return res.status(401).json({
-                        message: 'Su contraseña ha vencido. Se ha enviado un correo electrónico con instrucciones para cambiarla.'
+                        message: 'Su contraseña ha vencido. Se ha enviado un correo electrónico con instrucciones para cambiarla.',
+                        code: 'PASSWORD_EXPIRED'
                     });
                 }
+
+                const roles: string | string[] = [];
+                await Promise.all(user.roles.map(async (role) => {
+                    roles.push(role.role);
+                }));
+                const token = this.signInToken(user._id, user.username, user.businessName, roles);
+                const refreshToken = uuidv4();
+
+                await User.updateOne({ _id: user._id }, { refreshToken, lastLogin: now });
+                return res.status(200).json({
+                    jwt: token,
+                    refreshToken
+                });
+            }
+
+            return res.status(httpCodes.EXPECTATION_FAILED).json('Debe iniciar sesión');
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.log(err);
+            return res.status(500).json('Server Error');
+        }
+    };
+
+    public jwtLogin = async (req: Request, res: Response): Promise<Response> => {
+        const { _id } = req.user as IUser;
+        try {
+            const user: IUser | null = await User.findOne({ _id }).populate({ path: 'roles', select: 'role' });
+
+            if (user && user.isActive) {
+                const now = moment();
 
                 const roles: string | string[] = [];
                 await Promise.all(user.roles.map(async (role) => {
@@ -452,11 +483,16 @@ class AuthController {
         await sendMail(options);
     };
 
-    public sendPasswordExpiryNotification = async (username: string) => {
+    public sendPasswordExpiryNotification = async (username: string, force: boolean = false) => {
         try {
             const usuario: any = await User.findOne({ username });
             if (usuario) {
-                // Generar token de cambio de contraseña con vencimiento de 24 horas
+                // Reutilizar el token existente si aún está vigente y no se fuerza el reenvío
+                if (!force && usuario.authenticationToken && usuario.passwordChangeTokenExpiry && moment(usuario.passwordChangeTokenExpiry).isAfter(moment())) {
+                    return usuario;
+                }
+
+                // Generar token de cambio de contraseña con vencimiento de 72 horas
                 const authenticationToken = uuidv4();
                 const tokenExpiry = moment().endOf('day').add(72, 'hours').toDate();
 
@@ -466,6 +502,7 @@ class AuthController {
 
                 const extras: any = {
                     titulo: 'Contraseña Vencida - Cambio Requerido',
+                    usuario,
                     nombre: usuario.businessName || usuario.username,
                     url: `${process.env.APP_DOMAIN}/auth/recovery-password/${authenticationToken}`,
                     expiryDate: moment(tokenExpiry).format('DD/MM/YYYY').toString()
@@ -486,6 +523,26 @@ class AuthController {
             } else {
                 return null;
             }
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.log(err);
+            throw err;
+        }
+    };
+
+    public resendPasswordExpiryNotification = async (identifier: string) => {
+        try {
+            const usuario: any = await User.findOne({ $or: [{ username: identifier }, { email: identifier }] });
+            if (!usuario) {
+                return null;
+            }
+
+            const passwordExpired = moment(usuario.passwordCreatedAt || moment()).add(6, 'months').isBefore(moment());
+            if (!passwordExpired) {
+                return null;
+            }
+
+            return this.sendPasswordExpiryNotification(usuario.username, true);
         } catch (err) {
             // eslint-disable-next-line no-console
             console.log(err);

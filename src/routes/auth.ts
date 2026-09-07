@@ -12,7 +12,7 @@ class AuthRoutes {
         this.router.get('/pharmacies-andes', authController.getPharmacyAndes);
         this.router.get('/professionals-andes', authController.getProfessionalsAndes);
         this.router.get('/authorizedProfessions', authController.getAuthorizedProfessions);
-        this.router.get('/jwt-login', checkAuth, authController.login);
+        this.router.get('/jwt-login', checkAuth, authController.jwtLogin);
         this.router.post('/register', authController.register);
         this.router.post('/logout', authController.logout);
         this.router.post('/refresh', authController.refresh);
@@ -26,6 +26,24 @@ class AuthRoutes {
                         return res.json({ status: 'ok', msg: 'Se ha enviado un correo a su casilla!' });
                     } else {
                         return res.json({ status: 'notfound', msg: 'Usuario no encontrado! Por favor revise sus datos' });
+                    }
+                }
+                return next(403);
+
+            } catch (error) {
+                return next(error);
+            }
+        });
+
+        this.router.post('/resend-password-expiry-notification', async (req, res, next) => {
+            try {
+                const identifier = req.body.identifier;
+                if (identifier) {
+                    const user = await authController.resendPasswordExpiryNotification(identifier);
+                    if (user) {
+                        return res.json({ status: 'ok', msg: 'Se ha reenviado un correo a su casilla!' });
+                    } else {
+                        return res.json({ status: 'notfound', msg: 'No se pudo reenviar el correo. Por favor intente nuevamente.' });
                     }
                 }
                 return next(403);

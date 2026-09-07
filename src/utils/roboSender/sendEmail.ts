@@ -66,8 +66,8 @@ export function renderHTML(templateName: string, extras: any): Promise<string> {
                 // Crear objeto con todas las propiedades de extras más las propiedades específicas para compatibilidad
                 const templateData = {
                     ...extras,
-                    nombre: extras.usuario?.businessName || extras.usuario?.username || '',
-                    username: extras.usuario?.username || '',
+                    nombre: extras.usuario?.businessName || extras.usuario?.username || extras.nombre || '',
+                    username: extras.usuario?.username || extras.username || '',
                     url: extras.url || ''
                 };
                 const htmlToSend = template(templateData);
