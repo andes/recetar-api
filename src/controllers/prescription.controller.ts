@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Prescription, { generarIdDesdeFecha } from '../models/prescription.model';
+import Prescription, { generarIdSecuencial } from '../models/prescription.model';
 import IPrescription, { PrescriptionSupply } from '../interfaces/prescription.interface';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 import ISupply from '../interfaces/supply.interface';
@@ -911,7 +911,7 @@ class PrescriptionController implements BaseController {
     private ensurePrescriptionIds = async (prescriptions: IPrescription[]): Promise<void> => {
         for (const prescription of prescriptions) {
             if (!prescription.prescriptionId) {
-                const prescriptionId = generarIdDesdeFecha(prescription.createdAt || prescription.date);
+                const prescriptionId = await generarIdSecuencial(prescription.createdAt || prescription.date, 1);
                 await Prescription.findByIdAndUpdate(prescription._id, { prescriptionId });
                 prescription.prescriptionId = prescriptionId;
             }
