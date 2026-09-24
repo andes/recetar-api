@@ -16,7 +16,7 @@ const IAT_FUTURE_SKEW_SECONDS = 60;
 //  -token expiration
 //  -user exists
 //  -token iat is not in the future
-passport.use(new JwtStrategy({
+passport.use('jwt-andes', new JwtStrategy({
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey: (process.env.JWT_SECRET)
 }, async (payload, done: (err?: any, user?: IUser | boolean, info?: { code: number; message: string }) => any | Response) => {
@@ -83,5 +83,5 @@ const authenticationMiddleware = (req: Request, res: Response, next: NextFunctio
 };
 
 export const checkAuthAndes = (req: Request, res: Response, next: NextFunction) => {
-    authenticationMiddleware(req, res, next, 'jwt');
+    authenticationMiddleware(req, res, next, 'jwt-andes');
 };
