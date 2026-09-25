@@ -1,0 +1,355 @@
+tags:
+  - name: Praxis
+    description: |
+      Integración con Praxis v2 - Prescripción Electrónica.
+      
+      **Responsabilidades:**
+      - Crear prescripciones electrónicas en el sistema Praxis
+      - Obtener PDFs de prescripciones generadas
+      - Anular prescripciones existentes
+      
+      **Endpoints expuestos:**
+      - `POST /prescriptions/praxis` — crear prescripción electrónica
+      - `GET /prescriptions/praxis/:id/pdf` — obtener PDF de prescripción
+      - `DELETE /prescriptions/praxis/:id` — anular prescripción
+      
+      **Dependencias externas:**
+      - `PRAXYS_ENDPOINT`: URL base de la API de Praxis
+      - `PRAXYS_API_KEY`: API key de autenticación
+
+components:
+  schemas:
+    PraxisPaciente:
+      type: object
+      description: Datos del paciente para prescripción Praxis
+      required: [nombre, apellido, numeroDocumento, fechaNacimiento, sexo]
+      properties:
+        nombre:
+          type: string
+          description: Nombre del paciente (en mayúsculas)
+          example: JUAN
+        apellido:
+          type: string
+          description: Apellido del paciente (en mayúsculas)
+          example: PEREZ
+        tipoDocumento:
+          type: string
+          default: DNI
+          description: Tipo de documento
+        numeroDocumento:
+          type: integer
+          description: Número de documento
+          example: 30123456
+        fechaNacimiento:
+          type: string
+          format: date-time
+          description: Fecha de nacimiento en formato ISO
+          example: "1990-01-15T00:00:00"
+        sexo:
+          type: string
+          enum: [M, F]
+          description: Sexo del paciente
+        cuil:
+          type: integer
+          nullable: true
+          description: CUIL del paciente (opcional)
+
+    PraxisCoberturaSalud:
+      type: object
+      description: Cobertura de salud del paciente
+      properties:
+        idObraSocial:
+          type: integer
+          description: ID de la obra social
+        idConvenio:
+          type: integer
+          description: ID del convenio
+        numeroAfiliado:
+          type: string
+          description: Número de afiliado
+        codigoPlan:
+          type: string
+          description: Código del plan
+        nombrePlan:
+          type: string
+          description: Nombre del plan
+
+    PraxisPrescriptor:
+      type: object
+      description: Datos del profesional prescriptor
+      required: [matricula]
+      properties:
+        matricula:
+          type: string
+          description: Matrícula del profesional
+          example: "12345"
+        tipoMatricula:
+          type: string
+          default: N
+          description: Tipo de matrícula (N = Nacional)
+        idProvinciaMatricula:
+          type: string
+          default: C
+          description: ID de provincia de la matrícula (C = Capital)
+        tipoPrescriptor:
+          type: string
+          default: M
+          description: Tipo de prescriptor (M = Médico)
+
+    PraxisDiagnostico:
+      type: object
+      description: Diagnóstico del renglón
+      required: [descripcion, codigoCIE10]
+      properties:
+        descripcion:
+          type: string
+          description: Descripción del diagnóstico
+          example: Hipertensión arterial esencial
+        codigoCIE10:
+          type: string
+          description: Código CIE-10 del diagnóstico
+          example: I10
+
+    PraxisProducto:
+      type: object
+      description: Producto farmacéutico
+      required: [codigoAlfabeta, codigoBarras]
+      properties:
+        codigoAlfabeta:
+          type: integer
+          description: Código Alfabeta del producto
+          example: 65123456
+        codigoBarras:
+          type: string
+          description: Código de barras del producto
+          example: "7891234567890"
+
+    PraxisRenglon:
+      type: object
+      description: Renglón de la prescripción
+      required: [tipoPrescripcion, producto, cantidadEnvases, diagnostico, indicaciones]
+      properties:
+        tipoPrescripcion:
+          type: string
+          enum: [G, M]
+          description: G = Genérico, M = Marca
+        producto:
+          $ref: '#/components/schemas/PraxisProducto'
+        cantidadEnvases:
+          type: integer
+          minimum: 1
+          description: Cantidad de envases a dispensar
+        diagnostico:
+          $ref: '#/components/schemas/PraxisDiagnostico'
+        indicaciones:
+          type: string
+          description: Indicaciones médicas para el paciente
+          example: Tomar 1 comprimido por vía oral cada 24 horas
+        observaciones:
+          type: string
+          nullable: true
+          description: Observaciones adicionales
+
+    CreatePraxisPrescriptionRequest:
+      type: object
+      description: Payload para crear una prescripción en Praxis
+      required: [paciente, prescriptor, renglones]
+      properties:
+        paciente:
+          $ref: '#/components/schemas/PraxisPaciente'
+        coberturaSalud:
+          $ref: '#/components/schemas/PraxisCoberturaSalud'
+        prescriptor:
+          $ref: '#/components/schemas/PraxisPrescriptor'
+        renglones:
+          type: array
+          description: Lista de renglones de la prescripción
+          items:
+            $ref: '#/components/schemas/PraxisRenglon'
+          minItems: 1
+        tratamientoProlongado:
+          type: boolean
+          default: false
+          description: Indica si es tratamiento prolongado
+
+    PraxisPrescriptionResponse:
+      type: object
+      description: Respuesta de Praxis al crear prescripción
+      properties:
+        idPrescripcion:
+          type: string
+          description: ID de la prescripción en Praxis
+        estado:
+          type: string
+          description: Estado de la prescripción
+        mensaje:
+          type: string
+          description: Mensaje descriptivo
+
+paths:
+  /prescriptions/praxis:
+    post:
+      tags: [Praxis]
+      summary: Crear prescripción en Praxis
+      description: |
+        Crea una prescripción electrónica en el sistema Praxis v2.
+        
+        **Reglas de negocio:**
+        - El paciente debe tener documento válido
+        - Se requiere al menos un renglón
+        - La matrícula del prescriptor es obligatoria
+        - Si tiene cobertura, se incluye la información de obra social
+        
+        **Flujo:**
+        1. Valida los datos con Zod
+        2. Mapea al formato Praxis v2
+        3. Envía POST a `/api/v2/prescripcion`
+        4. Retorna el ID de la prescripción creada
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePraxisPrescriptionRequest'
+            example:
+              paciente:
+                nombre: JUAN
+                apellido: PEREZ
+                tipoDocumento: DNI
+                numeroDocumento: 30123456
+                fechaNacimiento: "1990-01-15T00:00:00"
+                sexo: M
+              prescriptor:
+                matricula: "12345"
+                tipoMatricula: N
+                idProvinciaMatricula: C
+                tipoPrescriptor: M
+              renglones:
+                - tipoPrescripcion: G
+                  producto:
+                    codigoAlfabeta: 65123456
+                    codigoBarras: "7891234567890"
+                  cantidadEnvases: 1
+                  diagnostico:
+                    descripcion: Hipertensión arterial esencial
+                    codigoCIE10: I10
+                  indicaciones: Tomar 1 comprimido por vía oral cada 24 horas
+              tratamientoProlongado: false
+      responses:
+        "201":
+          description: Prescripción creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: '#/components/schemas/PraxisPrescriptionResponse'
+        "422":
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        "500":
+          description: Error de conexión con Praxis
+
+  /prescriptions/praxis/{id}/pdf:
+    get:
+      tags: [Praxis]
+      summary: Obtener PDF de prescripción de Praxis
+      description: |
+        Obtiene el PDF de una prescripción electrónica generada en Praxis.
+        
+        **Flujo:**
+        1. Consulta GET a `/api/prescripciones/{id}/pdf`
+        2. Retorna el PDF en base64
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la prescripción en Praxis
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PDF de la prescripción
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pdf:
+                    type: string
+                    format: base64
+                    description: PDF en base64
+                  contentType:
+                    type: string
+                    example: application/pdf
+        "404":
+          description: Prescripción no encontrada
+        "500":
+          description: Error de conexión con Praxis
+
+  /prescriptions/praxis/{id}:
+    delete:
+      tags: [Praxis]
+      summary: Anular prescripción en Praxis
+      description: |
+        Anula una prescripción electrónica existente en Praxis.
+        
+        **Flujo:**
+        1. Envía DELETE a `/api/prescripciones/{id}`
+        2. La prescripción queda marcada como anulada
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la prescripción en Praxis
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Prescripción anulada exitosamente
+        "404":
+          description: Prescripción no encontrada
+        "500":
+          description: Error de conexión con Praxis
+
+  /prescriptions/praxis/andes/{id}:
+    post:
+      tags: [Praxis]
+      summary: Convertir prescripción ANDES a Praxis
+      description: |
+        Convierte una prescripción de ANDES al formato Praxis y la crea en Praxis.
+        
+        **Flujo:**
+        1. Obtiene la prescripción de ANDES
+        2. Mapea al formato Praxis
+        3. Crea en Praxis
+        4. Retorna el ID de la prescripción creada
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la prescripción en ANDES
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Prescripción creada desde ANDES
+        "404":
+          description: Prescripción no encontrada en ANDES
+        "500":
+          description: Error en la conversión o creación
