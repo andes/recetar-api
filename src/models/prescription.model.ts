@@ -98,6 +98,7 @@ const prescriptionSchema = new Schema({
     }
 });
 
+prescriptionSchema.index({ 'patient.idMPI': 1 });
 
 prescriptionSchema.post('save', async (prescription: IPrescription) => {
     // genera id unico si no tiene
