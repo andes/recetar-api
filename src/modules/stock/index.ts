@@ -2,14 +2,10 @@ import { StockRepository } from './stock.repository';
 import { StockService } from './stock.service';
 import { StockController } from './stock.controller';
 import { AndesClient } from '../../integrations/andes';
-import { Logger } from '../../shared/logger/logger.interface';
+import { createLogger } from '@andes/log';
 import { env } from '../../config/config';
 
-const defaultLogger: Logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+const defaultLogger = createLogger('stock');
 
 const repository = new StockRepository();
 const andesClient = new AndesClient({

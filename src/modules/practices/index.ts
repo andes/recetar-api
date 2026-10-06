@@ -1,20 +1,16 @@
 import { PracticeRepository } from './practices.repository';
 import { PracticeService } from './practices.service';
 import { PracticeController } from './practices.controller';
-import { Logger } from '../../shared/logger/logger.interface';
+import { createLogger } from '@andes/log';
 
-export function createPracticeModule(logger: Logger) {
+export function createPracticeModule(logger: ReturnType<typeof createLogger>) {
     const repository = new PracticeRepository();
     const service = new PracticeService(repository, logger);
     const ctrl = new PracticeController(service);
     return ctrl;
 }
 
-const defaultLogger: Logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+const defaultLogger = createLogger('practices');
 
 const controller = createPracticeModule(defaultLogger);
 

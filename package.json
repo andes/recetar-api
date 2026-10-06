@@ -29,6 +29,7 @@
         "lint:fix": "eslint -c .eslintrc.js --ext .ts . --fix"
     },
     "dependencies": {
+        "@andes/log": "file:../log",
         "@asteasolutions/zod-to-openapi": "^8.5.0",
         "@scalar/express-api-reference": "^0.9.19",
         "@simplewebauthn/server": "^13.3.2",

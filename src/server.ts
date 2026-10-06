@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { initObservability, httpMiddleware, createLogger, wideEventMiddleware } from '@andes/log';
 import { errorHandler } from './shared/middlewares/error-handler';
 import { env } from './config/config';
 import { buildOpenApiSpec } from './config/openapi';
@@ -7,6 +8,8 @@ import { initializeMongo } from './database/dbconfig';
 import routes from './routes/routes';
 
 const apiSpec = buildOpenApiSpec();
+
+initObservability({ serviceName: 'recetar-api' });
 
 class Server {
     protected app: express.Application;
@@ -23,17 +26,12 @@ class Server {
         await initializeMongo();
         this.app.set('port', process.env.PORT || 4000);
 
+        this.app.use(httpMiddleware());
+        this.app.use(wideEventMiddleware(createLogger('wide-event')));
         this.app.use(express.json());
         this.app.use(cors());
 
         this.app.set('etag', false);
-
-        // Log temporal de requests entrantes (debug)
-        this.app.use((req, _res, next) => {
-            // eslint-disable-next-line no-console
-            console.log('[req]', req.method, req.originalUrl);
-            next();
-        });
 
         const { apiReference } = await import('@scalar/express-api-reference');
         this.app.use('/api-docs', apiReference({
