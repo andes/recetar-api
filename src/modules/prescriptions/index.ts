@@ -5,16 +5,12 @@ import { AndesClient, PrescriptionAndesRepository } from '../../integrations/and
 import { PraxisClient } from '../../integrations/praxis';
 import { getPatientService } from '../patients';
 import { UsersRepository } from '../users/users.repository';
-import { Logger } from '../../shared/logger/logger.interface';
+import { createLogger } from '@andes/log';
 import { env } from '../../config/config';
 import { SecurityRepository } from '../security/security.repository';
 import { SecurityService } from '../security/security.service';
 
-const defaultLogger: Logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+const defaultLogger = createLogger('prescriptions');
 
 const prescriptionRepository = new PrescriptionRepository();
 const prescriptionAndesRepository = new PrescriptionAndesRepository();
