@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import moment from 'moment';
+import { v4 as uuidv4 } from 'uuid';
 import { ApplicationRepository } from './applications.repository';
 import { IApplication, IApplicationOrganization } from './applications.types';
 import { ApplicationNotFoundError, ApplicationInactiveError } from './applications.errors';
@@ -8,6 +9,7 @@ import { CreateApplicationDTO, IssueApplicationTokenDTO } from './applications.d
 
 export interface AppTokenPayload {
     iss: string;
+    jti: string;
     app: { id: string; nombre: string };
     organizacion?: IApplicationOrganization;
     permisos: string[];
@@ -63,6 +65,7 @@ export class ApplicationService {
         const now = moment().unix();
         const payload: AppTokenPayload = {
             iss: 'recetar.andes',
+            jti: uuidv4(),
             app: { id: application._id.toString(), nombre: application.nombre },
             ...(application.organizacion ? { organizacion: application.organizacion } : {}),
             permisos: application.permisos,

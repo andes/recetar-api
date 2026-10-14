@@ -100,6 +100,16 @@ grants.push({ role: 'auditor', resource: 'document', action: 'read:any', attribu
 grants.push({ role: 'admin', resource: 'document', action: 'read:any', attributes: '*' });
 grants.push({ role: 'owner', resource: 'document', action: 'read:any', attributes: '*' });
 
+// applications (alta y emision de tokens de aplicacion)
+grants.push({ role: 'admin', resource: 'application', action: 'create:any', attributes: '*' });
+grants.push({ role: 'admin', resource: 'application', action: 'read:any', attributes: '*' });
+grants.push({ role: 'admin', resource: 'application', action: 'update:any', attributes: '*' });
+grants.push({ role: 'admin', resource: 'application', action: 'delete:any', attributes: '*' });
+grants.push({ role: 'owner', resource: 'application', action: 'create:any', attributes: '*' });
+grants.push({ role: 'owner', resource: 'application', action: 'read:any', attributes: '*' });
+grants.push({ role: 'owner', resource: 'application', action: 'update:any', attributes: '*' });
+grants.push({ role: 'owner', resource: 'application', action: 'delete:any', attributes: '*' });
+
 // andes system
 grants.push({ role: 'andes', resource: 'andesPrescription', action: 'create:any', attributes: '*' });
 

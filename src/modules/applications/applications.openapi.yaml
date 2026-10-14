@@ -1,0 +1,134 @@
+openapi: 3.0.0
+info:
+  title: Applications API
+  version: 1.0.0
+  description: |
+    Autenticación sistema-a-sistema para RecetAr. Permite registrar aplicaciones
+    (ANDES, SIFAHO, Praxis y futuras) y emitir tokens de aplicación con permisos
+    acotados y revocables.
+
+    **Autenticación:**
+    - Las rutas de administración requieren un token de usuario con rol `admin`
+      (RBAC de usuarios).
+    - La ruta `GET /applications/me` requiere un token de aplicación (header
+      `Authorization: Bearer <app-token>`).
+
+paths:
+  /applications:
+    post:
+      summary: Crear una aplicación
+      tags:
+        - Applications
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre]
+              properties:
+                nombre:
+                  type: string
+                  example: SIFAHO
+                organizacion:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    nombre:
+                      type: string
+                permisos:
+                  type: array
+                  items:
+                    type: string
+                  example: ['prescription:read']
+      responses:
+        '201':
+          description: Aplicación creada
+        '403':
+          description: Sin permiso (se requiere rol admin)
+
+  /applications/{id}/token:
+    post:
+      summary: Emitir (o rotar) el token de una aplicación
+      tags:
+        - Applications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expiresInHours:
+                  type: integer
+                  example: 720
+      responses:
+        '200':
+          description: Token emitido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jwt:
+                    type: string
+                  expiresInHours:
+                    type: integer
+                  appId:
+                    type: string
+                  nombre:
+                    type: string
+        '404':
+          description: Aplicación no encontrada
+        '409':
+          description: Aplicación inactiva
+
+  /applications/me:
+    get:
+      summary: Identidad y permisos de la aplicación autenticada
+      tags:
+        - Applications
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Principal de la aplicación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: app-token
+                  app:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      nombre:
+                        type: string
+                  organizacion:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                      nombre:
+                        type: string
+                  permisos:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          description: Token de aplicación ausente, inválido o revocado

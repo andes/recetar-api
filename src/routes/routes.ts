@@ -15,12 +15,14 @@ import recentDocumentsRoutes from './recent-documents.routes';
 import documentsRoutes from '../modules/documents/documents.routes';
 import usersRoutes from '../modules/users/users.routes';
 import securityRoutes from '../modules/security/security.routes';
+import applicationsRoutes from '../modules/applications/applications.routes';
 
 const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
 router.use('/users', securityRoutes);
+router.use('/applications', applicationsRoutes);
 router.use('/patients', patientsRoutes);
 router.use('/professionals', professionalsRoutes);
 router.use('/pharmacists', pharmacistsRoutes);
