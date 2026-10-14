@@ -12,6 +12,7 @@ export const messages = {
             stock: 'Stock no encontrado',
             user: 'Usuario no encontrado',
             role: 'Rol no encontrado',
+            application: 'Aplicación no encontrada',
             default: 'Recurso no encontrado',
         },
         validation: {
@@ -63,6 +64,9 @@ export const messages = {
         badGateway: {
             default: 'Servicio externo no disponible',
             andes: 'No se pudo conectar con Andes',
+        },
+        application: {
+            inactive: 'La aplicación está inactiva',
         },
         business: {
             alreadyDispensed: 'La receta ya fue dispensada',

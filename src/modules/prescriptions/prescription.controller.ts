@@ -151,7 +151,7 @@ export class PrescriptionController {
     cancelDispense = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const userId = getStringQueryParam(req.query.userId) || '';
-            const isAdmin = (req as any).user?.role === 'admin';
+            const isAdmin = ((req.user as any)?.roleNames || []).includes('admin');
             const prescription = await this.prescriptionService.cancelDispense(req.params.id, userId, isAdmin);
             res.status(200).json(ApiResponse.success(prescription));
         } catch (error) {

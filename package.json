@@ -22,6 +22,7 @@
         "dev:all": "concurrently \"npm run dev\" \"npm run dev:agenda-ui\"",
         "start:all": "concurrently \"npm run start\" \"npm run start:agenda-ui:prod\"",
         "docs:build": "ts-node scripts/build-openapi.ts",
+        "seed:roles": "ts-node scripts/seed-roles.ts",
         "test": "jest --forceExit",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage --forceExit",
