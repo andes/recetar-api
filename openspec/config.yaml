@@ -2,33 +2,17 @@ schema: spec-driven
 githubCopilot:
   cloudAgent: false
 
-# Project context (optional)
-# Add only constraints that should guide OpenSpec artifacts and workflows.
-# Include constraints an agent cannot infer by reading the code.
-# Keep general project documentation and discoverable codebase facts out.
-# Example:
-#   context: |
-#     Designs and tasks must cover Windows, macOS, and Linux
-#     Write all artifacts in Spanish
+context: |
+  Este repositorio (recetar-api) es el hogar de los specs OpenSpec del circuito
+  de recetas de RecetAR. Los changes viven en openspec/changes y las specs
+  (fuente de verdad) en openspec/specs.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Alcance multi-repo: aunque recetar-api es la casa de los specs, algunos changes
+  tocan o dependen de otros repositorios del workspace:
+    - recetar-api (API; codigo principal de este repo).
+    - recetar-app (frontend; specs a agregar en su propio repo).
+    - api (ANDES): es un target cross-repo documentado aqui. Ese equipo no usa
+      OpenSpec, por lo que el trabajo a realizar alli queda registrado como
+      dependencia y contrato dentro de los changes de este repo.
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+  Escribir todos los artefactos (proposal, specs, design, tasks) en espanol.

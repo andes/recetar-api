@@ -141,7 +141,13 @@ El progreso se lleva en el checklist del skill en `.opencode/skills/recetar-api-
 - **Si una instrucción del usuario contradice un skill**, preguntar antes de escribir o modificar código. No asumir que la instrucción del usuario reemplaza automáticamente lo que dice el skill.
 - **Después de leer un skill nuevo**, revisar el código existente en el área de trabajo para detectar violaciones que deban corregirse.
 
+## Specs (OpenSpec)
+- Los specs del circuito de recetas viven **en este repo**, en `openspec/` (changes en `openspec/changes/`, specs fuente de verdad en `openspec/specs/`, historico en `openspec/changes/archive/`).
+- Contexto multi-repo: hay changes que tocan o dependen de `recetar-app` y de `api` (ANDES). `api` **no usa OpenSpec** (equipo mas grande), por lo que el trabajo a realizar alli queda documentado como dependencia/contrato dentro de los changes de este repo.
+- Escribir los artefactos en espanol. Ver `openspec/config.yaml`.
+
 ## Referencias utiles
 - Operacion de Agenda: `src/agenda/AGENDA_README.md`.
 - Convenciones de PR: `.github/pull_request_template.md`.
 - Plan de renovacion completo: `RECETAR Plan de renovación.md`.
+- Autorizacion (RBAC): `docs/authorization.md`.
