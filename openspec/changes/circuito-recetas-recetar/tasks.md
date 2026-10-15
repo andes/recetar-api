@@ -29,7 +29,7 @@
 - [x] 4.2 Implementar `PATCH /recetas` (suspender, dispensar, cancelar-dispensa, rechazar, sin-dispensar) sobre la fuente RecetAr y verificar con tests por operación
 - [x] 4.3 Implementar la consulta de estado por prestación (`idPrestacion` → lista con estado, dispensa e `idReceta`) y verificar con test
 - [x] 4.4 Implementar la consulta de recetas por paciente con el parámetro `ambito` (sin parámetro → solo públicas; `ambito=todas` → todas) y verificar con test (default solo públicas; `ambito=todas` incluye privadas y públicas)
-- [ ] 4.5 Implementar el merge de recetas históricas (ANDES) + nuevas (RecetAr) en las lecturas por prestación y verificar con test de combinación
+- [x] 4.5 Implementar el merge de recetas históricas (ANDES) + nuevas (RecetAr) en las lecturas por prestación y verificar con test de combinación
 - [x] 4.6 Documentar el contrato de recetas (endpoints, request/response) en el OpenAPI del módulo y verificar que la spec generada lo incluye
 
 ## 5. Jobs de estado e impresión

@@ -72,6 +72,7 @@ describe('Hub de recetas (compatible ANDES)', () => {
         expect(recetas[0].idPrestacion).toBe('PREST-1');
         expect(recetas[0].idRegistro).toBe('REG-1');
         expect(recetas[0].estadoActual?.tipo).toBeDefined();
+        expect(recetas[0].idReceta).toBeDefined();
     });
 
     it('getRecetasPorPaciente devuelve solo públicas por defecto y todas con ambito=todas', async () => {
@@ -100,6 +101,18 @@ describe('Hub de recetas (compatible ANDES)', () => {
 
         expect(receta?.estadoActual?.tipo).toBe('finalizada');
         expect(receta?.estadoDispensaActual?.tipo).toBe('dispensada');
+    });
+
+    it('getRecetasPorPrestacion devuelve las N recetas de un prolongado con idReceta', async () => {
+        await service.ingest(ingestPayload({
+            medicamento: { concepto: { conceptId: '123', term: 'Enalapril' }, cantEnvases: 2, tratamientoProlongado: true, tiempoTratamiento: { id: '3' } },
+        }) as any);
+
+        const recetas = await service.getRecetasPorPrestacion('PREST-1');
+
+        expect(recetas).toHaveLength(3);
+        expect(recetas.every(r => r.idReceta)).toBe(true);
+        expect(recetas.map(r => (r.medicamento as any)?.ordenTratamiento)).toEqual([0, 1, 2]);
     });
 
     it('patchReceta rechazar fija Rechazada', async () => {

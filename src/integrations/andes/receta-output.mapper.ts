@@ -18,6 +18,7 @@ export function toRecetaCompatible(prescription: IPrescription): Record<string, 
 
     return {
         _id: prescription._id.toString(),
+        idReceta: prescription.prescriptionId,
         organizacion: prescription.organizacion
             ? { id: prescription.organizacion._id, nombre: prescription.organizacion.nombre }
             : { nombre: 'Recetar' },
