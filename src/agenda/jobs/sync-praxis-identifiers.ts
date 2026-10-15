@@ -1,6 +1,7 @@
 import { PrescriptionRepository } from '../../modules/prescriptions/prescription.repository';
-import { PraxisClient, PraxisMapper } from '../../integrations/praxis';
+import { PraxisClient, PraxisMapper, PraxisNotEligibleError, PraxisResponseError } from '../../integrations/praxis';
 import { env } from '../../config/config';
+import { PraxisReceta } from '../../modules/prescriptions/prescription.types';
 
 const MAX_ATTEMPTS = 3;
 const BATCH_LIMIT = 100;
@@ -28,15 +29,35 @@ export async function runPraxisSync(deps: PraxisSyncDeps = {}): Promise<void> {
         try {
             const payload = PraxisMapper.toPraxisFromDoc(doc);
             const response = await client.createPrescription(payload);
-            await repository.addExternalIdentifier(doc._id.toString(), 'praxis', response.idPrescripcion);
+            const praxisId = String(response.idPrescripcion);
+            const praxisRecetas: PraxisReceta[] = (response.recetasEmitidas || []).map((receta) => ({
+                idReceta: String(receta.idReceta),
+                numeroReceta: receta.numeroReceta,
+                hash: receta.hash,
+            }));
+
+            await repository.addExternalIdentifier(doc._id.toString(), 'praxis', praxisId);
+            await repository.update(doc._id.toString(), {
+                praxisHash: response.hash,
+                praxisRecetas,
+            });
             await repository.updateSyncExterno(doc._id.toString(), {
                 praxis: { estado: 'ok', intentos: current + 1 },
             });
         } catch (error) {
-            const intentos = current + 1;
-            const estado = intentos >= maxAttempts ? 'error' : 'pendiente';
+            const notEligible = error instanceof PraxisNotEligibleError;
+            const intentos = notEligible ? current : current + 1;
+            const estado = notEligible
+                ? 'no_aplicable'
+                : (intentos >= maxAttempts ? 'error' : 'pendiente');
+
             await repository.updateSyncExterno(doc._id.toString(), {
-                praxis: { estado, intentos, ultimoError: (error as Error).message },
+                praxis: {
+                    estado,
+                    intentos,
+                    ultimoError: (error as Error).message,
+                    codigo: error instanceof PraxisResponseError ? error.codigo : undefined,
+                },
             });
         }
     }

@@ -28,11 +28,6 @@ router.get('/pharmacies-andes', authController.getPharmacyAndes);
 router.get('/professionals-andes', authController.getProfessionalsAndes);
 router.get(
     '/professionals-andes/matriculas',
-    (req, _res, next) => {
-        // eslint-disable-next-line no-console
-        console.log('[matriculas] request recibido:', req.originalUrl, req.query);
-        next();
-    },
     checkAuth,
     validate(getMatriculasSchema, 'query'),
     authController.getMatriculas,

@@ -4,7 +4,7 @@ import { AndesClient, PrescriptionAndesRepository, PrescriptionAndesNotFoundErro
 import { PatientService } from '../patients';
 import type { PatientSnapshot } from '../patients';
 import { Logger } from '../../shared/logger/logger.interface';
-import { IPrescription, PRESCRIPTION_SEARCH_LIMIT, PrescriptionDispenser } from './prescription.types';
+import { IPrescription, PRESCRIPTION_SEARCH_LIMIT, PrescriptionDispenser, ExternalIdentifierEntity, PraxisReceta } from './prescription.types';
 import { IPrescriptionAndes } from '../../integrations/andes';
 import {
     CreatePrescriptionDTO, UpdatePrescriptionDTO,
@@ -18,14 +18,23 @@ import {
     PrescriptionCancelTimeExceededError,
     PrescriptionAlreadyCancelledError,
     TreatmentRequiresMedicationsError,
+    PrescriptionNotSuspendableError,
+    PrescriptionPublishedError,
+    PrescriptionPdfUnavailableError,
 } from './prescription.errors';
 import { PatientNotFoundError } from '../patients/patients.errors';
 import { generatePrescriptionId, mapPrescriptionStatus, normalizeCuil, addDays } from './prescription.utils';
 import { UsersRepository } from '../users/users.repository';
+import { ProfessionalService } from '../professionals';
 import { AndesPrescription } from '../../integrations/andes/andes.types';
-import { PraxisClient, PraxisMapper } from '../../integrations/praxis';
+import { PraxisClient, PraxisMapper, PraxisNotEligibleError, PraxisResponseError, PraxisEligibilityError, PraxisPublicationError, PraxisPrescriptionResponse } from '../../integrations/praxis';
 import { AndesIngestDTO } from './ingest.dto';
 import { toRecetaCompatible } from '../../integrations/andes/receta-output.mapper';
+
+type SupplyPublication =
+    | { kind: 'ok'; response: PraxisPrescriptionResponse }
+    | { kind: 'local'; reason?: string; codigo?: number | string }
+    | { kind: 'pending' };
 
 export class PrescriptionService {
     constructor(
@@ -36,6 +45,7 @@ export class PrescriptionService {
         private readonly logger: Logger,
         private readonly usersRepository: UsersRepository,
         private readonly praxisClient?: PraxisClient,
+        private readonly professionalProfileService?: ProfessionalService,
     ) {}
 
     private get patientService(): PatientService {
@@ -176,10 +186,16 @@ export class PrescriptionService {
     }
 
     async create(dto: CreatePrescriptionDTO): Promise<IPrescription> {
+        await this.enrichProfessional(dto);
         const now = new Date(dto.date || new Date());
-        const prescriptions: IPrescription[] = [];
         const patientSnapshot = await this.resolvePatient(dto);
         const fallbackMonths = dto.tratamientoProlongado ?? (dto.trimestral ? 3 : undefined);
+
+        const prepared: Array<{
+            dataList: Partial<IPrescription>[];
+            supply: CreatePrescriptionDTO['supplies'][number];
+            publication: SupplyPublication;
+        }> = [];
 
         for (const supply of dto.supplies) {
             const meses = this.resolveTreatmentMonths(supply, fallbackMonths);
@@ -191,7 +207,7 @@ export class PrescriptionService {
                 }
             }
 
-            const supplyDocs: IPrescription[] = [];
+            const dataList: Partial<IPrescription>[] = [];
             for (let index = 0; index < dates.length; index++) {
                 const date = dates[index];
                 const patient = { ...dto.patient, ...patientSnapshot } as IPrescription['patient'];
@@ -202,7 +218,7 @@ export class PrescriptionService {
                         numeroAfiliado: supply.obraSocial.numeroAfiliado,
                     };
                 }
-                const data: Partial<IPrescription> = {
+                dataList.push({
                     prescriptionId: generatePrescriptionId(date),
                     patient,
                     professional: {
@@ -215,62 +231,125 @@ export class PrescriptionService {
                     ...(meses ? { tratamientoProlongado: meses, ordenTratamiento: index } : {}),
                     ...(treatmentGroupId ? { treatmentGroupId } : {}),
                     organizacion: dto.organizacion,
-                };
-                const created = await this.prescriptionRepository.create(data);
-                prescriptions.push(created);
-                supplyDocs.push(created);
+                });
             }
 
-            await this.syncSupplyToPraxis(supplyDocs, supply);
+            // Publicar antes de persistir: si Praxis falla, no se guarda nada.
+            const publication = await this.publishSupply(dataList[0], supply);
+            prepared.push({ dataList, supply, publication });
         }
 
-        const firstCreated = await this.prescriptionRepository.findById(prescriptions[0]._id.toString());
-        return firstCreated || prescriptions[0];
+        const createdDocs: IPrescription[] = [];
+        for (const group of prepared) {
+            const docs: IPrescription[] = [];
+            for (const data of group.dataList) {
+                const created = await this.prescriptionRepository.create(data);
+                docs.push(created);
+                createdDocs.push(created);
+            }
+            await this.applyPublication(docs, group.publication);
+        }
+
+        const firstCreated = await this.prescriptionRepository.findById(createdDocs[0]._id.toString());
+        return firstCreated || createdDocs[0];
     }
 
-    private async syncSupplyToPraxis(
-        docs: IPrescription[],
-        supply: { supply?: { type?: string } },
-    ): Promise<void> {
-        if (!docs.length) {
+    // Completa los datos del prescriptor desde el perfil de profesional (caché ANDES).
+    // Si no se resuelve (sin matrícula/formación), lanza 422 y no se emite el documento.
+    private async enrichProfessional(dto: CreatePrescriptionDTO): Promise<void> {
+        const professional = dto.professional;
+        if (!professional?.userId || !this.professionalProfileService) {
             return;
         }
+        const profile = await this.professionalProfileService.requireForUser(professional.userId);
+        dto.professional = {
+            ...professional,
+            tipoDocumento: profile.tipoDocumento,
+            documento: profile.documento,
+            cuil: professional.cuil || profile.cuit,
+            enrollment: profile.profesionGrado?.[0]?.numeroMatricula || professional.enrollment,
+            profesionGrado: profile.profesionGrado,
+        };
+    }
 
-        const eligible = !supply.supply?.type;
-        if (!eligible) {
-            for (const doc of docs) {
-                await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
-                    praxis: { estado: 'no_aplicable', intentos: 0 },
-                });
-            }
-            return;
+    private async publishSupply(
+        data: Partial<IPrescription>,
+        supply: CreatePrescriptionDTO['supplies'][number],
+    ): Promise<SupplyPublication> {
+        // Magistrales e insumos no se publican en Praxis (local-only válido).
+        if (supply.supply?.type) {
+            return { kind: 'local', reason: 'Tipo de prescripción no publicable en Praxis' };
         }
 
-        if (!this.praxisClient) {
-            for (const doc of docs) {
-                await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
-                    praxis: { estado: 'pendiente', intentos: 0 },
-                });
-            }
-            return;
+        if (!this.praxisClient || this.praxisClient.isConfigured?.() === false) {
+            return { kind: 'pending' };
         }
 
         try {
-            const payload = PraxisMapper.toPraxisFromDoc(docs[0]);
+            const payload = PraxisMapper.toPraxisFromDoc(data as IPrescription);
             const response = await this.praxisClient.createPrescription(payload);
-            for (const doc of docs) {
-                await this.prescriptionRepository.addExternalIdentifier(doc._id.toString(), 'praxis', response.idPrescripcion);
-                await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
-                    praxis: { estado: 'ok', intentos: 0 },
-                });
-            }
+            return { kind: 'ok', response };
         } catch (error) {
             this.logger.logError(new Error(`Praxis sync failed: ${(error as Error).message}`));
-            for (const doc of docs) {
-                await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
-                    praxis: { estado: 'pendiente', intentos: 0, ultimoError: (error as Error).message },
-                });
+            if (error instanceof PraxisNotEligibleError) {
+                // Paciente sin DNI en ámbito público: local-only válido.
+                if (error.reason === 'Paciente sin DNI' && data.ambito === 'publico') {
+                    return { kind: 'local', reason: error.reason, codigo: error.codigo };
+                }
+                throw new PraxisEligibilityError(error.reason, error.codigo);
             }
+            if (error instanceof PraxisResponseError) {
+                throw new PraxisPublicationError(`No se pudo publicar la receta: ${error.message}`, error.codigo);
+            }
+            throw new PraxisPublicationError(`No se pudo publicar la receta: ${(error as Error).message}`);
+        }
+    }
+
+    private async applyPublication(
+        docs: IPrescription[],
+        publication: SupplyPublication,
+    ): Promise<void> {
+        if (publication.kind === 'local') {
+            await this.markPraxisSync(docs, {
+                estado: 'no_aplicable',
+                intentos: 0,
+                ultimoError: publication.reason,
+                codigo: publication.codigo,
+            });
+            return;
+        }
+
+        if (publication.kind === 'pending') {
+            await this.markPraxisSync(docs, { estado: 'pendiente', intentos: 0 });
+            return;
+        }
+
+        const response = publication.response;
+        const praxisId = String(response.idPrescripcion);
+        const praxisRecetas: PraxisReceta[] = (response.recetasEmitidas || []).map((receta) => ({
+            idReceta: String(receta.idReceta),
+            numeroReceta: receta.numeroReceta,
+            hash: receta.hash,
+        }));
+
+        for (const doc of docs) {
+            await this.prescriptionRepository.addExternalIdentifier(doc._id.toString(), 'praxis', praxisId);
+            await this.prescriptionRepository.update(doc._id.toString(), {
+                praxisHash: response.hash,
+                praxisRecetas,
+            });
+            await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
+                praxis: { estado: 'ok', intentos: 0 },
+            });
+        }
+    }
+
+    private async markPraxisSync(
+        docs: IPrescription[],
+        praxis: { estado: 'pendiente' | 'ok' | 'no_aplicable' | 'error'; intentos: number; ultimoError?: string; codigo?: number | string },
+    ): Promise<void> {
+        for (const doc of docs) {
+            await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), { praxis });
         }
     }
 
@@ -317,7 +396,18 @@ export class PrescriptionService {
             docs.push(created);
         }
 
-        await this.syncSupplyToPraxis(docs, supply);
+        // Ingesta desde ANDES: la receta ya existe; si Praxis falla no se bloquea, se reintenta luego.
+        try {
+            const publication = await this.publishSupply(docs[0], supply);
+            await this.applyPublication(docs, publication);
+        } catch (error) {
+            const estado = error instanceof PraxisEligibilityError ? 'no_aplicable' : 'pendiente';
+            await this.markPraxisSync(docs, {
+                estado,
+                intentos: 0,
+                ultimoError: (error as Error).message,
+            });
+        }
 
         const refreshed: IPrescription[] = [];
         for (const doc of docs) {
@@ -404,7 +494,11 @@ export class PrescriptionService {
     }
 
     private async resolvePatient(dto: CreatePrescriptionDTO): Promise<PatientSnapshot> {
-        const snapshot = await this.patientService.resolveSnapshot(dto.patient.dni, dto.patient.sex);
+        const snapshot = dto.patient.idMPI
+            ? await this.patientService.resolveSnapshotById(dto.patient.idMPI)
+            : dto.patient.dni
+                ? await this.patientService.resolveSnapshot(dto.patient.dni, dto.patient.sex)
+                : null;
         if (!snapshot) {
             throw new PatientNotFoundError();
         }
@@ -439,7 +533,71 @@ export class PrescriptionService {
         if (prescription.status !== 'Pendiente') {
             throw new PrescriptionNotDispensableError();
         }
+        if (this.getExternalIdentifier(prescription, 'praxis')) {
+            throw new PrescriptionPublishedError();
+        }
         await this.prescriptionRepository.delete(id);
+    }
+
+    async suspend(id: string, dto: { motivo?: string; observacion?: string } = {}): Promise<IPrescription> {
+        const prescription = await this.prescriptionRepository.findById(id);
+        if (!prescription) {
+            throw new PrescriptionNotFoundError();
+        }
+        if (prescription.status !== 'Pendiente') {
+            throw new PrescriptionNotSuspendableError();
+        }
+
+        const updated = await this.prescriptionRepository.pushEstado(id, {
+            tipo: 'suspendida',
+            fecha: new Date(),
+            motivo: dto.motivo,
+            observacion: dto.observacion,
+        }, 'Suspendida');
+        if (!updated) {
+            throw new PrescriptionNotFoundError();
+        }
+
+        await this.annulInPraxis(prescription);
+        return updated;
+    }
+
+    async getPdf(id: string): Promise<{ pdf: string; contentType: string }> {
+        const prescription = await this.prescriptionRepository.findById(id);
+        if (!prescription) {
+            throw new PrescriptionNotFoundError();
+        }
+        const praxisId = this.getExternalIdentifier(prescription, 'praxis');
+        const praxisHash = prescription.praxisHash;
+        if (!praxisId || !praxisHash || !this.praxisClient) {
+            throw new PrescriptionPdfUnavailableError();
+        }
+        try {
+            return await this.praxisClient.getPrescriptionPdf(praxisId, praxisHash);
+        } catch (error) {
+            this.logger.logError(new Error(`Praxis pdf failed: ${(error as Error).message}`));
+            throw new PrescriptionPdfUnavailableError();
+        }
+    }
+
+    private getExternalIdentifier(
+        prescription: IPrescription,
+        entidad: ExternalIdentifierEntity,
+    ): string | undefined {
+        return prescription.identificadoresExternos?.find((entry) => entry.entidad === entidad)?.valor;
+    }
+
+    private async annulInPraxis(prescription: IPrescription): Promise<void> {
+        const praxisId = this.getExternalIdentifier(prescription, 'praxis');
+        const praxisHash = prescription.praxisHash;
+        if (!praxisId || !praxisHash || !this.praxisClient) {
+            return;
+        }
+        try {
+            await this.praxisClient.annulPrescription(praxisId, praxisHash);
+        } catch (error) {
+            this.logger.logError(new Error(`Praxis annul failed: ${(error as Error).message}`));
+        }
     }
 
     async dispense(id: string, dto: DispensePrescriptionDTO): Promise<IPrescription> {
@@ -687,6 +845,7 @@ export class PrescriptionService {
                     motivo: body.motivo as string | undefined,
                     observacion: body.observacion as string | undefined,
                 }, 'Suspendida');
+                await this.annulInPraxis(doc);
                 return updated ? toRecetaCompatible(updated) : null;
             }
             case 'rechazar': {

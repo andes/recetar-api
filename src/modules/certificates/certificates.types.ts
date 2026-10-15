@@ -11,6 +11,8 @@ export interface IProfessionalCert {
     businessName: string;
     cuil?: string;
     enrollment?: string;
+    tipoDocumento?: string;
+    documento?: string;
     profesionGrado?: IProfesionGradoCert[];
 }
 

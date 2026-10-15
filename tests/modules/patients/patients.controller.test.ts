@@ -41,6 +41,25 @@ describe('Patients Controller', () => {
         });
     });
 
+    describe('GET /api/patients/search-page', () => {
+        it('valida la query en lugar de resolverse como /:id', async () => {
+            const { token } = await createAuthenticatedUser();
+
+            const res = await request(app)
+                .get('/api/patients/search-page?limit=0')
+                .set('Authorization', `Bearer ${token}`);
+
+            expect(res.status).toBe(422);
+            expect(res.body.error.code).toBe('VALIDATION_ERROR');
+        });
+
+        it('returns 401 without token', async () => {
+            const res = await request(app).get('/api/patients/search-page');
+
+            expect(res.status).toBe(401);
+        });
+    });
+
     describe('GET /api/patients/dni/:dni', () => {
         it('returns 401 without token', async () => {
             const res = await request(app).get('/api/patients/dni/12345678');

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { errorHandler } from './shared/middlewares/error-handler';
 import { env } from './config/config';
+import { isDev } from './shared/logger/dev-logger';
 import { buildOpenApiSpec } from './config/openapi';
 import { initializeMongo } from './database/dbconfig';
 import routes from './routes/routes';
@@ -28,13 +29,6 @@ class Server {
 
         this.app.set('etag', false);
 
-        // Log temporal de requests entrantes (debug)
-        this.app.use((req, _res, next) => {
-            // eslint-disable-next-line no-console
-            console.log('[req]', req.method, req.originalUrl);
-            next();
-        });
-
         const { apiReference } = await import('@scalar/express-api-reference');
         this.app.use('/api-docs', apiReference({
             spec: { content: apiSpec },
@@ -51,6 +45,7 @@ class Server {
     async start() {
         await this.config();
         this.app.listen(this.app.get('port'), () => {
+            if (!isDev()) { return; }
             // eslint-disable-next-line no-console
             console.log(`API Server running on port ${this.app.get('port')}`);
             // eslint-disable-next-line no-console
@@ -61,8 +56,10 @@ class Server {
     }
 
     async gracefulShutdown() {
-        // eslint-disable-next-line no-console
-        console.log('Cerrando servidor API...');
+        if (isDev()) {
+            // eslint-disable-next-line no-console
+            console.log('Cerrando servidor API...');
+        }
         process.exit(0);
     }
 }

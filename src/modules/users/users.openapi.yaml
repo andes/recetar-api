@@ -128,6 +128,31 @@ paths:
         '404':
           description: Usuario no encontrado
 
+  /users/me:
+    patch:
+      tags: [Usuarios]
+      summary: Actualizar mis datos de cuenta
+      description: |
+        Autogestión: el usuario autenticado actualiza su email, nombre de usuario,
+        nombre visible y CUIL (11 dígitos con verificador). No permite cambiar roles ni estado.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                username: { type: string }
+                businessName: { type: string }
+                cuil: { type: string }
+      responses:
+        '200':
+          description: Datos actualizados
+        '401':
+          description: No autenticado
+
   /users/me/organizaciones:
     patch:
       tags: [Usuarios]
@@ -274,9 +299,6 @@ components:
         username: { type: string }
         email: { type: string }
         businessName: { type: string }
-        firstName: { type: string }
-        lastName: { type: string }
-        razonSocial: { type: string }
         isActive: { type: boolean }
         createdAt:
           type: string
@@ -286,7 +308,6 @@ components:
         - $ref: '#/components/schemas/UserSummary'
         - type: object
           properties:
-            enrollment: { type: string }
             cuil: { type: string }
             roles:
               type: array
@@ -319,37 +340,17 @@ components:
         username: { type: string }
         password: { type: string, minLength: 8 }
         businessName: { type: string }
-        firstName: { type: string }
-        lastName: { type: string }
-        razonSocial: { type: string }
-        enrollment: { type: string }
         cuil: { type: string }
         roles:
           type: array
           items: { type: string }
         idAndes: { type: string }
-        profesionGrado:
-          type: array
-          items:
-            type: object
-            properties:
-              profesion: { type: string }
-              codigoProfesion: { type: string }
-              numeroMatricula: { type: string }
-              vencimiento: { type: string, format: date }
-              estado:
-                type: string
-                enum: [vigente, vencida, suspendida, sin-matricula, baja]
     UpdateUserRequest:
       type: object
       properties:
         email: { type: string }
         username: { type: string }
         businessName: { type: string }
-        firstName: { type: string }
-        lastName: { type: string }
-        razonSocial: { type: string }
-        enrollment: { type: string }
         cuil: { type: string }
         roles:
           type: array

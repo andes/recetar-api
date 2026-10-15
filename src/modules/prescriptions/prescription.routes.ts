@@ -8,6 +8,7 @@ import {
     createPrescriptionSchema,
     updatePrescriptionSchema,
     dispensePrescriptionSchema,
+    suspendPrescriptionSchema,
 } from './prescription.dto';
 import { andesIngestSchema } from './ingest.dto';
 import {
@@ -37,8 +38,10 @@ router.patch('/andes/suspend', checkAuth, canUpdateAnyPrescription, validate(and
 
 router.get('/', checkAuth, canReadPrescription, prescriptionController.index);
 router.get('/:id', checkAuth, canReadPrescription, prescriptionController.show);
+router.get('/:id/pdf', checkAuth, canReadPrescription, prescriptionController.getPdf);
 router.post('/', checkAuth, canCreatePrescription, validate(createPrescriptionSchema), prescriptionController.create);
 router.patch('/:id', checkAuth, canUpdateOwnPrescription, validate(updatePrescriptionSchema), prescriptionController.update);
+router.patch('/:id/suspend', checkAuth, canUpdateOwnPrescription, validate(suspendPrescriptionSchema), prescriptionController.suspend);
 router.patch('/:id/dispense', checkAuth, canUpdateAnyPrescription, validate(dispensePrescriptionSchema), prescriptionController.dispense);
 router.patch('/:id/cancel-dispense', checkAuth, canUpdateAnyPrescription, prescriptionController.cancelDispense);
 router.delete('/:id', checkAuth, canDeletePrescription, prescriptionController.delete);

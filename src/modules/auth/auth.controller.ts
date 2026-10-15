@@ -131,11 +131,7 @@ export class AuthController {
     getMatriculas = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const { documento } = req.query as unknown as GetMatriculasDTO;
-            // eslint-disable-next-line no-console
-            console.log('[matriculas] documento solicitado:', documento);
             const result = await this.authService.getMatriculas(documento);
-            // eslint-disable-next-line no-console
-            console.log('[matriculas] resultado:', JSON.stringify(result));
             res.status(200).json(ApiResponse.success(result));
         } catch (error) {
             next(error);

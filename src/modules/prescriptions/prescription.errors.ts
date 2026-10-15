@@ -35,3 +35,21 @@ export class TreatmentRequiresMedicationsError extends BusinessError {
         super('errors.business.treatmentRequiresMedications');
     }
 }
+
+export class PrescriptionNotSuspendableError extends BusinessError {
+    constructor() {
+        super('errors.business.notSuspendable');
+    }
+}
+
+export class PrescriptionPublishedError extends BusinessError {
+    constructor() {
+        super('errors.business.publishedPrescription');
+    }
+}
+
+export class PrescriptionPdfUnavailableError extends NotFoundError {
+    constructor() {
+        super('errors.notFound.prescriptionPdf');
+    }
+}

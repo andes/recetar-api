@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { connectTestDB, clearCollections, disconnectTestDB } from '../../helpers/db';
 import { createAuthenticatedUser } from '../../helpers/auth';
 import { createApp } from '../../helpers/app';
+import { createProfessionalProfile } from '../../helpers/factories';
 import { setPatientService, PatientService } from '../../../src/modules/patients';
 
 jest.setTimeout(15000);
@@ -48,6 +49,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await clearCollections();
+    await createProfessionalProfile();
 });
 
 function createTestPrescription(overrides = {}) {

@@ -7,6 +7,7 @@ import {
 } from './praxis.types';
 import { IPrescription, IPrescriptionSupply } from '../../modules/prescriptions/prescription.types';
 import { AndesPrescription } from '../andes/andes.types';
+import { env } from '../../config/config';
 
 export interface LocalPatient {
     dni?: string;
@@ -101,11 +102,32 @@ export class PraxisMapper {
         };
     }
 
+    // Praxis v2 acepta M (masculino), F (femenino) y X (otro).
+    private static normalizeSex(sex?: string): string {
+        const value = (sex || '').trim();
+        if (!value) {
+            return '';
+        }
+        const normalized = value.toLowerCase();
+        if (normalized === 'otro' || normalized === 'x') {
+            return 'X';
+        }
+        const first = normalized.charAt(0);
+        if (first === 'm') {
+            return 'M';
+        }
+        if (first === 'f') {
+            return 'F';
+        }
+        return '';
+    }
+
     private static buildPaciente(
         patient: LocalPatient,
         prescriptionPatient: IPrescription['patient']
     ): PraxisPaciente {
         const obraSocial = prescriptionPatient.obraSocial || patient.obraSocial;
+        const cuil = this.toCuitNumber(prescriptionPatient.cuil);
         return {
             nombre: (patient.firstName || prescriptionPatient.firstName || '').toUpperCase(),
             apellido: (patient.lastName || prescriptionPatient.lastName || '').toUpperCase(),
@@ -116,33 +138,61 @@ export class PraxisMapper {
                 : prescriptionPatient.fechaNac
                     ? new Date(prescriptionPatient.fechaNac).toISOString()
                     : '',
-            sexo: (patient.sex || prescriptionPatient.sex || '').toUpperCase(),
+            sexo: this.normalizeSex(patient.sex || prescriptionPatient.sex),
+            ...(cuil ? { cuil } : {}),
         };
     }
 
     private static buildPacienteFromAndes(andesPrescription: AndesPrescription): PraxisPaciente {
         const paciente = andesPrescription.paciente;
+        const cuil = this.toCuitNumber(paciente.cuil);
         return {
             nombre: (paciente.nombre || '').toUpperCase(),
             apellido: (paciente.apellido || '').toUpperCase(),
             tipoDocumento: 'DNI',
             numeroDocumento: parseInt(paciente.documento || '0', 10),
             fechaNacimiento: paciente.fechaNacimiento || '',
-            sexo: (paciente.sexo || '').toUpperCase(),
+            sexo: this.normalizeSex(paciente.sexo),
+            ...(cuil ? { cuil } : {}),
         };
     }
 
     private static buildPrescriptor(professional: LocalProfessional): PraxisPrescriptor {
-        const matricula = professional.enrollment ||
-            professional.profesionGrado?.[0]?.numeroMatricula || '';
-        const tipoMatricula = professional.profesionGrado?.[0]?.codigoProfesion || 'N';
+        const grado = professional.profesionGrado?.[0];
+        const matricula = grado?.numeroMatricula || professional.enrollment || '';
+        const cuit = this.toCuitNumber(professional.cuil);
 
         return {
             matricula,
-            tipoMatricula,
-            idProvinciaMatricula: 'C',
-            tipoPrescriptor: 'M',
+            tipoMatricula: env.PRAXYS_MATRICULA_TIPO || 'P',
+            idProvinciaMatricula: env.PRAXYS_MATRICULA_PROVINCIA || 'Q',
+            tipoPrescriptor: this.mapTipoPrescriptor(grado?.profesion),
+            ...(cuit ? { cuit } : {}),
         };
+    }
+
+    // Praxis solo distingue médico (M) y odontólogo (O) como tipo de prescriptor.
+    private static mapTipoPrescriptor(profesion?: string): string {
+        const normalized = (profesion || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase();
+        if (normalized.includes('ODONT')) {
+            return 'O';
+        }
+        if (normalized.includes('MEDIC')) {
+            return 'M';
+        }
+        return '';
+    }
+
+    private static toCuitNumber(cuil?: string): number | undefined {
+        const digits = (cuil || '').replace(/\D/g, '');
+        if (!digits) {
+            return undefined;
+        }
+        const value = Number(digits);
+        return Number.isFinite(value) ? value : undefined;
     }
 
     private static buildPrescriptorFromAndes(andesPrescription: AndesPrescription): PraxisPrescriptor {
@@ -157,14 +207,14 @@ export class PraxisMapper {
 
     private static buildCobertura(prescription: IPrescription): PraxisCoberturaSalud | undefined {
         const obraSocial = prescription.patient?.obraSocial;
-        if (!obraSocial?.nombre) {
+        if (!obraSocial?.nombre || !obraSocial?.numeroAfiliado) {
             return undefined;
         }
 
         return {
             idObraSocial: 0,
             idConvenio: 0,
-            numeroAfiliado: obraSocial.numeroAfiliado || '',
+            numeroAfiliado: obraSocial.numeroAfiliado,
             codigoPlan: '',
             nombrePlan: obraSocial.nombre,
         };
@@ -177,7 +227,7 @@ export class PraxisMapper {
         const indicaciones = this.buildIndicaciones(supply);
 
         return {
-            tipoPrescripcion: this.mapTipoPrescripcion(supply),
+            tipoPrescripcion: 'M',
             producto: {
                 codigoAlfabeta,
                 codigoBarras,
@@ -248,12 +298,5 @@ export class PraxisMapper {
             parts.push(`Especificación: ${supply.supply.specification}`);
         }
         return parts.join(' - ') || 'Según prescripción médica';
-    }
-
-    private static mapTipoPrescripcion(supply: IPrescriptionSupply): string {
-        if (supply.supply?.type === 'magistral') {
-            return 'M';
-        }
-        return 'G';
     }
 }

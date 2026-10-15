@@ -10,6 +10,8 @@ export interface IProfessional {
     userId: Types.ObjectId;
     enrollment?: string;
     cuil?: string;
+    tipoDocumento?: string;
+    documento?: string;
     businessName?: string;
     profesionGrado?: IProfesionGrado[];
 }
@@ -23,7 +25,8 @@ export interface IObraSocialPractice {
 export interface IPatientSubDoc {
     firstName: string;
     lastName: string;
-    dni: string;
+    dni?: string;
+    idMPI?: string;
     sex: string;
     obraSocial?: IObraSocialPractice | null;
 }

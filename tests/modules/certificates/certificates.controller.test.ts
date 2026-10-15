@@ -2,6 +2,7 @@ import request from 'supertest';
 import { connectTestDB, clearCollections, disconnectTestDB } from '../../helpers/db';
 import { createAuthenticatedUser } from '../../helpers/auth';
 import { createApp } from '../../helpers/app';
+import { createProfessionalProfile } from '../../helpers/factories';
 import Certificate from '../../../src/modules/certificates/certificates.model';
 import { setPatientService, PatientService } from '../../../src/modules/patients';
 
@@ -32,6 +33,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await clearCollections();
+    await createProfessionalProfile();
 });
 
 describe('Certificates Controller', () => {

@@ -47,8 +47,6 @@ export class UsersService {
                     { email: { $regex: searchTerm, $options: 'i' } },
                     { username: { $regex: searchTerm, $options: 'i' } },
                     { businessName: { $regex: searchTerm, $options: 'i' } },
-                    { firstName: { $regex: searchTerm, $options: 'i' } },
-                    { lastName: { $regex: searchTerm, $options: 'i' } },
                 ],
             };
         }
@@ -69,7 +67,6 @@ export class UsersService {
             username: user.username,
             email: user.email,
             businessName: user.businessName,
-            enrollment: user.enrollment,
             cuil: user.cuil,
             roles: user.roles,
             createdAt: user.createdAt,
@@ -78,13 +75,10 @@ export class UsersService {
             isActive: user.isActive,
             organizaciones: user.organizaciones,
             idAndes: user.idAndes,
-            profesionGrado: user.profesionGrado,
             authorizationExpiration: user.authorizationExpiration,
             authorizationDisposition: user.authorizationDisposition,
             responsibleDTEnrollment: user.responsibleDTEnrollment,
         };
-        // eslint-disable-next-line no-console
-        console.log('[users.getById]', user.username, '| profesionGrado:', JSON.stringify(user.profesionGrado));
         return result;
     }
 
@@ -124,12 +118,10 @@ export class UsersService {
         if (dto.email) { userData.email = dto.email; }
         if (finalUsername) { userData.username = finalUsername; }
         if (dto.businessName) { userData.businessName = dto.businessName; }
-        if (dto.enrollment) { userData.enrollment = dto.enrollment; }
         if (dto.cuil) { userData.cuil = dto.cuil; }
         if (dto.password) { userData.password = dto.password; }
         if (dto.roles) { userData.roles = roleIds; }
         if (dto.idAndes !== undefined) { userData.idAndes = dto.idAndes; }
-        if (dto.profesionGrado && dto.profesionGrado.length > 0) { userData.profesionGrado = dto.profesionGrado; }
         if (dto.authorizationExpiration) { userData.authorizationExpiration = new Date(dto.authorizationExpiration); }
         if (dto.authorizationDisposition) { userData.authorizationDisposition = dto.authorizationDisposition; }
         if (dto.responsibleDTEnrollment) { userData.responsibleDTEnrollment = dto.responsibleDTEnrollment; }
@@ -208,10 +200,8 @@ export class UsersService {
         if (dto.businessName) {
             updateData.businessName = dto.businessName;
         }
-        if (dto.enrollment) { updateData.enrollment = dto.enrollment; }
         if (dto.cuil) { updateData.cuil = dto.cuil; }
         if (dto.idAndes !== undefined) { updateData.idAndes = dto.idAndes; }
-        if (dto.profesionGrado && dto.profesionGrado.length > 0) { updateData.profesionGrado = dto.profesionGrado; }
         if (dto.authorizationExpiration) { updateData.authorizationExpiration = new Date(dto.authorizationExpiration); }
         if (dto.authorizationDisposition) { updateData.authorizationDisposition = dto.authorizationDisposition; }
         if (dto.responsibleDTEnrollment) { updateData.responsibleDTEnrollment = dto.responsibleDTEnrollment; }

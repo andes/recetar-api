@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { runPraxisSync } from './jobs/sync-praxis-identifiers';
 import { runVencimientoRecetas } from './jobs/vencimiento-recetas';
 import { runActualizarEstadosDispensa } from './jobs/actualizar-estados-dispensa';
+import { isDev } from '../shared/logger/dev-logger';
 
 class AgendaService {
     private static instance: AgendaService;
@@ -39,6 +40,7 @@ class AgendaService {
         });
 
         this.agenda.on('ready', () => {
+            if (!isDev()) { return; }
             // eslint-disable-next-line no-console
             console.log('Agenda.js ready and connected to MongoDB');
         });
@@ -46,8 +48,10 @@ class AgendaService {
         await this.agenda.start();
         this.defineJobs();
         this.isInitialized = true;
-        // eslint-disable-next-line no-console
-        console.log('Agenda service initialized successfully');
+        if (isDev()) {
+            // eslint-disable-next-line no-console
+            console.log('Agenda service initialized successfully');
+        }
     }
 
     private defineJobs(): void {

@@ -3,6 +3,7 @@ export const messages = {
         notFound: {
             patient: 'Paciente no encontrado',
             prescription: 'Receta no encontrada',
+            prescriptionPdf: 'PDF de receta no disponible',
             professional: 'Profesional no encontrado',
             pharmacist: 'Farmacéutico no encontrado',
             pharmacy: 'Farmacia no encontrada',
@@ -18,6 +19,9 @@ export const messages = {
         validation: {
             default: 'Error de validación',
             invalidDni: 'El DNI debe tener entre 6 y 11 caracteres',
+            nameRequiredWithoutDni: 'Si el paciente no tiene DNI, debe ingresar nombre y apellido',
+            dniRequiredForValidation: 'El paciente debe tener DNI para poder validarse',
+            dniOrIdMpiRequired: 'El paciente debe tener DNI o identificador de ANDES',
             invalidSex: 'Sexo debe ser uno de: masculino, femenino, otro',
             requiredField: 'El campo {field} es requerido',
             invalidEmail: 'El email es incorrecto',
@@ -35,6 +39,10 @@ export const messages = {
             emailTaken: 'El email ya está en uso',
             usernameTaken: 'El nombre de usuario ya está en uso',
             unavailable: 'El servicio de validación no está disponible',
+            magistralRequiresPublicOrganization: 'Los medicamentos magistrales solo se pueden prescribir en organizaciones públicas',
+            noDniRequiresPublicOrganization: 'Un paciente sin DNI solo se puede prescribir en organizaciones públicas',
+            professionalFormationRequired: 'No se encontraron los datos del profesional en ANDES (matrícula/formación). No se puede emitir el documento.',
+            professionalCuilRequired: 'No se encontró el CUIT/CUIL del profesional. Completalo en tu perfil antes de emitir el documento.',
         },
         patient: {
             duplicateDni: 'Ya existe un paciente con ese DNI',
@@ -64,6 +72,7 @@ export const messages = {
         badGateway: {
             default: 'Servicio externo no disponible',
             andes: 'No se pudo conectar con Andes',
+            andesUnauthorized: 'El token de ANDES es inválido o no tiene permisos suficientes',
         },
         application: {
             inactive: 'La aplicación está inactiva',
@@ -76,6 +85,8 @@ export const messages = {
             prescriptionNotFound: 'Prescripción no encontrada',
             patientNotFound: 'Paciente no encontrado',
             treatmentRequiresMedications: 'El tratamiento prolongado solo aplica a prescripciones de medicamentos',
+            notSuspendable: 'La receta no se puede suspender',
+            publishedPrescription: 'La receta fue emitida; debe suspenderse',
         },
         security: {
             invalidPassword: 'Contraseña incorrecta',

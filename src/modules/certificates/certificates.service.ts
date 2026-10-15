@@ -6,6 +6,7 @@ import { ICertificate } from './certificates.types';
 import { CreateCertificateDTO, UpdateCertificateDTO } from './certificates.dto';
 import { CertificateNotFoundError } from './certificates.errors';
 import { PatientNotFoundError } from '../patients/patients.errors';
+import { ProfessionalService } from '../professionals';
 
 type PatientServiceProvider = PatientService | (() => PatientService);
 
@@ -14,6 +15,7 @@ export class CertificateService {
         private readonly certificateRepository: CertificateRepository,
         private readonly patientServiceProvider: PatientServiceProvider,
         private readonly logger: Logger,
+        private readonly professionalProfileService?: ProfessionalService,
     ) {}
 
     private get patientService(): PatientService {
@@ -44,8 +46,20 @@ export class CertificateService {
 
     async create(dto: CreateCertificateDTO): Promise<ICertificate> {
         const snapshot = await this.resolvePatient(dto);
+        const profile = await this.professionalProfileService?.requireForUser(dto.professional.userId);
+        const professional = profile
+            ? {
+                ...dto.professional,
+                tipoDocumento: profile.tipoDocumento,
+                documento: profile.documento,
+                cuil: dto.professional.cuil || profile.cuit,
+                enrollment: profile.profesionGrado?.[0]?.numeroMatricula || dto.professional.enrollment,
+                profesionGrado: profile.profesionGrado,
+            }
+            : dto.professional;
         const data: Partial<ICertificate> = {
             ...dto as unknown as Partial<ICertificate>,
+            professional,
             startDate: new Date(dto.startDate),
             patient: {
                 ...dto.patient,
@@ -58,11 +72,11 @@ export class CertificateService {
     }
 
     private async resolvePatient(dto: CreateCertificateDTO): Promise<PatientSnapshot> {
-        const dni = dto.patient.dni;
-        if (!dni) {
-            return { idMPI: dto.patient.idMPI ?? undefined } as unknown as PatientSnapshot;
-        }
-        const snapshot = await this.patientService.resolveSnapshot(dni, dto.patient.sex);
+        const snapshot = dto.patient.idMPI
+            ? await this.patientService.resolveSnapshotById(dto.patient.idMPI)
+            : dto.patient.dni
+                ? await this.patientService.resolveSnapshot(dto.patient.dni, dto.patient.sex)
+                : null;
         if (!snapshot) {
             throw new PatientNotFoundError();
         }

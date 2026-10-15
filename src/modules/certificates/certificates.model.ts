@@ -20,6 +20,8 @@ const professionalCertSchema = new Schema({
     businessName: { type: String, required: true },
     cuil: { type: String },
     enrollment: { type: String },
+    tipoDocumento: { type: String },
+    documento: { type: String },
     profesionGrado: [{
         profesion: { type: String, required: true },
         codigoProfesion: { type: String, required: true },

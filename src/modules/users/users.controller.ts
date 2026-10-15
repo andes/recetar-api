@@ -45,6 +45,16 @@ export class UsersController {
         }
     };
 
+    updateMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const userId = (req.user as any)._id.toString();
+            const result = await this.usersService.update(userId, req.body, req.user as any);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
     remove = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             await this.usersService.delete(req.params.id, req.user as any);

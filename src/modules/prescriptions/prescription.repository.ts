@@ -214,6 +214,15 @@ export class PrescriptionRepository {
             .sort({ createdAt: -1 }).limit(limit).exec();
     }
 
+    async findByUserIdAndPatientIdMPI(userId: string, patientIdMPI: string, limit = 10): Promise<IPrescription[]> {
+        const professionalId = toObjectId(userId);
+        if (!professionalId) {
+            return [];
+        }
+        return Prescription.find({ 'professional.userId': professionalId, 'patient.idMPI': patientIdMPI })
+            .sort({ createdAt: -1 }).limit(limit).exec();
+    }
+
     async findByStatusAndAmbito(status: string, ambito: string, limit = 100): Promise<IPrescription[]> {
         return Prescription.find({ status, ambito }).limit(limit).exec();
     }

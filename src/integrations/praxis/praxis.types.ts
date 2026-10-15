@@ -12,10 +12,10 @@ export interface PraxisPaciente {
 
 export interface PraxisCoberturaSalud {
     idObraSocial: number;
-    idConvenio: number;
+    idConvenio?: number;
     numeroAfiliado: string;
-    codigoPlan: string;
-    nombrePlan: string;
+    codigoPlan?: string;
+    nombrePlan?: string;
 }
 
 export interface PraxisPrescriptor {
@@ -23,6 +23,7 @@ export interface PraxisPrescriptor {
     tipoMatricula: string;
     idProvinciaMatricula: string;
     tipoPrescriptor: string;
+    cuit?: number;
 }
 
 export interface PraxisDiagnostico {
@@ -32,7 +33,7 @@ export interface PraxisDiagnostico {
 
 export interface PraxisProducto {
     codigoAlfabeta: number;
-    codigoBarras: string;
+    codigoBarras?: string;
 }
 
 export interface PraxisRenglon {
@@ -40,7 +41,7 @@ export interface PraxisRenglon {
     producto: PraxisProducto;
     cantidadEnvases: number;
     diagnostico: PraxisDiagnostico;
-    indicaciones: string;
+    indicaciones?: string;
     observaciones?: string;
 }
 
@@ -52,19 +53,44 @@ export interface PraxisPrescriptionRequest {
     tratamientoProlongado: boolean;
 }
 
+export interface PraxisRecetaEmitida {
+    numeroReceta?: string;
+    idReceta: number;
+    hash: string;
+    contenidoQR?: string;
+    cuirs?: string[];
+}
+
+export interface PraxisMensaje {
+    mensaje: string;
+    codigo: number;
+    // E=Error, A=Aviso, I=Información
+    severidad: string;
+}
+
 export interface PraxisPrescriptionResponse {
-    idPrescripcion: string;
-    estado: string;
-    mensaje?: string;
+    idPrescripcion: number;
+    hash: string;
+    recetasEmitidas?: PraxisRecetaEmitida[];
+    mensajes?: PraxisMensaje[];
 }
 
 export interface PraxisErrorResponse {
-    error: string;
-    mensaje: string;
+    error?: string;
+    mensaje?: string;
+    mensajes?: PraxisMensaje[];
     detalles?: Array<{
         campo: string;
         mensaje: string;
     }>;
+}
+
+export interface PraxisAnnulmentResponse {
+    anulacionExitosa?: boolean;
+    mensaje?: string;
+    codigo?: number;
+    severidad?: string;
+    recetas?: string[];
 }
 
 export interface PraxisPdfResponse {

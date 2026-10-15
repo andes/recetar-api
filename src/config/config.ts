@@ -14,6 +14,8 @@ export const env = {
     VADEMECUM_API_KEY: process.env.VADEMECUM_API_KEY || '',
     PRAXYS_ENDPOINT: process.env.PRAXYS_ENDPOINT || '',
     PRAXYS_API_KEY: process.env.PRAXYS_API_KEY || '',
+    PRAXYS_MATRICULA_TIPO: process.env.PRAXYS_MATRICULA_TIPO || 'P',
+    PRAXYS_MATRICULA_PROVINCIA: process.env.PRAXYS_MATRICULA_PROVINCIA || 'Q',
     PATIENT_VALIDATION_ENABLED: process.env.PATIENT_VALIDATION_ENABLED !== 'false',
     SISA_URL: process.env.SISA_URL || '',
     SISA_USERNAME: process.env.SISA_USERNAME || '',

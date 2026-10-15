@@ -1,6 +1,7 @@
 import {
     createPatientSchema,
     updatePatientSchema,
+    searchPatientsSchema,
     getByDniSchema,
     getCoverageSchema,
 } from '../../../src/modules/patients/patients.dto';
@@ -29,6 +30,30 @@ describe('Patients DTOs', () => {
             expect(result.firstName).toBeUndefined();
         });
 
+        it('accepts a patient without dni when firstName and lastName are present', () => {
+            const result = createPatientSchema.parse({
+                firstName: 'Ana',
+                lastName: 'Gómez',
+                sex: 'Femenino',
+            });
+            expect(result.dni).toBeUndefined();
+            expect(result.firstName).toBe('Ana');
+        });
+
+        it('accepts an empty dni when firstName and lastName are present', () => {
+            const result = createPatientSchema.parse({
+                dni: '',
+                firstName: 'Ana',
+                lastName: 'Gómez',
+                sex: 'Femenino',
+            });
+            expect(result.dni).toBe('');
+        });
+
+        it('rejects a patient without dni and without firstName/lastName', () => {
+            expect(() => createPatientSchema.parse({ sex: 'Femenino' })).toThrow();
+        });
+
         it('accepts optional fields', () => {
             const data = {
                 ...validData,
@@ -42,6 +67,11 @@ describe('Patients DTOs', () => {
             expect(result.nombreAutopercibido).toBe('Juancito');
             expect(result.genero).toBe('masculino');
             expect(result.cuil).toBe('20-12345678-9');
+        });
+
+        it('ignores empty or Ninguno gender', () => {
+            expect(createPatientSchema.parse({ ...validData, genero: '' }).genero).toBeUndefined();
+            expect(createPatientSchema.parse({ ...validData, genero: 'Ninguno' }).genero).toBeUndefined();
         });
 
         it('rejects missing sex', () => {
@@ -62,6 +92,16 @@ describe('Patients DTOs', () => {
 
         it('rejects dni longer than 11 chars', () => {
             expect(() => createPatientSchema.parse({ ...validData, dni: '123456789012' })).toThrow();
+        });
+
+        it('accepts contactos and direcciones', () => {
+            const result = createPatientSchema.parse({
+                ...validData,
+                contactos: [{ tipo: 'celular', valor: '2994000000' }],
+                direcciones: [{ calle: 'San Martín 123' }],
+            });
+            expect(result.contactos?.[0].tipo).toBe('celular');
+            expect(result.direcciones?.[0].calle).toBe('San Martín 123');
         });
 
         it('accepts empty body only for missing optional fields', () => {
@@ -86,6 +126,47 @@ describe('Patients DTOs', () => {
 
         it('rejects invalid dni', () => {
             expect(() => updatePatientSchema.parse({ dni: '12' })).toThrow();
+        });
+
+        it('accepts an empty dni for an update', () => {
+            const result = updatePatientSchema.parse({ dni: '' });
+            expect(result.dni).toBe('');
+        });
+
+        it('ignores empty or Ninguno gender', () => {
+            expect(updatePatientSchema.parse({ genero: '' }).genero).toBeUndefined();
+            expect(updatePatientSchema.parse({ genero: 'Ninguno' }).genero).toBeUndefined();
+        });
+
+        it('accepts contactos and direcciones', () => {
+            const result = updatePatientSchema.parse({
+                contactos: [{ tipo: 'email', valor: 'ana@example.com' }],
+                direcciones: [{ calle: 'San Martín 123', localidad: 'Neuquén', provincia: 'Neuquén' }],
+            });
+            expect(result.contactos).toHaveLength(1);
+            expect(result.direcciones?.[0].calle).toBe('San Martín 123');
+        });
+    });
+
+    describe('searchPatientsSchema', () => {
+        it('accepts filters and pagination', () => {
+            const result = searchPatientsSchema.parse({
+                q: 'Ana',
+                estado: 'temporal',
+                sexo: 'femenino',
+                email: 'ana@example.com',
+                offset: '10',
+                limit: '20',
+            });
+            expect(result.offset).toBe(10);
+            expect(result.limit).toBe(20);
+            expect(result.estado).toBe('temporal');
+        });
+
+        it('uses defaults for offset and limit', () => {
+            const result = searchPatientsSchema.parse({});
+            expect(result.offset).toBe(0);
+            expect(result.limit).toBe(20);
         });
     });
 

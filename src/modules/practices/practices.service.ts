@@ -6,6 +6,7 @@ import { IPractice } from './practices.types';
 import { CreatePracticeDTO, UpdatePracticeDTO } from './practices.dto';
 import { PracticeNotFoundError } from './practices.errors';
 import { PatientNotFoundError } from '../patients/patients.errors';
+import { ProfessionalService } from '../professionals';
 
 type PatientServiceProvider = PatientService | (() => PatientService);
 
@@ -14,6 +15,7 @@ export class PracticeService {
         private readonly practiceRepository: PracticeRepository,
         private readonly patientServiceProvider: PatientServiceProvider,
         private readonly logger: Logger,
+        private readonly professionalProfileService?: ProfessionalService,
     ) {}
 
     private get patientService(): PatientService {
@@ -35,17 +37,33 @@ export class PracticeService {
     }
 
     async create(dto: CreatePracticeDTO): Promise<IPractice> {
-        const snapshot = await this.resolvePatient(dto.patient.dni, dto.patient.sex);
+        const snapshot = await this.resolvePatient(dto.patient);
+        const profile = await this.professionalProfileService?.requireForUser(dto.professional.userId);
+        const professional = profile
+            ? {
+                ...dto.professional,
+                tipoDocumento: profile.tipoDocumento,
+                documento: profile.documento,
+                cuil: dto.professional.cuil || profile.cuit,
+                enrollment: profile.profesionGrado?.[0]?.numeroMatricula || dto.professional.enrollment,
+                profesionGrado: profile.profesionGrado,
+            }
+            : dto.professional;
         const data: Partial<IPractice> = {
             ...dto as unknown as Partial<IPractice>,
-            patient: { ...dto.patient, ...snapshot },
+            professional: professional as unknown as IPractice['professional'],
+            patient: { ...dto.patient, ...snapshot, idMPI: dto.patient.idMPI ?? snapshot.idMPI ?? undefined },
             date: new Date(dto.date),
         };
         return this.practiceRepository.create(data);
     }
 
-    private async resolvePatient(dni: string, sex: string): Promise<PatientSnapshot> {
-        const snapshot = await this.patientService.resolveSnapshot(dni, sex);
+    private async resolvePatient(patient: CreatePracticeDTO['patient']): Promise<PatientSnapshot> {
+        const snapshot = patient.idMPI
+            ? await this.patientService.resolveSnapshotById(patient.idMPI)
+            : patient.dni
+                ? await this.patientService.resolveSnapshot(patient.dni, patient.sex)
+                : null;
         if (!snapshot) {
             throw new PatientNotFoundError();
         }

@@ -1,17 +1,13 @@
 import { CertificateRepository } from './certificates.repository';
 import { CertificateService } from './certificates.service';
 import { CertificateController } from './certificates.controller';
-import { Logger } from '../../shared/logger/logger.interface';
+import { devLogger } from '../../shared/logger/dev-logger';
 import { getPatientService } from '../patients';
-
-const logger: Logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
+import { createProfessionalService } from '../professionals';
 
 const repository = new CertificateRepository();
-const service = new CertificateService(repository, getPatientService, logger as any);
+const professionalProfileService = createProfessionalService(undefined, devLogger);
+const service = new CertificateService(repository, getPatientService, devLogger, professionalProfileService);
 const controller = new CertificateController(service);
 
 export { controller as certificateController };

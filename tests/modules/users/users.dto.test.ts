@@ -2,6 +2,7 @@ import {
     listUsersSchema,
     createUserSchema,
     updateUserSchema,
+    updateOwnUserSchema,
     requestEmailUpdateSchema,
     confirmEmailUpdateSchema,
     updateOwnOrganizacionesSchema,
@@ -53,25 +54,11 @@ describe('Users DTOs', () => {
                 email: 'test@example.com',
                 username: 'testuser',
                 businessName: 'Test User',
-                enrollment: 'ENR-001',
                 cuil: '20-12345678-9',
             };
             const result = createUserSchema.parse(data);
             expect(result.email).toBe('test@example.com');
             expect(result.username).toBe('testuser');
-        });
-
-        it('accepts profesionGrado', () => {
-            const data = {
-                ...validData,
-                profesionGrado: [{
-                    profesion: 'Medicina',
-                    codigoProfesion: 'MED-001',
-                    numeroMatricula: '12345',
-                }],
-            };
-            const result = createUserSchema.parse(data);
-            expect(result.profesionGrado).toHaveLength(1);
         });
 
         it('rejects missing password', () => {
@@ -118,6 +105,17 @@ describe('Users DTOs', () => {
         it('accepts roles array', () => {
             const result = updateUserSchema.parse({ roles: ['507f1f77bcf86cd799439011'] });
             expect(result.roles).toHaveLength(1);
+        });
+    });
+
+    describe('updateOwnUserSchema', () => {
+        it('acepta un CUIT/CUIL válido', () => {
+            const result = updateOwnUserSchema.parse({ cuil: '20-12345678-6' });
+            expect(result.cuil).toBe('20-12345678-6');
+        });
+
+        it('rechaza un CUIT/CUIL inválido', () => {
+            expect(() => updateOwnUserSchema.parse({ cuil: '20-12345678-9' })).toThrow();
         });
     });
 

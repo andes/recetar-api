@@ -11,6 +11,8 @@ const professionalSchema = z.object({
     businessName: z.string().min(1, 'errors.validation.requiredField'),
     cuil: z.string().optional(),
     enrollment: z.string().optional(),
+    tipoDocumento: z.string().optional(),
+    documento: z.string().optional(),
     profesionGrado: z.array(profesionGradoSchema).optional(),
 });
 
@@ -26,7 +28,13 @@ const patientSubSchema = z.object({
         nombre: z.string().optional(),
         numeroAfiliado: z.string().optional(),
     }).optional(),
-});
+}).refine(
+    (data) => !!data.dni || !!data.idMPI,
+    {
+        message: 'errors.validation.dniOrIdMpiRequired',
+        path: ['dni'],
+    },
+);
 
 export const createCertificateSchema = z.object({
     patient: patientSubSchema,

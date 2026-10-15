@@ -67,14 +67,20 @@ for (const resource of documentResources) {
 grants.push({ role: 'professional', resource: 'patient', action: 'create:any', attributes: '*, !views' });
 grants.push({ role: 'professional', resource: 'patient', action: 'read:any', attributes: '*' });
 grants.push({ role: 'professional', resource: 'patient', action: 'read:own', attributes: '*' });
+grants.push({ role: 'professional', resource: 'patient', action: 'update:any', attributes: '*' });
+grants.push({ role: 'professional', resource: 'patient', action: 'delete:any', attributes: '*' });
 grants.push({ role: 'professional-public', resource: 'patient', action: 'create:any', attributes: '*' });
 grants.push({ role: 'professional-public', resource: 'patient', action: 'read:any', attributes: '*' });
+grants.push({ role: 'professional-public', resource: 'patient', action: 'update:any', attributes: '*' });
+grants.push({ role: 'professional-public', resource: 'patient', action: 'delete:any', attributes: '*' });
 grants.push({ role: 'pharmacist', resource: 'patient', action: 'read:any', attributes: '*' });
 grants.push({ role: 'pharmacist-public', resource: 'patient', action: 'read:any', attributes: '*' });
 grants.push({ role: 'admin', resource: 'patient', action: 'create:any', attributes: '*' });
 grants.push({ role: 'admin', resource: 'patient', action: 'read:any', attributes: '*' });
 grants.push({ role: 'admin', resource: 'patient', action: 'update:any', attributes: '*' });
 grants.push({ role: 'auditor', resource: 'patient', action: 'read:any', attributes: '*' });
+grants.push({ role: 'auditor', resource: 'patient', action: 'update:any', attributes: '*' });
+grants.push({ role: 'auditor', resource: 'patient', action: 'delete:any', attributes: '*' });
 grants.push({ role: 'owner', resource: 'patient', action: 'read:any', attributes: '*' });
 grants.push({ role: 'owner', resource: 'patient', action: 'delete:any', attributes: '*' });
 

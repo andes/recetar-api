@@ -2,22 +2,19 @@ import { PracticeRepository } from './practices.repository';
 import { PracticeService } from './practices.service';
 import { PracticeController } from './practices.controller';
 import { Logger } from '../../shared/logger/logger.interface';
+import { devLogger } from '../../shared/logger/dev-logger';
 import { getPatientService } from '../patients';
+import { createProfessionalService } from '../professionals';
 
 export function createPracticeModule(logger: Logger) {
     const repository = new PracticeRepository();
-    const service = new PracticeService(repository, getPatientService, logger);
+    const professionalProfileService = createProfessionalService(undefined, logger);
+    const service = new PracticeService(repository, getPatientService, logger, professionalProfileService);
     const ctrl = new PracticeController(service);
     return ctrl;
 }
 
-const defaultLogger: Logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
-
-const controller = createPracticeModule(defaultLogger);
+const controller = createPracticeModule(devLogger);
 
 export { controller as practiceController };
 export { PracticeController, PracticeService, PracticeRepository };

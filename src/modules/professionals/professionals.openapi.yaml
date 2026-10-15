@@ -1,123 +1,25 @@
 tags:
   - name: Profesionales
     description: |
-      Gestión de profesionales de la salud habilitados para recetar.
-      
-      - CRUD completo (listar, crear, obtener por ID, actualizar, eliminar).
-      - Búsqueda por DNI (`GET /professionals/dni/{dni}`).
+      Perfil del profesional cacheado desde ANDES (fuente de verdad).
+
+      - `GET /professionals/me` — perfil del profesional logueado (`formacionGrado`, matrícula, CUIT).
+      - El CUIT/CUIL se resuelve desde ANDES (`cuit`) y, si falta, desde la cuenta (`users.cuil`). Si no se resuelve, la emisión de documentos responde 422.
+      - El caché se refresca desde ANDES en el login y, si falta al emitir un documento, se consulta ANDES como fallback.
+      - No incluye datos editables del usuario (nombre/apellido de cuenta, email, etc.).
 
 paths:
-  /professionals:
+  /professionals/me:
     get:
       tags: [Profesionales]
-      summary: Listar profesionales
+      summary: Perfil del profesional logueado
+      description: |
+        Devuelve el perfil cacheado desde ANDES: `tipoDocumento`, `documento`, `nombre`,
+        `apellido`, `sexo`, `cuit` y `profesionGrado` (con matrículas).
       security:
         - bearerAuth: []
-      parameters:
-        - name: skip
-          in: query
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          schema:
-            type: integer
       responses:
         "200":
-          description: Lista de profesionales
-    post:
-      tags: [Profesionales]
-      summary: Crear profesional
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                dni:
-                  type: string
-                enrollment:
-                  type: string
-                lastName:
-                  type: string
-                firstName:
-                  type: string
-                sex:
-                  type: string
-                  enum: [Femenino, Masculino, Otro]
-                image:
-                  type: string
-      responses:
-        "201":
-          description: Profesional creado
-        "422":
-          description: Error de validación
-
-  /professionals/{id}:
-    get:
-      tags: [Profesionales]
-      summary: Obtener profesional por ID
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Datos del profesional
+          description: Perfil del profesional
         "404":
-          description: Profesional no encontrado
-    patch:
-      tags: [Profesionales]
-      summary: Actualizar profesional
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Profesional actualizado
-        "404":
-          description: Profesional no encontrado
-    delete:
-      tags: [Profesionales]
-      summary: Eliminar profesional
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Profesional eliminado
-        "404":
-          description: Profesional no encontrado
-
-  /professionals/dni/{dni}:
-    get:
-      tags: [Profesionales]
-      summary: Buscar profesional por DNI
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: dni
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Profesional(es) encontrado(s)
+          description: No hay perfil de profesional para el usuario

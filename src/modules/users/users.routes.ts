@@ -6,6 +6,7 @@ import { usersController } from './index';
 import {
     createUserSchema,
     updateUserSchema,
+    updateOwnUserSchema,
     requestEmailUpdateSchema,
     confirmEmailUpdateSchema,
     updateOwnOrganizacionesSchema,
@@ -28,6 +29,7 @@ router.post('/request-email-update', checkAuth, canUpdateOwnUser, validate(reque
 router.post('/confirm-email-update', validate(confirmEmailUpdateSchema), usersController.confirmEmailUpdate);
 router.patch('/me/organizaciones', checkAuth, canUpdateOwnUser, validate(updateOwnOrganizacionesSchema), usersController.updateOwnOrganizaciones);
 router.post('/me/organizaciones/sisa', checkAuth, canUpdateOwnUser, validate(addSisaOrganizacionSchema), usersController.addSisaOrganizacion);
+router.patch('/me', checkAuth, canUpdateOwnUser, validate(updateOwnUserSchema), usersController.updateMe);
 router.get('/:id', checkAuth, canReadOwnUser, usersController.show);
 router.post('/', checkAuth, canCreateUser, validate(createUserSchema), usersController.create);
 router.patch('/:id', checkAuth, canUpdateAnyUser, validate(updateUserSchema), usersController.update);

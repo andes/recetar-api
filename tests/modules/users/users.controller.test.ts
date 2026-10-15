@@ -153,6 +153,41 @@ describe('Users Controller', () => {
         });
     });
 
+    describe('PATCH /api/users/me', () => {
+        it('returns 200 for a professional updating their own businessName', async () => {
+            const { token, user } = await createAuthenticatedUser({ roleType: 'professional' });
+
+            const res = await request(app)
+                .patch('/api/users/me')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ businessName: 'Nombre Nuevo' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.businessName).toBe('Nombre Nuevo');
+            const updated = await User.findById(user._id);
+            expect(updated?.businessName).toBe('Nombre Nuevo');
+        });
+
+        it('ignores roles/isActive in self-update', async () => {
+            const { token } = await createAuthenticatedUser({ roleType: 'professional' });
+
+            const res = await request(app)
+                .patch('/api/users/me')
+                .set('Authorization', `Bearer ${token}`)
+                .send({ businessName: 'X', roles: ['507f1f77bcf86cd799439011'], isActive: false });
+
+            expect(res.status).toBe(200);
+            expect(res.body.data.isActive).toBe(true);
+        });
+
+        it('returns 401 without token', async () => {
+            const res = await request(app)
+                .patch('/api/users/me')
+                .send({ businessName: 'X' });
+            expect(res.status).toBe(401);
+        });
+    });
+
     describe('DELETE /api/users/:id', () => {
         it('returns 204 and deletes the user', async () => {
             const { token } = await createAuthenticatedUser();

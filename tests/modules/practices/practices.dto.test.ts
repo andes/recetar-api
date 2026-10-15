@@ -78,6 +78,23 @@ describe('Practices DTOs', () => {
         it('rejects invalid status', () => {
             expect(() => createPracticeSchema.parse({ ...validData, status: 'invalid' })).toThrow();
         });
+
+        it('accepts a patient without dni when idMPI is present', () => {
+            const data = {
+                ...validData,
+                patient: { firstName: 'Ana', lastName: 'Gómez', dni: '', sex: 'Femenino', idMPI: 'mpi-1' },
+            };
+            const result = createPracticeSchema.parse(data);
+            expect(result.patient.idMPI).toBe('mpi-1');
+        });
+
+        it('rejects a patient without dni and without idMPI', () => {
+            const data = {
+                ...validData,
+                patient: { firstName: 'Ana', lastName: 'Gómez', sex: 'Femenino' },
+            };
+            expect(() => createPracticeSchema.parse(data)).toThrow();
+        });
     });
 
     describe('updatePracticeSchema', () => {

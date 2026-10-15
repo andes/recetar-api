@@ -3,6 +3,7 @@ import Agenda from 'agenda';
 import { initializeMongo } from './database/dbconfig';
 import './config/config';
 import AgendaService from './agenda/agenda.service';
+import { isDev } from './shared/logger/dev-logger';
 
 const Agendash = require('agendash');
 
@@ -54,6 +55,7 @@ class AgendaUIServer {
         await this.initializeAgenda();
         const port = this.app.get('port');
         this.app.listen(port, () => {
+            if (!isDev()) { return; }
             // eslint-disable-next-line no-console
             console.log(`Agenda.js UI running on port ${port}`);
             // eslint-disable-next-line no-console
@@ -62,8 +64,10 @@ class AgendaUIServer {
     }
 
     async gracefulShutdown() {
-        // eslint-disable-next-line no-console
-        console.log('Cerrando Agenda.js UI...');
+        if (isDev()) {
+            // eslint-disable-next-line no-console
+            console.log('Cerrando Agenda.js UI...');
+        }
         await this.agendaService.gracefulShutdown();
         process.exit(0);
     }

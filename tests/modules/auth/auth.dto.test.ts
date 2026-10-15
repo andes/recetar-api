@@ -49,7 +49,7 @@ describe('Auth DTOs', () => {
         });
 
         it('accepts optional fields', () => {
-            const data = { ...validData, businessName: 'Test Pharmacy', enrollment: 'EN001', cuil: '20-12345678-9' };
+            const data = { ...validData, businessName: 'Test Pharmacy', enrollment: 'EN001', cuil: '20-12345678-6' };
             const result = registerSchema.parse(data);
             expect(result.businessName).toBe('Test Pharmacy');
         });

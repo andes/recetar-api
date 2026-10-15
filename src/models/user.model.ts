@@ -9,10 +9,6 @@ export interface IUser extends Document {
     emailConfirmationToken?: string;
     emailConfirmationExpires?: Date;
     businessName: string;
-    firstName?: string;
-    lastName?: string;
-    razonSocial?: string;
-    enrollment?: string;
     cuil?: string;
     password: string;
     roles: Array<{ _id: Types.ObjectId; role?: string }>;
@@ -31,13 +27,6 @@ export interface IUser extends Document {
     };
     lastLogin?: Date;
     idAndes?: string;
-    profesionGrado?: Array<{
-        profesion: string;
-        codigoProfesion: string;
-        numeroMatricula: string;
-        vencimiento?: Date;
-        estado?: 'vigente' | 'vencida' | 'suspendida' | 'sin-matricula' | 'baja';
-    }>;
     organizaciones: Array<{
         _id: string;
         nombre: string;
@@ -107,22 +96,10 @@ export const userSchema = new Schema({
     emailConfirmationExpires: {
         type: Date
     },
-    enrollment: {
-        type: String
-    },
     cuil: {
         type: String
     },
     businessName: {
-        type: String
-    },
-    firstName: {
-        type: String
-    },
-    lastName: {
-        type: String
-    },
-    razonSocial: {
         type: String
     },
     password: {
@@ -182,27 +159,6 @@ export const userSchema = new Schema({
         type: String,
         default: ''
     },
-    profesionGrado: [{
-        profesion: {
-            type: String,
-            required: '{PATH} is required'
-        },
-        codigoProfesion: {
-            type: String,
-            required: '{PATH} is required'
-        },
-        numeroMatricula: {
-            type: String,
-            required: '{PATH} is required'
-        },
-        vencimiento: {
-            type: Date
-        },
-        estado: {
-            type: String,
-            enum: ['vigente', 'vencida', 'suspendida', 'sin-matricula', 'baja']
-        },
-    }],
     organizaciones: [
         {
             _id: {

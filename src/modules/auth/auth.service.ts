@@ -17,6 +17,7 @@ import {
 } from './auth.errors';
 import { ForbiddenError, ValidationError, BadGatewayError } from '../../shared/errors';
 import { AndesClient, AndesMapper, MatriculasEstadoResponse, AndesProfesionalDetalle } from '../../integrations/andes';
+import { ProfessionalService } from '../professionals';
 import {
     RegisterDTO,
     LoginDTO,
@@ -29,6 +30,7 @@ import {
 } from './auth.dto';
 import { IUser } from '../../models/user.model';
 import ProfesionAutorizada from '../../models/profesionAutorizada.model';
+import { isValidCuitCuil, normalizeTaxId } from '../../shared/utils/tax-id';
 
 interface TokenPayload {
     iss: string;
@@ -52,6 +54,7 @@ export class AuthService {
         private readonly emailService?: EmailService,
         private readonly emailTemplateService?: EmailTemplateService,
         private readonly andesClient?: AndesClient,
+        private readonly professionalProfileService?: ProfessionalService,
     ) {
         this.jwtSecret = process.env.JWT_SECRET || '';
         this.tokenLifetime = parseInt(process.env.TOKEN_LIFETIME || '1', 10);
@@ -148,18 +151,20 @@ export class AuthService {
     private async registerProfessional(dto: RegisterDTO, role: any, rawPassword: string): Promise<IUser> {
         const { username, email, enrollment, cuil, profesion, fechaEgreso, fechaMatVencimiento, businessName } = dto;
 
-        const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${username}`);
-        if (!(resp.body && resp.body.length > 0 && resp.body[0].profesiones && resp.body[0].profesiones.length > 0)) {
+        if (!this.andesClient) {
+            throw new ForbiddenError('errors.forbidden.default');
+        }
+        const professionalAndes = await this.andesClient.getProfessionalFormacion(username);
+        const formaciones = professionalAndes?.formacionGrado || professionalAndes?.profesiones || [];
+        if (!professionalAndes || formaciones.length === 0) {
             throw new ForbiddenError('errors.forbidden.default');
         }
 
-        const professionalAndes = resp.body[0];
-        const { profesiones } = professionalAndes;
-        const profAut = profesiones.filter((p: any) => {
+        const profAut = formaciones.filter((p: any) => {
             const validCodes = [1, 2, 23];
             if (!validCodes.includes(p.profesion.codigo)) { return false; }
-            const lastMatriculacion = p.matriculacion[p.matriculacion.length - 1];
-            return lastMatriculacion && moment(lastMatriculacion.fin) > moment();
+            const lastMatriculacion = p.matriculacion?.[p.matriculacion.length - 1];
+            return !!lastMatriculacion && moment(lastMatriculacion.fin) > moment();
         });
 
         if (!profAut || profAut.length === 0) {
@@ -183,26 +188,24 @@ export class AuthService {
             throw new ForbiddenError('errors.forbidden.default');
         }
 
-        if (!(profAut && cuil === professionalAndes.cuit)) {
+        const andesCuit = normalizeTaxId(professionalAndes.cuit);
+        const providedCuit = normalizeTaxId(cuil);
+        if (andesCuit && providedCuit && andesCuit !== providedCuit) {
+            throw new ForbiddenError('errors.forbidden.default');
+        }
+        const finalCuit = andesCuit || providedCuit;
+        if (!isValidCuitCuil(finalCuit)) {
             throw new ForbiddenError('errors.forbidden.default');
         }
 
         const apellidoYNombre = `${professionalAndes.apellido} ${professionalAndes.nombre}`;
-        const profesionG = profAut.map((p: any) => ({
-            profesion: p.profesion.nombre,
-            codigoProfesion: p.profesion.codigo,
-            numeroMatricula: p.matriculacion[p.matriculacion.length - 1].matriculaNumero,
-            vencimiento: p.matriculacion[p.matriculacion.length - 1].fin,
-        }));
 
         const newUser = await this.authRepository.createUser({
             username,
             email,
             password: rawPassword,
-            enrollment,
-            cuil,
+            cuil: finalCuit,
             businessName: apellidoYNombre || businessName,
-            profesionGrado: profesionG,
             isActive: true,
             roles: [role._id],
         } as any);
@@ -239,9 +242,9 @@ export class AuthService {
             username,
             email,
             password: rawPassword,
-            enrollment,
             cuil,
             businessName,
+            responsibleDTEnrollment: enrollment,
             isActive: true,
             roles: [role._id],
         } as any);
@@ -367,12 +370,14 @@ export class AuthService {
     async getProfessionalsAndes(dto: GetProfessionalsAndesDTO): Promise<any> {
         const { documento, matricula, cuil, fechaEgreso, fechaMatVencimiento, profesionCodigo } = dto;
 
-        const resp = await needle('get', `${process.env.ANDES_ENDPOINT}/core/tm/profesionales/guia?documento=${documento}`);
-        if (!resp.body || resp.body.length === 0) {
+        if (!this.andesClient) {
+            throw new BadGatewayError('errors.badGateway.andes');
+        }
+        const profesional = await this.andesClient.getProfessionalFormacion(documento);
+        if (!profesional) {
             throw new UserNotFoundError();
         }
 
-        const profesional = resp.body[0];
         if (matricula || cuil || fechaEgreso || fechaMatVencimiento || profesionCodigo) {
             const validated = this.validateProfessional(profesional, matricula, cuil, fechaEgreso, fechaMatVencimiento, profesionCodigo);
             if (!validated) {
@@ -380,7 +385,7 @@ export class AuthService {
             }
         }
 
-        return resp.body;
+        return [profesional];
     }
 
     async getMatriculas(documento: string): Promise<MatriculasEstadoResponse> {
@@ -392,7 +397,7 @@ export class AuthService {
         }
         let profesional: AndesProfesionalDetalle | null;
         try {
-            profesional = await this.andesClient.getProfessionalByDocumento(documento);
+            profesional = await this.andesClient.getProfessionalFormacion(documento);
         } catch (error) {
             this.logger.logError(error);
             throw new BadGatewayError('errors.badGateway.andes');
@@ -415,11 +420,12 @@ export class AuthService {
         enrollmentExpiration?: string,
         profesionCodigo?: string,
     ): boolean {
-        if (!profesional || !profesional.profesiones || profesional.profesiones.length === 0 || !profesionCodigo) {
+        const formaciones = profesional?.formacionGrado || profesional?.profesiones || [];
+        if (!profesional || formaciones.length === 0 || !profesionCodigo) {
             return false;
         }
         try {
-            const lastProfesion = profesional.profesiones.find((p: any) => p.profesion.codigo === profesionCodigo);
+            const lastProfesion = formaciones.find((p: any) => String(p.profesion?.codigo) === String(profesionCodigo));
             const lastMatriculacion = lastProfesion && lastProfesion.matriculacion && lastProfesion.matriculacion.length
                 ? lastProfesion.matriculacion[lastProfesion.matriculacion.length - 1]
                 : null;
@@ -444,44 +450,41 @@ export class AuthService {
         const roles = user.roles.map(r => r.role || '');
         const isProfessional = roles.includes('professional') || roles.includes('professional-public');
         const isPharmacist = roles.includes('pharmacist') || roles.includes('pharmacist-public');
-        // eslint-disable-next-line no-console
-        console.log('[sync] username:', user.username, '| roles:', roles.join(','), '| professional:', isProfessional, '| pharmacist:', isPharmacist);
         if (!isProfessional && !isPharmacist) {
             return;
         }
         try {
             const updates: Record<string, unknown> = {};
             if (isProfessional) {
-                const profesional = await this.andesClient.getProfessionalByDocumento(user.username);
+                const profesional = await this.andesClient.getProfessionalFormacion(user.username);
                 if (profesional) {
                     const sync = AndesMapper.toSyncableProfessional(profesional);
-                    if (sync.cuil) { updates.cuil = sync.cuil; }
-                    if (sync.firstName) { updates.firstName = sync.firstName; }
-                    if (sync.lastName) { updates.lastName = sync.lastName; }
-                    if (sync.profesionGrado?.length) { updates.profesionGrado = sync.profesionGrado; }
+                    if (sync.cuit) { updates.cuil = sync.cuit; }
                     if (!user.businessName && sync.businessName) { updates.businessName = sync.businessName; }
                     if (!user.idAndes && sync.idAndes) { updates.idAndes = sync.idAndes; }
+                    if (this.professionalProfileService && sync.profesionGrado?.length) {
+                        await this.professionalProfileService.saveFromAndes(
+                            user._id.toString(),
+                            user.username,
+                            sync,
+                        );
+                    }
                 }
             } else {
                 const farmacia = await this.andesClient.getPharmacyByCuit(user.username);
                 if (farmacia) {
                     const sync = AndesMapper.toSyncablePharmacist(farmacia);
                     if (sync.cuil) { updates.cuil = sync.cuil; }
-                    if (sync.razonSocial) { updates.razonSocial = sync.razonSocial; }
                     if (sync.responsibleDTEnrollment) { updates.responsibleDTEnrollment = sync.responsibleDTEnrollment; }
                     if (!user.businessName && sync.businessName) { updates.businessName = sync.businessName; }
                     if (!user.idAndes && sync.idAndes) { updates.idAndes = sync.idAndes; }
                 }
             }
-            // eslint-disable-next-line no-console
-            console.log('[sync] updates:', JSON.stringify(updates));
             if (Object.keys(updates).length) {
                 Object.assign(user, updates);
                 await this.authRepository.saveUser(user);
             }
         } catch (error) {
-            // eslint-disable-next-line no-console
-            console.log('[sync] error:', (error as Error).message);
             this.logger.logError(error);
         }
     }

@@ -54,10 +54,17 @@ export interface IExternalSyncEntity {
     estado: ExternalSyncStatus;
     intentos: number;
     ultimoError?: string;
+    codigo?: number | string;
 }
 
 export interface IExternalSync {
     praxis?: IExternalSyncEntity;
+}
+
+export interface PraxisReceta {
+    idReceta: string;
+    numeroReceta?: string;
+    hash: string;
 }
 
 export type PrescriptionStatus = 'Pendiente' | 'Dispensada' | 'Vencida' | 'Suspendida' | 'Rechazada';
@@ -90,17 +97,20 @@ export interface IPrescription extends Document {
     patient: {
         firstName: string;
         lastName: string;
-        dni: string;
+        dni?: string;
         sex: string;
         obraSocial?: { nombre?: string; codigoPuco?: number; numeroAfiliado?: string };
         fechaNac?: Date;
         idMPI?: string;
+        cuil?: string;
     };
     professional: {
         userId?: string;
         businessName?: string;
         cuil?: string;
         enrollment?: string;
+        tipoDocumento?: string;
+        documento?: string;
         profesionGrado?: Array<{ profesion?: string; codigoProfesion?: string; numeroMatricula?: string }>;
     };
     dispensedBy?: {
@@ -124,6 +134,8 @@ export interface IPrescription extends Document {
     ordenTratamiento?: number;
     identificadoresExternos?: IExternalIdentifier[];
     syncExterno?: IExternalSync;
+    praxisHash?: string;
+    praxisRecetas?: PraxisReceta[];
     trimestral?: boolean;
     organizacion?: {
         _id?: string;

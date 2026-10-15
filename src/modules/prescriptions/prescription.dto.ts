@@ -44,16 +44,24 @@ export const createPrescriptionSchema = z.object({
     patient: z.object({
         firstName: z.string().min(1, 'errors.validation.requiredField'),
         lastName: z.string().min(1, 'errors.validation.requiredField'),
-        dni: z.string().min(1, 'errors.validation.requiredField'),
+        dni: z.string().optional(),
         sex: z.string().min(1, 'errors.validation.requiredField'),
         fechaNac: z.string().optional(),
         idMPI: z.string().nullable().optional(),
-    }),
+    }).refine(
+        (data) => !!data.dni || !!data.idMPI,
+        {
+            message: 'errors.validation.dniOrIdMpiRequired',
+            path: ['dni'],
+        },
+    ),
     professional: z.object({
         userId: z.string().min(1, 'errors.validation.requiredField'),
         businessName: z.string().min(1, 'errors.validation.requiredField'),
         cuil: z.string().optional(),
         enrollment: z.string().optional(),
+        tipoDocumento: z.string().optional(),
+        documento: z.string().optional(),
         profesionGrado: z.array(z.object({
             profesion: z.string().optional(),
             codigoProfesion: z.string().optional(),
@@ -73,6 +81,26 @@ export const createPrescriptionSchema = z.object({
         nombre: z.string().optional(),
         direccion: z.string().optional(),
     }).optional(),
+}).superRefine((data, ctx) => {
+    const ambito = data.ambito || 'privado';
+    if (ambito === 'publico') {
+        return;
+    }
+    const hasMagistral = data.supplies.some((supply) => supply.supply?.type === 'magistral');
+    if (hasMagistral) {
+        ctx.addIssue({
+            code: 'custom',
+            message: 'errors.validation.magistralRequiresPublicOrganization',
+            path: ['supplies'],
+        });
+    }
+    if (!data.patient.dni) {
+        ctx.addIssue({
+            code: 'custom',
+            message: 'errors.validation.noDniRequiresPublicOrganization',
+            path: ['patient', 'dni'],
+        });
+    }
 });
 
 export const updatePrescriptionSchema = z.object({
@@ -99,7 +127,13 @@ export const cancelDispensePrescriptionSchema = z.object({
     reason: z.string().optional(),
 });
 
+export const suspendPrescriptionSchema = z.object({
+    motivo: z.string().optional(),
+    observacion: z.string().optional(),
+});
+
 export type CreatePrescriptionDTO = z.infer<typeof createPrescriptionSchema>;
 export type UpdatePrescriptionDTO = z.infer<typeof updatePrescriptionSchema>;
 export type DispensePrescriptionDTO = z.infer<typeof dispensePrescriptionSchema>;
 export type CancelDispensePrescriptionDTO = z.infer<typeof cancelDispensePrescriptionSchema>;
+export type SuspendPrescriptionDTO = z.infer<typeof suspendPrescriptionSchema>;

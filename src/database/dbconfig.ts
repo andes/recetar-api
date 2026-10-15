@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { env } from '../config/config';
+import { isDev } from '../shared/logger/dev-logger';
 
 export const initializeMongo = async (): Promise<void> => {
     const MONGO_URI = process.env.MONGODB_URI || env.MONGODB_CONNECTION;
@@ -10,8 +11,10 @@ export const initializeMongo = async (): Promise<void> => {
             useUnifiedTopology: true,
             useFindAndModify: false,
         } as any);
-        // eslint-disable-next-line no-console
-        console.log('DB is connected');
+        if (isDev()) {
+            // eslint-disable-next-line no-console
+            console.log('DB is connected');
+        }
     } catch (error) {
         // eslint-disable-next-line no-console
         console.error('Error connecting to MongoDB:', error);

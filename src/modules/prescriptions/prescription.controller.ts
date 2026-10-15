@@ -4,13 +4,14 @@ import { SecurityService } from '../security/security.service';
 import { ApiResponse } from '../../shared/api-response';
 import {
     CreatePrescriptionDTO, UpdatePrescriptionDTO,
-    DispensePrescriptionDTO,
+    DispensePrescriptionDTO, SuspendPrescriptionDTO,
 } from './prescription.dto';
 import { PRESCRIPTION_SEARCH_LIMIT } from './prescription.types';
 import { AndesIngestDTO } from './ingest.dto';
 import { AndesDispenseDTO, AndesCancelDispenseDTO, AndesSuspendDTO } from '../../integrations/andes';
 import { getStringQueryParam } from '../../shared/utils/query';
 import { PinRequiredError, InvalidPinError, SecurityTokenInvalidError } from '../security/security.errors';
+import { toAppPrescription, toAppPrescriptionList } from './prescription.view';
 
 export class PrescriptionController {
     constructor(
@@ -29,7 +30,10 @@ export class PrescriptionController {
             const searchTerm = getStringQueryParam(req.query.searchTerm);
             const filters = { status, sexo, dateFrom, dateTo, searchTerm };
             const result = await this.prescriptionService.index(skip, limit, filters);
-            res.status(200).json(ApiResponse.success(result));
+            res.status(200).json(ApiResponse.success({
+                ...result,
+                prescriptions: toAppPrescriptionList(result.prescriptions),
+            }));
         } catch (error) {
             next(error);
         }
@@ -38,7 +42,7 @@ export class PrescriptionController {
     show = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const prescription = await this.prescriptionService.show(req.params.id);
-            res.status(200).json(ApiResponse.success(prescription));
+            res.status(200).json(ApiResponse.success(toAppPrescription(prescription)));
         } catch (error) {
             next(error);
         }
@@ -56,7 +60,10 @@ export class PrescriptionController {
             const status = getStringQueryParam(req.query.status);
             const filters = { patient, dateFrom, dateTo, status };
             const result = await this.prescriptionService.getByUserId(userId, ambito, skip, limit, filters);
-            res.status(200).json(ApiResponse.success(result));
+            res.status(200).json(ApiResponse.success({
+                ...result,
+                prescriptions: toAppPrescriptionList(result.prescriptions),
+            }));
         } catch (error) {
             next(error);
         }
@@ -72,7 +79,10 @@ export class PrescriptionController {
             const skip = parseInt(getStringQueryParam(req.query.offset) || getStringQueryParam(req.query.skip) || '0', 10);
             const limit = Math.min(parseInt(getStringQueryParam(req.query.limit) || String(PRESCRIPTION_SEARCH_LIMIT), 10), PRESCRIPTION_SEARCH_LIMIT);
             const result = await this.prescriptionService.findByPatient(dni, startDate, endDate, status, sexo, skip, limit);
-            res.status(200).json(ApiResponse.success(result));
+            res.status(200).json(ApiResponse.success({
+                ...result,
+                prescriptions: toAppPrescriptionList(result.prescriptions),
+            }));
         } catch (error) {
             next(error);
         }
@@ -84,7 +94,10 @@ export class PrescriptionController {
             const skip = parseInt(getStringQueryParam(req.query.skip) || '0', 10);
             const limit = parseInt(getStringQueryParam(req.query.limit) || '20', 10);
             const result = await this.prescriptionService.getDispensedByCuil(cuil, skip, limit);
-            res.status(200).json(ApiResponse.success(result));
+            res.status(200).json(ApiResponse.success({
+                ...result,
+                prescriptions: toAppPrescriptionList(result.prescriptions),
+            }));
         } catch (error) {
             next(error);
         }
@@ -116,7 +129,7 @@ export class PrescriptionController {
             }
 
             const prescription = await this.prescriptionService.create(req.body as CreatePrescriptionDTO);
-            res.status(201).json(ApiResponse.success(prescription));
+            res.status(201).json(ApiResponse.success(toAppPrescription(prescription)));
         } catch (error) {
             next(error);
         }
@@ -125,7 +138,7 @@ export class PrescriptionController {
     update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const prescription = await this.prescriptionService.update(req.params.id, req.body as UpdatePrescriptionDTO);
-            res.status(200).json(ApiResponse.success(prescription));
+            res.status(200).json(ApiResponse.success(toAppPrescription(prescription)));
         } catch (error) {
             next(error);
         }
@@ -143,7 +156,7 @@ export class PrescriptionController {
     dispense = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const prescription = await this.prescriptionService.dispense(req.params.id, req.body as DispensePrescriptionDTO);
-            res.status(200).json(ApiResponse.success(prescription));
+            res.status(200).json(ApiResponse.success(toAppPrescription(prescription)));
         } catch (error) {
             next(error);
         }
@@ -154,7 +167,28 @@ export class PrescriptionController {
             const userId = getStringQueryParam(req.query.userId) || '';
             const isAdmin = ((req.user as any)?.roleNames || []).includes('admin');
             const prescription = await this.prescriptionService.cancelDispense(req.params.id, userId, isAdmin);
-            res.status(200).json(ApiResponse.success(prescription));
+            res.status(200).json(ApiResponse.success(toAppPrescription(prescription)));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    suspend = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const prescription = await this.prescriptionService.suspend(
+                req.params.id,
+                req.body as SuspendPrescriptionDTO,
+            );
+            res.status(200).json(ApiResponse.success(toAppPrescription(prescription)));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    getPdf = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const pdf = await this.prescriptionService.getPdf(req.params.id);
+            res.status(200).json(ApiResponse.success(pdf));
         } catch (error) {
             next(error);
         }

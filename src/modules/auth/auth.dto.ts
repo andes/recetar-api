@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidCuitCuil } from '../../shared/utils/tax-id';
 
 export const loginSchema = z.object({
     identifier: z.string().min(1, 'errors.auth.incompleteBody'),
@@ -12,7 +13,7 @@ export const registerSchema = z.object({
     password: z.string().min(8, 'errors.validation.weakPassword'),
     businessName: z.string().optional(),
     enrollment: z.string().optional(),
-    cuil: z.string().optional(),
+    cuil: z.string().optional().refine((value) => !value || isValidCuitCuil(value), 'errors.validation.invalidCuil'),
     roleType: z.string().min(1),
     captcha: z.string().min(1, 'errors.auth.incompleteBody'),
     profesion: z.any().optional(),

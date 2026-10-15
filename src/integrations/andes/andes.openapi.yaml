@@ -7,7 +7,7 @@ tags:
       - **Cliente HTTP** (`AndesClient`): comunicación con los endpoints de ANDES para recetas, insumos, profesionales, farmacias y MPI (Master Patient Index).
       - **Mapper** (`AndesMapper`): transformación entre los tipos de ANDES y los tipos locales (pacientes, insumos).
       - **Cache local** (`PrescriptionAndes`): réplica local de recetas de ANDES en MongoDB para consultas offline y menor latencia.
-      - **Sincronización de usuarios**: en el login se consultan `GET /core/tm/profesionales/guia?documento=` (profesiones con matriculación, CUIL, nombre/apellido) y `GET /core/tm/farmacias` (matrícula DT, CUIL, razón social) para actualizar el usuario de RecetAR.
+      - **Sincronización de usuarios**: en el login se consultan `GET /core/tm/profesionales?documento=&busquedaExacta=true` (formación en `formacionGrado`, con matriculación, CUIL, nombre/apellido) y `GET /core/tm/farmacias` (matrícula DT, CUIL, razón social) para actualizar el usuario de RecetAR.
       - **DTOs de entrada**: schemas Zod que validan los requests entrantes para operaciones ANDES (dispensa, cancelación, suspensión, verificación).
       - **Errores**: errores específicos de ANDES (`PrescriptionAndesNotFoundError`) que se integran con el sistema de errores global.
       

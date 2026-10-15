@@ -4,6 +4,7 @@ import { PrescriptionAndesRepository } from '../../../src/integrations/andes';
 import { PrescriptionService } from '../../../src/modules/prescriptions/prescription.service';
 import { AndesClient } from '../../../src/integrations/andes';
 import { PraxisClient } from '../../../src/integrations/praxis';
+import { PraxisEligibilityError, PraxisNotEligibleError, PraxisPublicationError, PraxisResponseError } from '../../../src/integrations/praxis';
 import { PatientService } from '../../../src/modules/patients';
 import { UsersRepository } from '../../../src/modules/users/users.repository';
 import Prescription from '../../../src/modules/prescriptions/prescription.model';
@@ -30,6 +31,11 @@ const patientStub = {
 
 const usersStub = {
     findByCuilOrUsername: jest.fn(async () => []),
+    findById: jest.fn(async () => ({
+        cuil: '20-12345678-9',
+        enrollment: '9999',
+        profesionGrado: [{ profesion: 'Médico', codigoProfesion: '1', numeroMatricula: '5555' }],
+    })),
 } as unknown as UsersRepository;
 
 let repo: PrescriptionRepository;
@@ -54,9 +60,13 @@ const professional = { userId: '000000000000000000000001', businessName: 'Dr. G�
 const medicamento = { supply: { name: 'Ibuprofeno 400mg' }, quantity: 10 };
 
 describe('PrescriptionService · sincronización con Praxis', () => {
-    it('guarda el idPrescripcion y marca ok para un medicamento elegible', async () => {
+    it('guarda el idPrescripcion, el hash y las recetas emitidas para un medicamento elegible', async () => {
         const praxisClient = {
-            createPrescription: jest.fn(async () => ({ idPrescripcion: 'PRAX-1', estado: 'creada' })),
+            createPrescription: jest.fn(async () => ({
+                idPrescripcion: 123,
+                hash: 'HASH-1',
+                recetasEmitidas: [{ idReceta: 9, numeroReceta: 'R-9', hash: 'RH-9' }],
+            })),
         } as unknown as PraxisClient;
         const service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, praxisClient);
 
@@ -65,7 +75,61 @@ describe('PrescriptionService · sincronización con Praxis', () => {
         expect(praxisClient.createPrescription).toHaveBeenCalledTimes(1);
         expect(result.syncExterno?.praxis?.estado).toBe('ok');
         expect(result.identificadoresExternos).toHaveLength(1);
-        expect(result.identificadoresExternos![0]).toMatchObject({ entidad: 'praxis', valor: 'PRAX-1' });
+        expect(result.identificadoresExternos![0]).toMatchObject({ entidad: 'praxis', valor: '123' });
+        expect(result.praxisHash).toBe('HASH-1');
+        expect(result.praxisRecetas).toHaveLength(1);
+        expect(result.praxisRecetas![0]).toMatchObject({ idReceta: '9', numeroReceta: 'R-9', hash: 'RH-9' });
+    });
+
+    it('marca no_aplicable para paciente sin DNI en ámbito público (local-only)', async () => {
+        const praxisClient = {
+            createPrescription: jest.fn(async () => { throw new PraxisNotEligibleError('Paciente sin DNI'); }),
+        } as unknown as PraxisClient;
+        const service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, praxisClient);
+
+        const result = await service.create({ patient, professional, supplies: [medicamento], ambito: 'publico' });
+
+        expect(result.syncExterno?.praxis?.estado).toBe('no_aplicable');
+        expect(result.syncExterno?.praxis?.ultimoError).toBe('Paciente sin DNI');
+    });
+
+    it('bloquea y no persiste cuando la receta no es elegible por datos', async () => {
+        const praxisClient = {
+            createPrescription: jest.fn(async () => { throw new PraxisNotEligibleError('Producto sin código Alfabeta'); }),
+        } as unknown as PraxisClient;
+        const service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, praxisClient);
+
+        await expect(service.create({ patient, professional, supplies: [medicamento] }))
+            .rejects.toBeInstanceOf(PraxisEligibilityError);
+
+        const all = await Prescription.find({}).exec();
+        expect(all).toHaveLength(0);
+    });
+
+    it('completa el profesional desde el perfil cacheado cuando el cliente no lo envía', async () => {
+        const praxisClient = {
+            createPrescription: jest.fn(async () => ({ idPrescripcion: 1, hash: 'HASH' })),
+        } as unknown as PraxisClient;
+        const professionalProfileService = {
+            requireForUser: jest.fn(async () => ({
+                tipoDocumento: 'DNI',
+                documento: '12345678',
+                nombre: 'Ana',
+                apellido: 'Pérez',
+                sexo: 'Femenino',
+                cuit: '20-12345678-9',
+                profesionGrado: [{ profesion: 'Médico', codigoProfesion: '1', numeroMatricula: '9999' }],
+            })),
+        };
+        const service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, praxisClient, professionalProfileService as any);
+
+        const result = await service.create({ patient, professional, supplies: [medicamento] });
+
+        expect(result.professional.enrollment).toBe('9999');
+        expect(result.professional.cuil).toBe('20-12345678-9');
+        expect(result.professional.tipoDocumento).toBe('DNI');
+        expect(result.professional.documento).toBe('12345678');
+        expect(result.professional.profesionGrado?.[0]?.numeroMatricula).toBe('9999');
     });
 
     it('comparte el idPrescripcion entre los meses de un tratamiento prolongado', async () => {
@@ -98,17 +162,30 @@ describe('PrescriptionService · sincronización con Praxis', () => {
         expect(praxisClient.createPrescription).not.toHaveBeenCalled();
     });
 
-    it('marca pendiente cuando Praxis falla (local-first)', async () => {
+    it('lanza error y no persiste cuando Praxis falla', async () => {
         const praxisClient = {
             createPrescription: jest.fn(async () => { throw new Error('Praxis down'); }),
         } as unknown as PraxisClient;
         const service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, praxisClient);
 
-        const result = await service.create({ patient, professional, supplies: [medicamento] });
+        await expect(service.create({ patient, professional, supplies: [medicamento] }))
+            .rejects.toBeInstanceOf(PraxisPublicationError);
 
-        expect(result.syncExterno?.praxis?.estado).toBe('pendiente');
-        expect(result.syncExterno?.praxis?.intentos).toBe(0);
-        expect(result.identificadoresExternos).toHaveLength(0);
+        const all = await Prescription.find({}).exec();
+        expect(all).toHaveLength(0);
+    });
+
+    it('lanza error y no persiste cuando Praxis responde con error', async () => {
+        const praxisClient = {
+            createPrescription: jest.fn(async () => { throw new PraxisResponseError('Producto inválido', 400); }),
+        } as unknown as PraxisClient;
+        const service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, praxisClient);
+
+        await expect(service.create({ patient, professional, supplies: [medicamento] }))
+            .rejects.toBeInstanceOf(PraxisPublicationError);
+
+        const all = await Prescription.find({}).exec();
+        expect(all).toHaveLength(0);
     });
 
     it('no intenta Praxis cuando no hay cliente configurado', async () => {

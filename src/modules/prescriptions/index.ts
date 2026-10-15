@@ -3,18 +3,13 @@ import { PrescriptionService } from './prescription.service';
 import { PrescriptionController } from './prescription.controller';
 import { AndesClient, PrescriptionAndesRepository } from '../../integrations/andes';
 import { PraxisClient } from '../../integrations/praxis';
+import { createProfessionalService } from '../professionals';
 import { getPatientService } from '../patients';
 import { UsersRepository } from '../users/users.repository';
-import { Logger } from '../../shared/logger/logger.interface';
+import { devLogger } from '../../shared/logger/dev-logger';
 import { env } from '../../config/config';
 import { SecurityRepository } from '../security/security.repository';
 import { SecurityService } from '../security/security.service';
-
-const defaultLogger: Logger = {
-    logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
-};
 
 const prescriptionRepository = new PrescriptionRepository();
 const prescriptionAndesRepository = new PrescriptionAndesRepository();
@@ -24,18 +19,24 @@ const andesClient = new AndesClient({
     mpiEndpoint: env.ANDES_MPI_ENDPOINT,
 });
 const usersRepository = new UsersRepository();
-const praxisClient = new PraxisClient({
-    praxisEndpoint: env.PRAXYS_ENDPOINT,
-    praxisApiKey: env.PRAXYS_API_KEY,
-});
+// En tests no se publica a Praxis (evita llamadas externas); los tests de Praxis
+// construyen el servicio con un cliente mockeado.
+const praxisClient = process.env.NODE_ENV === 'test'
+    ? undefined
+    : new PraxisClient({
+        praxisEndpoint: env.PRAXYS_ENDPOINT,
+        praxisApiKey: env.PRAXYS_API_KEY,
+    });
+const professionalProfileService = createProfessionalService(andesClient, devLogger);
 const service = new PrescriptionService(
     prescriptionRepository,
     prescriptionAndesRepository,
     andesClient,
     getPatientService,
-    defaultLogger,
+    devLogger,
     usersRepository,
     praxisClient,
+    professionalProfileService,
 );
 
 const securityRepository = new SecurityRepository();

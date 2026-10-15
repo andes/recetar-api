@@ -10,6 +10,7 @@ tags:
       - **Tratamiento prolongado**: `tratamientoProlongado` (2 a 12) se define **por medicamento** (en cada `supply`) y genera una receta por mes (día 0, +30, +60, ...) para ese medicamento. Cada medicamento sin tratamiento genera una única receta. Solo aplica a medicamentos; un tratamiento explícito sobre un insumo se rechaza (409). Los campos raíz `tratamientoProlongado` y `trimestral` son un fallback deprecado (aplican a los medicamentos sin valor propio e ignoran insumos). Las N recetas de un mismo tratamiento comparten `treatmentGroupId` (generado por el servidor) para poder agruparlas.
       - **Búsquedas**: por profesional, por paciente (DNI), por rango de fechas, por CUIT/CUIL de la farmacia.
       - **Verificación**: consulta recetas activas locales + ANDES por DNI + conceptId.
+      - **Publicación electrónica**: los endpoints orientados a app devuelven `estadoPublicacion` (`ok` | `pendiente` | `error` | `no_aplicable` | `desconocido`) y omiten los identificadores de integración (`syncExterno`, `identificadoresExternos`, `praxisHash`, `praxisRecetas`).
 
 paths:
   /prescriptions:
@@ -68,6 +69,25 @@ paths:
               properties:
                 patient:
                   type: object
+                  description: |
+                    Datos del paciente. Debe incluir `dni` o `idMPI`.
+                    Si no hay `dni`, el paciente queda como no validado.
+                  properties:
+                    firstName:
+                      type: string
+                    lastName:
+                      type: string
+                    dni:
+                      type: string
+                      description: Opcional si se envía `idMPI`.
+                    idMPI:
+                      type: string
+                      nullable: true
+                      description: Identificador del paciente en ANDES.
+                    sex:
+                      type: string
+                    fechaNac:
+                      type: string
                 professional:
                   type: object
                 ambito:
@@ -140,7 +160,9 @@ paths:
         "409":
           description: Error de negocio (ej. tratamiento prolongado con insumos)
         "422":
-          description: Error de validación
+          description: |
+            Error de validación. Incluye los casos de negocio por ámbito:
+            magistral en organización privada y paciente sin DNI en organización privada.
 
   /prescriptions/{id}:
     get:
@@ -177,7 +199,10 @@ paths:
           description: Receta no encontrada
     delete:
       tags: [Prescripciones]
-      summary: Eliminar receta (solo Pendiente)
+      summary: Eliminar receta (solo Pendiente no emitida)
+      description: |
+        Solo permite eliminar recetas Pendiente que no hayan sido emitidas. Si la
+        receta ya fue publicada, se rechaza con 409 y debe suspenderse.
       security:
         - bearerAuth: []
       parameters:
@@ -191,6 +216,64 @@ paths:
           description: Receta eliminada
         "404":
           description: Receta no encontrada
+        "409":
+          description: La receta fue emitida; debe suspenderse
+
+  /prescriptions/{id}/pdf:
+    get:
+      tags: [Prescripciones]
+      summary: Descargar PDF de la receta
+      description: |
+        Devuelve el PDF de la receta (`pdf` en base64 y `contentType`). Responde
+        404/409 cuando la receta no tiene PDF disponible.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PDF de la receta en base64
+        "404":
+          description: Receta no encontrada o PDF no disponible
+
+  /prescriptions/{id}/suspend:
+    patch:
+      tags: [Prescripciones]
+      summary: Suspender receta (solo Pendiente)
+      description: |
+        Marca la receta como Suspendida y, si fue publicada en el sistema de
+        prescripción electrónica, la anula de forma interna. La suspensión local no
+        depende de la publicación (local-first).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo:
+                  type: string
+                observacion:
+                  type: string
+      responses:
+        "200":
+          description: Receta suspendida
+        "404":
+          description: Receta no encontrada
+        "409":
+          description: La receta no se puede suspender
 
   /prescriptions/user/{id}:
     get:

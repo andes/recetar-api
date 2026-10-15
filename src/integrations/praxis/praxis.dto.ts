@@ -6,23 +6,23 @@ const praxisPacienteSchema = z.object({
     tipoDocumento: z.string().default('DNI'),
     numeroDocumento: z.number().positive('errors.validation.invalidNumber'),
     fechaNacimiento: z.string().min(1, 'errors.validation.requiredField'),
-    sexo: z.enum(['M', 'F'], { message: 'errors.validation.invalidSex' }),
+    sexo: z.enum(['M', 'F', 'X'], { message: 'errors.validation.invalidSex' }),
     cuil: z.number().optional(),
 });
 
 const praxisCoberturaSchema = z.object({
     idObraSocial: z.number(),
-    idConvenio: z.number(),
+    idConvenio: z.number().optional(),
     numeroAfiliado: z.string().min(1, 'errors.validation.requiredField'),
-    codigoPlan: z.string().min(1, 'errors.validation.requiredField'),
-    nombrePlan: z.string().min(1, 'errors.validation.requiredField'),
+    codigoPlan: z.string().optional(),
+    nombrePlan: z.string().optional(),
 });
 
 const praxisPrescriptorSchema = z.object({
     matricula: z.string().min(1, 'errors.validation.requiredField'),
-    tipoMatricula: z.string().default('N'),
+    tipoMatricula: z.enum(['N', 'P']).default('N'),
     idProvinciaMatricula: z.string().default('C'),
-    tipoPrescriptor: z.string().default('M'),
+    tipoPrescriptor: z.enum(['M', 'O']).default('M'),
 });
 
 const praxisDiagnosticoSchema = z.object({
@@ -31,8 +31,8 @@ const praxisDiagnosticoSchema = z.object({
 });
 
 const praxisProductoSchema = z.object({
-    codigoAlfabeta: z.number().positive('errors.validation.invalidNumber'),
-    codigoBarras: z.string().min(1, 'errors.validation.requiredField'),
+    codigoAlfabeta: z.number().optional(),
+    codigoBarras: z.string().max(13).optional(),
 });
 
 const praxisRenglonSchema = z.object({
@@ -40,7 +40,7 @@ const praxisRenglonSchema = z.object({
     producto: praxisProductoSchema,
     cantidadEnvases: z.number().min(1, 'errors.validation.invalidQuantity'),
     diagnostico: praxisDiagnosticoSchema,
-    indicaciones: z.string().min(1, 'errors.validation.requiredField'),
+    indicaciones: z.string().optional(),
     observaciones: z.string().optional(),
 });
 

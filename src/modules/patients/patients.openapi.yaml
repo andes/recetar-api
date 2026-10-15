@@ -18,7 +18,7 @@ paths:
     get:
       tags: [Pacientes]
       summary: Listar / buscar pacientes en Andes
-      description: Devuelve pacientes validados de Andes. Sin `q` lista todos; con `q` busca por nombre, apellido o documento.
+      description: Devuelve pacientes activos de Andes (validados y temporales). Sin `q` lista todos; con `q` busca por nombre, apellido o documento.
       security:
         - bearerAuth: []
       parameters:
@@ -48,25 +48,65 @@ paths:
           application/json:
             schema:
               type: object
-              required: [dni, sex]
+              required: [sex]
+              description: |
+                Si se envía `dni`, el paciente se valida con RENAPER y queda `validado`.
+                Si no se envía `dni`, se requiere `firstName` y `lastName`, y el paciente
+                se crea en ANDES con estado `temporal`.
               properties:
                 dni:
                   type: string
+                  description: Opcional. Si está presente, debe tener entre 6 y 11 dígitos.
                 sex:
                   type: string
                   enum: [Femenino, Masculino, Otro]
                 firstName:
                   type: string
+                  description: Obligatorio cuando no se envía DNI.
                 lastName:
                   type: string
+                  description: Obligatorio cuando no se envía DNI.
                 fechaNac:
                   type: string
                 nombreAutopercibido:
                   type: string
                 genero:
                   type: string
+                  description: Género autopercibido. Valores vacíos o "Ninguno" se ignoran.
                 cuil:
                   type: string
+                contactos:
+                  type: array
+                  items:
+                    type: object
+                    required: [tipo, valor]
+                    properties:
+                      tipo:
+                        type: string
+                        enum: [fijo, celular, email, extranjero]
+                      valor:
+                        type: string
+                      ranking:
+                        type: integer
+                      activo:
+                        type: boolean
+                direcciones:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      calle:
+                        type: string
+                      codigoPostal:
+                        type: string
+                      barrio:
+                        type: string
+                      localidad:
+                        type: string
+                      provincia:
+                        type: string
+                      pais:
+                        type: string
       responses:
         "201":
           description: Paciente creado en Andes
@@ -126,6 +166,45 @@ paths:
                   enum: [Femenino, Masculino, Otro]
                 fechaNac:
                   type: string
+                nombreAutopercibido:
+                  type: string
+                genero:
+                  type: string
+                  description: Género autopercibido. Valores vacíos o "Ninguno" se ignoran.
+                cuil:
+                  type: string
+                contactos:
+                  type: array
+                  items:
+                    type: object
+                    required: [tipo, valor]
+                    properties:
+                      tipo:
+                        type: string
+                        enum: [fijo, celular, email, extranjero]
+                      valor:
+                        type: string
+                      ranking:
+                        type: integer
+                      activo:
+                        type: boolean
+                direcciones:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      calle:
+                        type: string
+                      codigoPostal:
+                        type: string
+                      barrio:
+                        type: string
+                      localidad:
+                        type: string
+                      provincia:
+                        type: string
+                      pais:
+                        type: string
       responses:
         "200":
           description: Paciente actualizado
@@ -135,12 +214,56 @@ paths:
           description: Error de validación
         "502":
           description: Andes no disponible
+    delete:
+      tags: [Pacientes]
+      summary: Eliminar paciente en Andes
+      description: Elimina el paciente directamente en ANDES. La acción es irreversible.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Paciente eliminado
+        "404":
+          description: Paciente no encontrado en Andes
+        "502":
+          description: Andes no disponible
+
+  /patients/{id}/validate:
+    post:
+      tags: [Pacientes]
+      summary: Validar paciente contra RENAPER y persistir estado validado
+      description: |
+        Obtiene el paciente desde ANDES, lo valida contra RENAPER y actualiza sus datos
+        y estado a `validado` en ANDES. Requiere que el paciente tenga DNI.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paciente validado y actualizado
+        "404":
+          description: Paciente no encontrado en ANDES
+        "422":
+          description: El paciente no tiene DNI o RENAPER no lo encontró
+        "502":
+          description: Andes no disponible
 
   /patients/search:
     get:
       tags: [Pacientes]
       summary: Buscar pacientes en Andes
-      description: Búsqueda en Andes por nombre, apellido o documento.
+      description: Búsqueda en Andes por nombre, apellido o documento. Incluye pacientes validados y temporales.
       security:
         - bearerAuth: []
       parameters:
@@ -155,6 +278,59 @@ paths:
           description: Lista de pacientes que coinciden
         "502":
           description: Andes no disponible
+
+  /patients/search-page:
+    get:
+      tags: [Pacientes]
+      summary: Buscar pacientes con filtros y paginación
+      description: |
+        Devuelve pacientes activos (validados y temporales) con filtros y carga
+        incremental. La respuesta incluye `items`, `hasMore`, `offset` y `limit`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: estado
+          in: query
+          schema:
+            type: string
+        - name: sexo
+          in: query
+          schema:
+            type: string
+        - name: email
+          in: query
+          schema:
+            type: string
+        - name: celular
+          in: query
+          schema:
+            type: string
+        - name: fijo
+          in: query
+          schema:
+            type: string
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Página de pacientes
+        "422":
+          description: Filtros o paginación inválidos
+        "502":
+          description: Andes no disponible o token de Andes inválido/sin permisos
 
   /patients/dni/{dni}:
     get:

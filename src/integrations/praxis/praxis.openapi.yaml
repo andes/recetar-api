@@ -8,14 +8,15 @@ tags:
       - Obtener PDFs de prescripciones generadas
       - Anular prescripciones existentes
       
-      **Endpoints expuestos:**
-      - `POST /prescriptions/praxis` — crear prescripción electrónica
-      - `GET /prescriptions/praxis/:id/pdf` — obtener PDF de prescripción
-      - `DELETE /prescriptions/praxis/:id` — anular prescripción
-      
+      **Endpoints neutrales (orientados a app):**
+      - `POST /prescriptions` — crea la receta y la publica en Praxis
+      - `GET /prescriptions/:id/pdf` — obtiene el PDF (usa `hash` guardado)
+      - `PATCH /prescriptions/:id/suspend` — suspende y anula en Praxis
+
       **Dependencias externas:**
-      - `PRAXYS_ENDPOINT`: URL base de la API de Praxis
-      - `PRAXYS_API_KEY`: API key de autenticación
+      - `PRAXYS_ENDPOINT`: host base de la API de Praxis (el cliente agrega `api/...`)
+      - `PRAXYS_API_KEY`: API key de autenticación (`x-api-key`)
+      - `hash`: obligatorio como query en PDF y anulación
 
 components:
   schemas:
@@ -47,8 +48,8 @@ components:
           example: "1990-01-15T00:00:00"
         sexo:
           type: string
-          enum: [M, F]
-          description: Sexo del paciente
+          enum: [M, F, X]
+          description: Sexo del paciente (M = masculino, F = femenino, X = otro/no binario)
         cuil:
           type: integer
           nullable: true
@@ -112,8 +113,7 @@ components:
 
     PraxisProducto:
       type: object
-      description: Producto farmacéutico
-      required: [codigoAlfabeta, codigoBarras]
+      description: Producto farmacéutico (se debe informar la mayor cantidad de datos posibles)
       properties:
         codigoAlfabeta:
           type: integer
@@ -121,18 +121,19 @@ components:
           example: 65123456
         codigoBarras:
           type: string
-          description: Código de barras del producto
+          maxLength: 13
+          description: Código de barras del producto (opcional)
           example: "7891234567890"
 
     PraxisRenglon:
       type: object
       description: Renglón de la prescripción
-      required: [tipoPrescripcion, producto, cantidadEnvases, diagnostico, indicaciones]
+      required: [tipoPrescripcion, producto, cantidadEnvases, diagnostico]
       properties:
         tipoPrescripcion:
           type: string
           enum: [G, M]
-          description: G = Genérico, M = Marca
+          description: G = Genérico, M = Marca comercial (RecetAr usa M)
         producto:
           $ref: '#/components/schemas/PraxisProducto'
         cantidadEnvases:
@@ -174,17 +175,41 @@ components:
 
     PraxisPrescriptionResponse:
       type: object
-      description: Respuesta de Praxis al crear prescripción
+      description: Respuesta de Praxis al crear una prescripción
       properties:
         idPrescripcion:
-          type: string
+          type: integer
+          format: int64
           description: ID de la prescripción en Praxis
-        estado:
+        hash:
           type: string
-          description: Estado de la prescripción
-        mensaje:
-          type: string
-          description: Mensaje descriptivo
+          description: Hash de la prescripción (obligatorio para PDF y anulación)
+        recetasEmitidas:
+          type: array
+          items:
+            type: object
+            properties:
+              numeroReceta:
+                type: string
+              idReceta:
+                type: integer
+                format: int64
+              hash:
+                type: string
+              contenidoQR:
+                type: string
+        mensajes:
+          type: array
+          items:
+            type: object
+            properties:
+              mensaje:
+                type: string
+              codigo:
+                type: integer
+              severidad:
+                type: string
+                description: E = Error, A = Aviso, I = Información
 
 paths:
   /prescriptions/praxis:
@@ -278,6 +303,12 @@ paths:
           description: ID de la prescripción en Praxis
           schema:
             type: string
+        - name: hash
+          in: query
+          required: true
+          description: Hash de la prescripción devuelto al crearla
+          schema:
+            type: string
       responses:
         "200":
           description: PDF de la prescripción
@@ -315,6 +346,12 @@ paths:
           in: path
           required: true
           description: ID de la prescripción en Praxis
+          schema:
+            type: string
+        - name: hash
+          in: query
+          required: true
+          description: Hash de la prescripción devuelto al crearla
           schema:
             type: string
       responses:

@@ -99,6 +99,52 @@ describe('Prescription DTOs', () => {
             expect(() => createPrescriptionSchema.parse(rest)).toThrow();
         });
 
+        it('accepts a patient without dni when idMPI is present and ambito is publico', () => {
+            const data = {
+                ...validData,
+                ambito: 'publico' as const,
+                patient: { firstName: 'Ana', lastName: 'Gómez', dni: '', sex: 'Femenino', idMPI: 'mpi-1' },
+            };
+            const result = createPrescriptionSchema.parse(data);
+            expect(result.patient.idMPI).toBe('mpi-1');
+        });
+
+        it('rejects a patient without dni in a private organization', () => {
+            const data = {
+                ...validData,
+                ambito: 'privado' as const,
+                patient: { firstName: 'Ana', lastName: 'Gómez', dni: '', sex: 'Femenino', idMPI: 'mpi-1' },
+            };
+            expect(() => createPrescriptionSchema.parse(data)).toThrow();
+        });
+
+        it('rejects magistral supplies in a private organization', () => {
+            const data = {
+                ...validData,
+                ambito: 'privado' as const,
+                supplies: [{ supply: { name: 'Magistral X', type: 'magistral' }, quantity: 1 }],
+            };
+            expect(() => createPrescriptionSchema.parse(data)).toThrow();
+        });
+
+        it('accepts magistral supplies in a public organization', () => {
+            const data = {
+                ...validData,
+                ambito: 'publico' as const,
+                supplies: [{ supply: { name: 'Magistral X', type: 'magistral' }, quantity: 1 }],
+            };
+            const result = createPrescriptionSchema.parse(data);
+            expect(result.supplies[0].supply?.type).toBe('magistral');
+        });
+
+        it('rejects a patient without dni and without idMPI', () => {
+            const data = {
+                ...validData,
+                patient: { firstName: 'Ana', lastName: 'Gómez', sex: 'Femenino' },
+            };
+            expect(() => createPrescriptionSchema.parse(data)).toThrow();
+        });
+
         it('rejects empty supplies', () => {
             expect(() => createPrescriptionSchema.parse({ ...validData, supplies: [] })).toThrow();
         });

@@ -55,6 +55,11 @@ paths:
                       type: string
                     dni:
                       type: string
+                      description: Opcional si se envía `idMPI`.
+                    idMPI:
+                      type: string
+                      nullable: true
+                      description: Identificador del paciente en ANDES.
                     sex:
                       type: string
                 professional:

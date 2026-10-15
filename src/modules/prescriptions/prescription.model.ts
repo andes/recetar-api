@@ -54,10 +54,17 @@ const externalSyncEntitySubSchema = new mongoose.Schema({
     estado: { type: String, enum: ['pendiente', 'ok', 'no_aplicable', 'error'], required: true },
     intentos: { type: Number, default: 0 },
     ultimoError: String,
+    codigo: mongoose.Schema.Types.Mixed,
 }, { _id: false });
 
 const externalSyncSubSchema = new mongoose.Schema({
     praxis: { type: externalSyncEntitySubSchema },
+}, { _id: false });
+
+const praxisRecetaSubSchema = new mongoose.Schema({
+    idReceta: { type: String, required: true },
+    numeroReceta: String,
+    hash: { type: String, required: true },
 }, { _id: false });
 
 const estadoSubSchema = new mongoose.Schema({
@@ -101,7 +108,7 @@ const prescriptionSchema = new mongoose.Schema({
     patient: {
         firstName: { type: String, required: true },
         lastName: { type: String, required: true },
-        dni: { type: String, required: true },
+        dni: { type: String, default: '' },
         sex: { type: String, required: true },
         obraSocial: {
             nombre: String,
@@ -116,6 +123,8 @@ const prescriptionSchema = new mongoose.Schema({
         businessName: { type: String, required: true },
         cuil: String,
         enrollment: String,
+        tipoDocumento: String,
+        documento: String,
         profesionGrado: [{
             profesion: String,
             codigoProfesion: String,
@@ -147,6 +156,8 @@ const prescriptionSchema = new mongoose.Schema({
     ordenTratamiento: { type: Number },
     identificadoresExternos: { type: [externalIdentifierSubSchema], default: [] },
     syncExterno: { type: externalSyncSubSchema, default: {} },
+    praxisHash: { type: String },
+    praxisRecetas: { type: [praxisRecetaSubSchema], default: undefined },
     trimestral: Boolean,
     organizacion: {
         _id: String,

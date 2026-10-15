@@ -7,7 +7,7 @@ import { createApp } from '../../helpers/app';
 jest.mock('../../../src/integrations/andes', () => {
     const actual = jest.requireActual('../../../src/integrations/andes');
     const mockAndesClient = {
-        getProfessionalByDocumento: jest.fn(),
+        getProfessionalFormacion: jest.fn(),
         getPharmacyByCuit: jest.fn(),
     };
     return {
@@ -18,7 +18,7 @@ jest.mock('../../../src/integrations/andes', () => {
 });
 
 const { mockAndesClient } = jest.requireMock('../../../src/integrations/andes') as {
-    mockAndesClient: { getProfessionalByDocumento: jest.Mock; getPharmacyByCuit: jest.Mock };
+    mockAndesClient: { getProfessionalFormacion: jest.Mock; getPharmacyByCuit: jest.Mock };
 };
 
 jest.setTimeout(15000);
@@ -36,7 +36,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await clearCollections();
-    mockAndesClient.getProfessionalByDocumento.mockReset();
+    mockAndesClient.getProfessionalFormacion.mockReset();
     mockAndesClient.getPharmacyByCuit.mockReset();
 });
 
@@ -185,7 +185,7 @@ describe('Auth Controller', () => {
             documento: '30123456',
             nombre: 'Ana',
             apellido: 'Pérez',
-            profesiones: [{
+            formacionGrado: [{
                 profesion: { codigo: 1, nombre: 'Médico' },
                 matriculado: true,
                 matriculacion: [{ matriculaNumero: 222, inicio: '2020-01-01', fin: '2099-01-01T00:00:00.000Z' }],
@@ -194,7 +194,7 @@ describe('Auth Controller', () => {
 
         it('returns 200 with estadoGeneral and matriculas', async () => {
             const { token } = await createAuthenticatedUser();
-            mockAndesClient.getProfessionalByDocumento.mockResolvedValue(profesional);
+            mockAndesClient.getProfessionalFormacion.mockResolvedValue(profesional);
 
             const res = await request(app)
                 .get('/api/auth/professionals-andes/matriculas')
@@ -209,7 +209,7 @@ describe('Auth Controller', () => {
 
         it('returns 404 when the professional is not found in Andes', async () => {
             const { token } = await createAuthenticatedUser();
-            mockAndesClient.getProfessionalByDocumento.mockResolvedValue(null);
+            mockAndesClient.getProfessionalFormacion.mockResolvedValue(null);
 
             const res = await request(app)
                 .get('/api/auth/professionals-andes/matriculas')
@@ -222,7 +222,7 @@ describe('Auth Controller', () => {
 
         it('returns 502 when Andes fails', async () => {
             const { token } = await createAuthenticatedUser();
-            mockAndesClient.getProfessionalByDocumento.mockRejectedValue(new Error('andes down'));
+            mockAndesClient.getProfessionalFormacion.mockRejectedValue(new Error('andes down'));
 
             const res = await request(app)
                 .get('/api/auth/professionals-andes/matriculas')

@@ -22,7 +22,7 @@ function buildProfessional(): AndesProfesionalDetalle {
         nombre: 'Ana',
         apellido: 'Pérez',
         cuit: '27-30123456-3',
-        profesiones: [{
+        formacionGrado: [{
             profesion: { codigo: 1, nombre: 'Médico' },
             matriculado: true,
             matriculacion: [{ matriculaNumero: 222, inicio: '2020-01-01', fin: futureDate }],
@@ -35,7 +35,7 @@ class AndesClientStub {
     pharmacy: AndesFarmacia | null = null;
     shouldThrow = false;
 
-    getProfessionalByDocumento = jest.fn(async (_documento: string): Promise<AndesProfesionalDetalle | null> => {
+    getProfessionalFormacion = jest.fn(async (_documento: string): Promise<AndesProfesionalDetalle | null> => {
         if (this.shouldThrow) { throw new Error('andes down'); }
         return this.professional;
     });
@@ -46,14 +46,19 @@ class AndesClientStub {
     });
 }
 
+class ProfessionalProfileStub {
+    saveFromAndes = jest.fn(async (_userId: string, _documento: string, _sync: unknown) => ({}));
+}
+
 let repository: AuthRepository;
 let service: AuthService;
 const andesStub = new AndesClientStub();
+const professionalProfileStub = new ProfessionalProfileStub();
 
 beforeAll(async () => {
     await connectTestDB();
     repository = new AuthRepository();
-    service = new AuthService(repository, logger as any, undefined, undefined, andesStub as unknown as AndesClient);
+    service = new AuthService(repository, logger as any, undefined, undefined, andesStub as unknown as AndesClient, professionalProfileStub as any);
 });
 
 afterAll(async () => {
@@ -65,8 +70,9 @@ beforeEach(async () => {
     andesStub.professional = null;
     andesStub.pharmacy = null;
     andesStub.shouldThrow = false;
-    andesStub.getProfessionalByDocumento.mockClear();
+    andesStub.getProfessionalFormacion.mockClear();
     andesStub.getPharmacyByCuit.mockClear();
+    professionalProfileStub.saveFromAndes.mockClear();
 });
 
 describe('AuthService', () => {
@@ -171,24 +177,25 @@ describe('AuthService', () => {
     });
 
     describe('sincronización con Andes', () => {
-        it('login sincroniza cuil, nombre/apellido, businessName y profesionGrado del profesional', async () => {
-            await createUser({ username: '30123456', email: 'prof@test.com', businessName: '', profesionGrado: [] });
+        it('login sincroniza cuil, businessName y guarda el perfil del profesional en el cache', async () => {
+            const user = await createUser({ username: '30123456', email: 'prof@test.com', businessName: '' });
             andesStub.professional = buildProfessional();
 
             await service.login({ identifier: '30123456', password: 'password123' });
 
             const updated = await repository.findOneByUsername('30123456');
             expect(updated?.cuil).toBe('27-30123456-3');
-            expect(updated?.firstName).toBe('Ana');
-            expect(updated?.lastName).toBe('Pérez');
             expect(updated?.businessName).toBe('PÉREZ ANA');
-            expect(updated?.profesionGrado?.[0]).toMatchObject({
-                profesion: 'Médico',
-                codigoProfesion: '1',
-                numeroMatricula: '222',
-                estado: 'vigente',
-            });
-            expect(andesStub.getProfessionalByDocumento).toHaveBeenCalledWith('30123456');
+            expect(professionalProfileStub.saveFromAndes).toHaveBeenCalledWith(
+                user._id.toString(),
+                '30123456',
+                expect.objectContaining({
+                    profesionGrado: expect.arrayContaining([
+                        expect.objectContaining({ profesion: 'Médico', numeroMatricula: '222' }),
+                    ]),
+                }),
+            );
+            expect(andesStub.getProfessionalFormacion).toHaveBeenCalledWith('30123456');
         });
 
         it('no sobreescribe businessName si ya tiene valor', async () => {
@@ -209,7 +216,6 @@ describe('AuthService', () => {
             await service.loginWithJwt(user._id.toString());
 
             const updated = await repository.findOneByUsername('30123456');
-            expect(updated?.firstName).toBe('Ana');
             expect(updated?.cuil).toBe('27-30123456-3');
         });
 
@@ -229,11 +235,11 @@ describe('AuthService', () => {
 
             await service.login({ identifier: 'aud1', password: 'password123' });
 
-            expect(andesStub.getProfessionalByDocumento).not.toHaveBeenCalled();
+            expect(andesStub.getProfessionalFormacion).not.toHaveBeenCalled();
             expect(andesStub.getPharmacyByCuit).not.toHaveBeenCalled();
         });
 
-        it('sincroniza datos de farmacia (cuil, razonSocial, matrícula DT y businessName)', async () => {
+        it('sincroniza datos de farmacia (cuil, matrícula DT y businessName)', async () => {
             await createUser({ username: '20123456789', email: 'farm@test.com', roleType: 'pharmacist', businessName: '' });
             andesStub.pharmacy = {
                 _id: 'farm1',
@@ -247,7 +253,6 @@ describe('AuthService', () => {
 
             const updated = await repository.findOneByUsername('20123456789');
             expect(updated?.cuil).toBe('20123456789');
-            expect(updated?.razonSocial).toBe('Farmacia Centro S.A.');
             expect(updated?.responsibleDTEnrollment).toBe('DT-999');
             expect(updated?.businessName).toBe('Farmacia Centro S.A.');
         });
