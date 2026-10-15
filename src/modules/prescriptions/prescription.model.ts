@@ -45,6 +45,57 @@ const replacedMedicationSchema = new mongoose.Schema({
     supply: { type: supplySubSchema },
 }, { _id: false });
 
+const externalIdentifierSubSchema = new mongoose.Schema({
+    entidad: { type: String, enum: ['praxis', 'prestacion', 'registro'], required: true },
+    valor: { type: String, required: true },
+}, { _id: false });
+
+const externalSyncEntitySubSchema = new mongoose.Schema({
+    estado: { type: String, enum: ['pendiente', 'ok', 'no_aplicable', 'error'], required: true },
+    intentos: { type: Number, default: 0 },
+    ultimoError: String,
+}, { _id: false });
+
+const externalSyncSubSchema = new mongoose.Schema({
+    praxis: { type: externalSyncEntitySubSchema },
+}, { _id: false });
+
+const estadoSubSchema = new mongoose.Schema({
+    tipo: { type: String, required: true },
+    fecha: { type: Date, default: Date.now },
+    motivo: String,
+    observacion: String,
+}, { _id: false });
+
+const estadoActualSubSchema = new mongoose.Schema({
+    tipo: { type: String },
+    fecha: { type: Date },
+}, { _id: false });
+
+const dispensaSubSchema = new mongoose.Schema({
+    descripcion: String,
+    cantidad: Number,
+    organizacion: { id: String, nombre: String },
+    fecha: Date,
+    sistema: String,
+}, { _id: false });
+
+const estadoDispensaSubSchema = new mongoose.Schema({
+    tipo: { type: String, enum: ['sin-dispensa', 'dispensada', 'dispensa-parcial'], required: true },
+    fecha: { type: Date, default: Date.now },
+    sistema: String,
+    idDispensaApp: String,
+    cancelada: { motivo: String, fecha: Date },
+}, { _id: false });
+
+const estadoDispensaActualSubSchema = new mongoose.Schema({
+    tipo: { type: String, enum: ['sin-dispensa', 'dispensada', 'dispensa-parcial'] },
+    fecha: Date,
+    sistema: String,
+    idDispensaApp: String,
+    cancelada: { motivo: String, fecha: Date },
+}, { _id: false });
+
 const prescriptionSchema = new mongoose.Schema({
     prescriptionId: { type: String, unique: true, sparse: true },
     patient: {
@@ -81,13 +132,21 @@ const prescriptionSchema = new mongoose.Schema({
     supplies: [supplyEntrySubSchema],
     status: {
         type: String,
-        enum: ['Pendiente', 'Dispensada', 'Vencida'],
+        enum: ['Pendiente', 'Dispensada', 'Vencida', 'Suspendida', 'Rechazada'],
         default: 'Pendiente',
     },
+    estados: { type: [estadoSubSchema], default: [] },
+    estadoActual: { type: estadoActualSubSchema, default: () => ({}) },
+    estadosDispensa: { type: [estadoDispensaSubSchema], default: [] },
+    estadoDispensaActual: { type: estadoDispensaActualSubSchema, default: () => ({}) },
+    dispensa: { type: [dispensaSubSchema], default: [] },
     date: { type: Date, default: Date.now, required: true },
     ambito: { type: String, enum: ['publico', 'privado'], default: 'privado' },
     tratamientoProlongado: { type: Number },
     treatmentGroupId: { type: String },
+    ordenTratamiento: { type: Number },
+    identificadoresExternos: { type: [externalIdentifierSubSchema], default: [] },
+    syncExterno: { type: externalSyncSubSchema, default: {} },
     trimestral: Boolean,
     organizacion: {
         _id: String,
@@ -99,6 +158,10 @@ const prescriptionSchema = new mongoose.Schema({
 prescriptionSchema.index({ 'professional.userId': 1 });
 prescriptionSchema.index({ 'supplies.supply.type': 1 });
 prescriptionSchema.index({ status: 1, date: 1 });
+prescriptionSchema.index(
+    { 'identificadoresExternos.entidad': 1, 'identificadoresExternos.valor': 1 },
+    { name: 'identificadoresExternos_entidad_valor' },
+);
 
 // Compatibilidad: las recetas viejas (legacy `trimestral`) se leen como tratamiento prolongado de 3 meses.
 // `trimestral` queda como dato de solo lectura; no se escribe desde la API nueva.

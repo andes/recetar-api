@@ -232,6 +232,14 @@ describe('PrescriptionService', () => {
             expect([...ids][0]).toBeTruthy();
         });
 
+        it('assigns ordenTratamiento 0..n-1 to the generated recetas', async () => {
+            await service.create({ patient, professional, supplies: medications, tratamientoProlongado: 3 });
+
+            const all = await Prescription.find({}).sort({ date: 1 }).exec();
+            expect(all).toHaveLength(3);
+            expect(all.map((p: any) => p.ordenTratamiento)).toEqual([0, 1, 2]);
+        });
+
         it('uses different treatmentGroupId for different treatments', async () => {
             await service.create({ patient, professional, supplies: medications, tratamientoProlongado: 3 });
             await service.create({ patient, professional, supplies: medications, tratamientoProlongado: 3 });

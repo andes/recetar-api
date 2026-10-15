@@ -44,7 +44,37 @@ export class PraxisMapper {
             ...(cobertura && { coberturaSalud: cobertura }),
             prescriptor,
             renglones,
-            tratamientoProlongado: !!prescription.trimestral,
+            tratamientoProlongado: !!prescription.tratamientoProlongado,
+        };
+    }
+
+    static toPraxisFromDoc(prescription: IPrescription): PraxisPrescriptionRequest {
+        return this.toPraxisPrescription(
+            prescription,
+            this.localProfessionalFromDoc(prescription.professional),
+            this.localPatientFromDoc(prescription.patient),
+        );
+    }
+
+    static localProfessionalFromDoc(professional: IPrescription['professional']): LocalProfessional {
+        return {
+            username: professional.userId?.toString() || '',
+            businessName: professional.businessName || '',
+            enrollment: professional.enrollment,
+            cuil: professional.cuil,
+            profesionGrado: professional.profesionGrado,
+        };
+    }
+
+    static localPatientFromDoc(patient: IPrescription['patient']): LocalPatient {
+        return {
+            dni: patient.dni,
+            firstName: patient.firstName,
+            lastName: patient.lastName,
+            sex: patient.sex,
+            fechaNac: patient.fechaNac,
+            idMPI: patient.idMPI,
+            obraSocial: patient.obraSocial,
         };
     }
 

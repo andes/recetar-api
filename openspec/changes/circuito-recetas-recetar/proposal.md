@@ -11,6 +11,7 @@ Hoy las recetas de medicamento viven en dos fuentes de verdad (ANDES y RecetAr) 
 - Nuevo array **`identificadoresExternos`** (`praxis` / `prestacion` / `registro`) con índice multikey compuesto (no único) y estado de sincronización por entidad (`syncExterno`).
 - **Ingesta desde ANDES**: se reescribe el evento RUP `prestacion:receta:create` para crear la receta en RecetAr (RecetAr adapta el formato ANDES), preservando `idPrestacion` e `idRegistro`; la deduplicación pasa a RecetAr.
 - RecetAr **expone el contrato de receta de ANDES** (lectura, suspensión, dispensa) y **mergea** las recetas históricas de ANDES hasta migrarlas.
+- La **consulta de recetas por paciente** (que llega a RecetAr vía el proxy de ANDES para la HUDS) es parametrizable: sin `ambito` devuelve solo las públicas; con `ambito=todas`, todas las del paciente.
 - Migración a RecetAr de los **jobs** de estado de recetas (vencimiento, actualización de dispensa) y de la **impresión/PDF** de recetas.
 
 **Fuera de alcance**: recetas de insumos y `prestacion:recetaInsumo:create`; migración de recetas históricas; deprecación de la colección `receta` de ANDES; evWeb.

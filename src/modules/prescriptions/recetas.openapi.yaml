@@ -1,0 +1,119 @@
+openapi: 3.0.0
+info:
+  title: Recetas (hub compatible ANDES)
+  version: 1.0.0
+  description: |
+    Contrato de recetas compatible con ANDES, expuesto por RecetAr como fuente de
+    verdad. Consumido por SIFAHO y por el proxy de ANDES (HUDS) con token de
+    aplicación.
+
+paths:
+  /modules/recetas:
+    get:
+      summary: Listar recetas (compatible ANDES)
+      tags: [Recetas]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: documento
+          in: query
+          schema: { type: string }
+        - name: estado
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Lista de recetas en formato compatible ANDES
+    post:
+      summary: Crear receta desde una prestación de ANDES (ingreso)
+      tags: [Recetas]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201':
+          description: Receta(s) creada(s)
+    patch:
+      summary: Operar sobre una receta (suspender, dispensar, cancelar-dispensa, rechazar, sin-dispensar, dispensa-parcial)
+      tags: [Recetas]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [op, recetaId]
+              properties:
+                op:
+                  type: string
+                recetaId:
+                  type: string
+      responses:
+        '200':
+          description: Receta actualizada
+
+  /modules/recetas/motivos:
+    get:
+      summary: Motivos de suspensión
+      tags: [Recetas]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Lista de motivos
+
+  /modules/recetas/filtros:
+    get:
+      summary: Buscar recetas con filtros
+      tags: [Recetas]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Lista de recetas filtradas
+
+  /modules/recetas/verificar:
+    get:
+      summary: Verificar receta existente por paciente y concepto
+      tags: [Recetas]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: dni
+          in: query
+          schema: { type: string }
+        - name: conceptId
+          in: query
+          schema: { type: string }
+        - name: sexo
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Recetas que coinciden
+
+  /modules/recetas/por-prestacion/{id}:
+    get:
+      summary: Estado de recetas por prestación
+      tags: [Recetas]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Recetas de la prestación
+
+  /modules/recetas/por-paciente/{dni}:
+    get:
+      summary: Recetas de un paciente (solo públicas por defecto; ambito=todas para todas)
+      tags: [Recetas]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: dni
+          in: path
+          required: true
+          schema: { type: string }
+        - name: ambito
+          in: query
+          schema: { type: string, enum: [publico, privado, todas] }
+      responses:
+        '200':
+          description: Recetas del paciente

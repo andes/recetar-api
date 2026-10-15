@@ -1,5 +1,6 @@
 import Agenda from 'agenda';
 import mongoose from 'mongoose';
+import { runPraxisSync } from './jobs/sync-praxis-identifiers';
 
 class AgendaService {
     private static instance: AgendaService;
@@ -41,9 +42,17 @@ class AgendaService {
         });
 
         await this.agenda.start();
+        this.defineJobs();
         this.isInitialized = true;
         // eslint-disable-next-line no-console
         console.log('Agenda service initialized successfully');
+    }
+
+    private defineJobs(): void {
+        this.agenda.define('sync-praxis-identifiers', { concurrency: 1, lockLifetime: 60000 }, async () => {
+            await runPraxisSync();
+        });
+        this.agenda.every('15 minutes', 'sync-praxis-identifiers');
     }
 
     public async getAgendaInstance(): Promise<Agenda> {

@@ -2,35 +2,35 @@
 
 ## 1. Modelo y almacenamiento de recetas
 
-- [ ] 1.1 Agregar `identificadoresExternos` (`{ entidad, valor }`) y `syncExterno` al modelo/tipos de `prescriptions` y verificar con test de creación/lectura del documento
-- [ ] 1.2 Crear el índice multikey compuesto no único `{ 'identificadoresExternos.entidad': 1, 'identificadoresExternos.valor': 1 }` y verificar con `explain()` que la búsqueda por `$elemMatch` lo usa
-- [ ] 1.3 Implementar el upsert de identificadores por entidad y la búsqueda por identificador externo en el repositorio, y verificar con tests (alta, no duplica, búsqueda por prestación/registro/praxis)
-- [ ] 1.4 Incorporar orden y fechas escalonadas para recetas de tratamiento prolongado y verificar con test que comparten identificadores y se distinguen por orden
+- [x] 1.1 Agregar `identificadoresExternos` (`{ entidad, valor }`) y `syncExterno` al modelo/tipos de `prescriptions` y verificar con test de creación/lectura del documento
+- [x] 1.2 Crear el índice multikey compuesto no único `{ 'identificadoresExternos.entidad': 1, 'identificadoresExternos.valor': 1 }` y verificar con `explain()` que la búsqueda por `$elemMatch` lo usa
+- [x] 1.3 Implementar el upsert de identificadores por entidad y la búsqueda por identificador externo en el repositorio, y verificar con tests (alta, no duplica, búsqueda por prestación/registro/praxis)
+- [x] 1.4 Incorporar orden y fechas escalonadas para recetas de tratamiento prolongado y verificar con test que comparten identificadores y se distinguen por orden
 
 ## 2. Integración con Praxis
 
-- [ ] 2.1 Cablear `PraxisClient`/`PraxisMapper` en el composition root de `prescriptions` con la config de entorno (`PRAXYS_ENDPOINT`, `PRAXYS_API_KEY`) y verificar que el build y un test de creación pasan
-- [ ] 2.2 Implementar la elegibilidad (medicamento no magistral) y el envío por insumo con `tratamientoProlongado`, guardando el `idPrescripcion` en los identificadores, y verificar con test unitario del mapper y del flujo
-- [ ] 2.3 Implementar la selección de genérico + sugerido comercial y el envío del `codigoAlfabeta` del sugerido (elegido o por defecto), y verificar con test que el payload de Praxis usa el código del sugerido
-- [ ] 2.4 Marcar `no_aplicable` los casos no enviables (magistral) y verificar con test que no se envía y se persiste con ese estado
-- [ ] 2.5 Implementar la sincronización local-first (estado `pendiente` al fallar) y verificar con test que la receta queda persistida con `syncExterno.praxis.estado = 'pendiente'`
-- [ ] 2.6 Implementar el job de reintento en `src/agenda/jobs/` (escaneo de pendientes, 3 intentos, luego `error`) registrado para `agenda-ui`, y verificar con test del handler (éxito, falla y agotamiento de intentos)
+- [x] 2.1 Agregar `PRAXYS_ENDPOINT`/`PRAXYS_API_KEY` a `config.ts` y cablear `PraxisClient`/`PraxisMapper` en el composition root de `prescriptions`, verificando que el build y un test de creación pasan
+- [x] 2.2 Implementar la elegibilidad (medicamento no magistral) y el envío por insumo, derivando el `tratamientoProlongado` booleano de Praxis desde los meses del modelo, guardando el `idPrescripcion` en los identificadores (compartido por `treatmentGroupId`), y verificar con test unitario del mapper y del flujo
+- [ ] 2.3 Implementar la selección de genérico + sugerido comercial (modelado nuevo en `supply`/DTO) y el envío del `codigoAlfabeta` del sugerido (elegido o por defecto), y verificar con test que el payload de Praxis usa el código del sugerido
+- [x] 2.4 Marcar `no_aplicable` los casos no enviables (magistral) y verificar con test que no se envía y se persiste con ese estado
+- [x] 2.5 Implementar la sincronización local-first (estado `pendiente` al fallar) y verificar con test que la receta queda persistida con `syncExterno.praxis.estado = 'pendiente'`
+- [x] 2.6 Implementar el job de reintento en `src/agenda/jobs/` (escaneo de pendientes, 3 intentos, luego `error`) registrado para `agenda-ui`, y verificar con test del handler (éxito, falla y agotamiento de intentos)
 
 ## 3. Ingesta desde ANDES
 
-- [ ] 3.1 Exponer el endpoint interno de ingreso de recetas con formato ANDES, autenticado con token de aplicación, y verificar con test (autorizado y no autorizado)
-- [ ] 3.2 Implementar la adaptación formato ANDES → modelo de RecetAr, preservando `idPrestacion`, `idRegistro`, paciente, profesional, organización, medicamento y diagnóstico, y verificar con test de mapeo
-- [ ] 3.3 Implementar la deduplicación por `idRegistro` + conceptId (o nombre del magistral) y verificar con test que una segunda creación no duplica
-- [ ] 3.4 Implementar la generación de N recetas para tratamiento prolongado (orden, fechas escalonadas, estados iniciales) y verificar con test
+- [x] 3.1 Exponer el endpoint interno de ingreso de recetas con formato ANDES, autenticado con token de aplicación, y verificar con test (autorizado y no autorizado)
+- [x] 3.2 Implementar la adaptación formato ANDES → modelo de RecetAr, preservando `idPrestacion`, `idRegistro`, paciente, profesional, organización, medicamento y diagnóstico, y verificar con test de mapeo
+- [x] 3.3 Implementar la deduplicación por `idRegistro` + conceptId (o nombre del magistral) y verificar con test que una segunda creación no duplica
+- [x] 3.4 Implementar la generación de N recetas para tratamiento prolongado (orden, fechas escalonadas, estados iniciales) y verificar con test
 
 ## 4. API compatible con ANDES
 
-- [ ] 4.1 Implementar los endpoints de lectura de recetas (`GET /recetas`, `/motivos`, `/filtros`, `/profesional/:id`, `/verificar`) con el formato de receta de ANDES y verificar con tests de contrato
-- [ ] 4.2 Implementar `PATCH /recetas` (suspender, dispensar, cancelar-dispensa, rechazar, sin-dispensar) sobre la fuente RecetAr y verificar con tests por operación
-- [ ] 4.3 Implementar la consulta de estado por prestación (`idPrestacion` → lista con estado, dispensa e `idReceta`) y verificar con test
-- [ ] 4.4 Implementar la consulta de recetas públicas por paciente (solo públicas) y verificar con test que excluye las privadas
+- [x] 4.1 Implementar los endpoints de lectura de recetas (`GET /recetas`, `/motivos`, `/filtros`, `/profesional/:id`, `/verificar`) con el formato de receta de ANDES y verificar con tests de contrato
+- [x] 4.2 Implementar `PATCH /recetas` (suspender, dispensar, cancelar-dispensa, rechazar, sin-dispensar) sobre la fuente RecetAr y verificar con tests por operación
+- [x] 4.3 Implementar la consulta de estado por prestación (`idPrestacion` → lista con estado, dispensa e `idReceta`) y verificar con test
+- [x] 4.4 Implementar la consulta de recetas por paciente con el parámetro `ambito` (sin parámetro → solo públicas; `ambito=todas` → todas) y verificar con test (default solo públicas; `ambito=todas` incluye privadas y públicas)
 - [ ] 4.5 Implementar el merge de recetas históricas (ANDES) + nuevas (RecetAr) en las lecturas por prestación y verificar con test de combinación
-- [ ] 4.6 Documentar el contrato de recetas (endpoints, request/response) en el OpenAPI del módulo y verificar que la spec generada lo incluye
+- [x] 4.6 Documentar el contrato de recetas (endpoints, request/response) en el OpenAPI del módulo y verificar que la spec generada lo incluye
 
 ## 5. Jobs de estado e impresión
 

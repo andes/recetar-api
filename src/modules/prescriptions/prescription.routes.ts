@@ -2,12 +2,14 @@ import { Router } from 'express';
 import { validate } from '../../shared/middlewares/validate.middleware';
 import { checkAuth } from '../../shared/middlewares/auth.middleware';
 import { requirePermission } from '../../shared/middlewares/permission.middleware';
+import { checkAppAuth, requireAppPermission } from '../../shared/middlewares/app-auth.middleware';
 import { prescriptionController } from './index';
 import {
     createPrescriptionSchema,
     updatePrescriptionSchema,
     dispensePrescriptionSchema,
 } from './prescription.dto';
+import { andesIngestSchema } from './ingest.dto';
 import {
     andesDispenseSchema,
     andesCancelDispenseSchema,
@@ -28,6 +30,7 @@ router.get('/dispensed-by/:cuil', checkAuth, canReadPrescription, prescriptionCo
 
 router.get('/andes/verify', checkAuth, canReadPrescription, prescriptionController.verifyAndesReceta);
 router.get('/andes/:id', checkAuth, canReadPrescription, prescriptionController.getAndesPrescription);
+router.post('/andes/ingest', checkAppAuth, requireAppPermission('prescription:create'), validate(andesIngestSchema), prescriptionController.ingest);
 router.patch('/andes/dispense', checkAuth, canUpdateAnyPrescription, validate(andesDispenseSchema), prescriptionController.andesDispense);
 router.patch('/andes/cancel-dispense', checkAuth, canUpdateAnyPrescription, validate(andesCancelDispenseSchema), prescriptionController.andesCancelDispense);
 router.patch('/andes/suspend', checkAuth, canUpdateAnyPrescription, validate(andesSuspendSchema), prescriptionController.andesSuspend);

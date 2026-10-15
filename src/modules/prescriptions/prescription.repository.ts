@@ -1,6 +1,12 @@
 import { Types } from 'mongoose';
 import Prescription from './prescription.model';
-import { IPrescription, PRESCRIPTION_SEARCH_LIMIT } from './prescription.types';
+import {
+    IPrescription,
+    PRESCRIPTION_SEARCH_LIMIT,
+    IExternalIdentifier,
+    ExternalIdentifierEntity,
+    IExternalSync,
+} from './prescription.types';
 import { normalizeCuil, cuilDigitsRegex } from './prescription.utils';
 import { toObjectId } from '../../shared/utils/object-id';
 
@@ -210,5 +216,116 @@ export class PrescriptionRepository {
 
     async findByStatusAndAmbito(status: string, ambito: string, limit = 100): Promise<IPrescription[]> {
         return Prescription.find({ status, ambito }).limit(limit).exec();
+    }
+
+    async addExternalIdentifier(
+        id: string,
+        entidad: ExternalIdentifierEntity,
+        valor: string,
+    ): Promise<IPrescription | null> {
+        const prescription = await Prescription.findById(id).exec();
+        if (!prescription) {
+            return null;
+        }
+        const others = (prescription.identificadoresExternos || []).filter((entry: IExternalIdentifier) => entry.entidad !== entidad);
+        prescription.identificadoresExternos = [...others, { entidad, valor } as IExternalIdentifier];
+        await prescription.save();
+        return prescription;
+    }
+
+    async findByExternalIdentifier(
+        entidad: ExternalIdentifierEntity,
+        valor: string,
+    ): Promise<IPrescription[]> {
+        return Prescription.find({
+            identificadoresExternos: { $elemMatch: { entidad, valor } },
+        }).exec();
+    }
+
+    async findPendingPraxisSync(limit = 100): Promise<IPrescription[]> {
+        return Prescription.find({ 'syncExterno.praxis.estado': 'pendiente' }).limit(limit).exec();
+    }
+
+    async findByRegistroAndConcept(
+        idRegistro: string,
+        conceptId?: string,
+        magistralNombre?: string,
+    ): Promise<IPrescription | null> {
+        const filter: Record<string, unknown> = {
+            identificadoresExternos: { $elemMatch: { entidad: 'registro', valor: idRegistro } },
+        };
+        if (magistralNombre) {
+            filter['supplies.supply.name'] = magistralNombre;
+        } else if (conceptId) {
+            filter['supplies.supply.code.value'] = conceptId;
+        }
+        return Prescription.findOne(filter).exec();
+    }
+
+    async findByPrestacion(idPrestacion: string): Promise<IPrescription[]> {
+        return Prescription.find({
+            identificadoresExternos: { $elemMatch: { entidad: 'prestacion', valor: idPrestacion } },
+        }).sort({ date: 1 }).exec();
+    }
+
+    async findByPacienteAmbito(dni: string, ambito?: string): Promise<IPrescription[]> {
+        const filter: Record<string, unknown> = { 'patient.dni': dni };
+        if (ambito !== 'todas') {
+            filter.ambito = 'publico';
+        }
+        return Prescription.find(filter).sort({ date: -1 }).exec();
+    }
+
+    async findByIdOrPrescriptionId(id: string): Promise<IPrescription | null> {
+        const byObjectId = toObjectId(id);
+        if (byObjectId) {
+            const doc = await Prescription.findById(byObjectId).exec();
+            if (doc) {
+                return doc;
+            }
+        }
+        return Prescription.findOne({ prescriptionId: id }).exec();
+    }
+
+    async findRecetasHub(filtros?: { documento?: string; estado?: string; fechaInicio?: string; fechaFin?: string }): Promise<IPrescription[]> {
+        const filter: Record<string, unknown> = {};
+        if (filtros?.documento) { filter['patient.dni'] = filtros.documento; }
+        if (filtros?.estado) { filter.status = new RegExp(`^${filtros.estado}$`, 'i'); }
+        if (filtros?.fechaInicio || filtros?.fechaFin) {
+            const dateFilter: Record<string, Date> = {};
+            if (filtros.fechaInicio) { dateFilter.$gte = new Date(filtros.fechaInicio); }
+            if (filtros.fechaFin) { dateFilter.$lte = new Date(filtros.fechaFin); }
+            filter.date = dateFilter;
+        }
+        return Prescription.find(filter).sort({ date: -1 }).exec();
+    }
+
+    async pushEstado(
+        id: string,
+        estado: { tipo: string; fecha: Date; motivo?: string; observacion?: string },
+        status: string,
+    ): Promise<IPrescription | null> {
+        return Prescription.findByIdAndUpdate(id, {
+            $set: { status, estadoActual: estado },
+            $push: { estados: estado },
+        }, { new: true }).exec();
+    }
+
+    async pushDispensa(
+        id: string,
+        estadoDispensa: Record<string, unknown>,
+        dispensa: Record<string, unknown> | null,
+        status: string,
+    ): Promise<IPrescription | null> {
+        const $push: Record<string, unknown> = { estadosDispensa: estadoDispensa };
+        if (dispensa) { $push.dispensa = dispensa; }
+        return Prescription.findByIdAndUpdate(id, {
+            $set: { status, estadoDispensaActual: estadoDispensa },
+            $push,
+        }, { new: true }).exec();
+    }
+
+    async updateSyncExterno(id: string, sync: IExternalSync): Promise<IPrescription | null> {
+        return Prescription.findByIdAndUpdate(id, { $set: { syncExterno: sync } }, { new: true }).exec();
     }
 }

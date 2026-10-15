@@ -31,12 +31,16 @@ RecetAr SHALL exponer una consulta que, dado un `idPrestacion`, devuelva la list
 - **WHEN** ANDES consulta el estado de las recetas por prestación
 - **THEN** RecetAr devuelve la lista de recetas de esa prestación con estado y dispensa
 
-### Requirement: Consulta de recetas públicas por paciente
-RecetAr SHALL permitir consultar las recetas de un paciente filtrando únicamente las de ámbito público.
+### Requirement: Consulta de recetas de un paciente
+RecetAr SHALL permitir consultar las recetas de un paciente. Sin parámetro de ámbito SHALL devolver solo las de ámbito público (comportamiento actual de la HUDS); con el parámetro `ambito=todas` SHALL devolver todas las recetas del paciente, públicas y privadas.
 
-#### Scenario: Consulta por paciente
-- **WHEN** la HUDS consulta las recetas de un paciente
+#### Scenario: Consulta por defecto (solo públicas)
+- **WHEN** la HUDS consulta las recetas de un paciente sin parámetro de ámbito
 - **THEN** RecetAr devuelve solo las recetas de ámbito público de ese paciente
+
+#### Scenario: Consulta de todas las recetas
+- **WHEN** la consulta incluye `ambito=todas`
+- **THEN** RecetAr devuelve todas las recetas del paciente, públicas y privadas
 
 ### Requirement: Merge de recetas históricas
 RecetAr SHALL permitir que las lecturas de recetas de una prestación integren las recetas nuevas de RecetAr y las históricas que aún viven en ANDES, hasta su migración.
