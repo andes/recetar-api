@@ -246,6 +246,18 @@ export class PrescriptionRepository {
         return Prescription.find({ 'syncExterno.praxis.estado': 'pendiente' }).limit(limit).exec();
     }
 
+    async findPendientesEnRango(desde: Date, hasta: Date): Promise<IPrescription[]> {
+        return Prescription.find({ status: 'Pendiente', date: { $gte: desde, $lte: hasta } }).exec();
+    }
+
+    async findVencibles(fechaLimite: Date): Promise<IPrescription[]> {
+        return Prescription.find({
+            status: 'Pendiente',
+            date: { $lt: fechaLimite },
+            'estadoDispensaActual.tipo': { $ne: 'dispensada' },
+        }).exec();
+    }
+
     async findByRegistroAndConcept(
         idRegistro: string,
         conceptId?: string,

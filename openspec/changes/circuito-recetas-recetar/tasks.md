@@ -34,20 +34,20 @@
 
 ## 5. Jobs de estado e impresión
 
-- [ ] 5.1 Migrar a RecetAr el job de vencimiento de recetas y verificar con test de transición de estados
+- [x] 5.1 Migrar a RecetAr el job de vencimiento de recetas y verificar con test de transición de estados
 - [ ] 5.2 Migrar a RecetAr el job de actualización de estados de dispensa y verificar con test de sincronización
 - [ ] 5.3 Migrar la impresión/PDF de recetas a RecetAr (idReceta/código de barras) y verificar que el PDF se genera con el identificador correcto
 
 ## 6. Cambios en ANDES (`api`)
 
-- [ ] 6.1 Reescribir el handler `prestacion:receta:create` para llamar al endpoint de ingreso de RecetAr y verificar que no persiste receta nueva en la colección local
-- [ ] 6.2 Implementar el proxy de lecturas de recetas (por prestación y por paciente) con merge de históricas + nuevas, y verificar el formato devuelto contra el que consume la HUDS
-- [ ] 6.3 Implementar el proxy de suspensión (`PATCH /recetas` op suspender) hacia RecetAr para las recetas nuevas y verificar el flujo completo
+- [x] 6.1 Reescribir el handler `prestacion:receta:create` para llamar al endpoint de ingreso de RecetAr y verificar que no persiste receta nueva en la colección local
+- [x] 6.2 Implementar el proxy de lecturas de recetas (por prestación y por paciente) con merge de históricas + nuevas, y verificar el formato devuelto contra el que consume la HUDS
+- [x] 6.3 Implementar el proxy de suspensión (`PATCH /recetas` op suspender) hacia RecetAr para las recetas nuevas y verificar el flujo completo
 
 ## 7. Verificación de integración
 
-- [ ] 7.1 Verificar extremo a extremo: prestación → ingreso en RecetAr → envío a Praxis → consulta por prestación desde el proxy de ANDES
-- [ ] 7.2 Ejecutar la verificación de cada repo afectado (`recetar-api`: `npm run lint`, `npm run build`, `npm test`; `api`: comandos propios) y registrar el resultado por repo
+- [x] 7.1 Verificar extremo a extremo: prestación → ingreso en RecetAr → envío a Praxis → consulta por prestación desde el proxy de ANDES
+- [x] 7.2 Ejecutar la verificación de cada repo afectado (`recetar-api`: `npm run lint`, `npm run build`, `npm test`; `api`: comandos propios) y registrar el resultado por repo
 
 ## Workflow follow-up
 
