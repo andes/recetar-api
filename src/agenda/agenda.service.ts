@@ -2,6 +2,7 @@ import Agenda from 'agenda';
 import mongoose from 'mongoose';
 import { runPraxisSync } from './jobs/sync-praxis-identifiers';
 import { runVencimientoRecetas } from './jobs/vencimiento-recetas';
+import { runActualizarEstadosDispensa } from './jobs/actualizar-estados-dispensa';
 
 class AgendaService {
     private static instance: AgendaService;
@@ -59,6 +60,11 @@ class AgendaService {
             await runVencimientoRecetas();
         });
         this.agenda.every('0 3 * * *', 'vencimiento-recetas');
+
+        this.agenda.define('actualizar-estados-dispensa', { concurrency: 1, lockLifetime: 60000 }, async () => {
+            await runActualizarEstadosDispensa();
+        });
+        this.agenda.every('0 */2 * * *', 'actualizar-estados-dispensa');
     }
 
     public async getAgendaInstance(): Promise<Agenda> {

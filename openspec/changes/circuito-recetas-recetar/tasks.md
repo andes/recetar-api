@@ -35,8 +35,8 @@
 ## 5. Jobs de estado e impresión
 
 - [x] 5.1 Migrar a RecetAr el job de vencimiento de recetas y verificar con test de transición de estados
-- [ ] 5.2 Migrar a RecetAr el job de actualización de estados de dispensa y verificar con test de sincronización
-- [ ] 5.3 Migrar la impresión/PDF de recetas a RecetAr (idReceta/código de barras) y verificar que el PDF se genera con el identificador correcto
+- [x] 5.2 Migrar a RecetAr el job de actualización de estados de dispensa y verificar con test de sincronización
+- [x] 5.3 Migrar la impresión/PDF de recetas a RecetAr (idReceta/código de barras) y verificar que el PDF se genera con el identificador correcto
 
 ## 6. Cambios en ANDES (`api`)
 

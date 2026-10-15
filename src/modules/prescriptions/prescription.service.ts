@@ -732,4 +732,28 @@ export class PrescriptionService {
                 throw new PrescriptionNotDispensableError();
         }
     }
+
+    async recordDispensa(
+        id: string,
+        dto: { tipo?: 'dispensada' | 'dispensa-parcial'; sistema?: string; cantidad?: number; descripcion?: string },
+    ): Promise<Record<string, unknown> | null> {
+        const doc = await this.prescriptionRepository.findByIdOrPrescriptionId(id);
+        if (!doc) {
+            throw new PrescriptionNotFoundError();
+        }
+        const tipo = dto.tipo || 'dispensada';
+        const estadoDispensa = { tipo, fecha: new Date(), sistema: dto.sistema };
+        const dispensa = {
+            descripcion: dto.descripcion,
+            cantidad: dto.cantidad,
+            fecha: new Date(),
+            sistema: dto.sistema,
+        };
+
+        const updated = await this.prescriptionRepository.pushDispensa(doc._id.toString(), estadoDispensa, dispensa, 'Dispensada');
+        if (tipo === 'dispensada') {
+            await this.prescriptionRepository.pushEstado(doc._id.toString(), { tipo: 'finalizada', fecha: new Date() }, 'Dispensada');
+        }
+        return updated ? toRecetaCompatible(updated) : null;
+    }
 }

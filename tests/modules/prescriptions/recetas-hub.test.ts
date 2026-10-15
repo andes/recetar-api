@@ -115,6 +115,15 @@ describe('Hub de recetas (compatible ANDES)', () => {
         expect(recetas.map(r => (r.medicamento as any)?.ordenTratamiento)).toEqual([0, 1, 2]);
     });
 
+    it('recordDispensa registra la dispensa y marca finalizada', async () => {
+        const docs = await service.ingest(ingestPayload() as any);
+
+        const receta = await service.recordDispensa(docs[0]._id.toString(), { tipo: 'dispensada', sistema: 'sifaho', cantidad: 2 });
+
+        expect(receta?.estadoDispensaActual?.tipo).toBe('dispensada');
+        expect(receta?.estadoActual?.tipo).toBe('finalizada');
+    });
+
     it('patchReceta rechazar fija Rechazada', async () => {
         const docs = await service.ingest(ingestPayload() as any);
 

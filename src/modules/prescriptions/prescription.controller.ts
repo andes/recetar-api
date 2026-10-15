@@ -290,4 +290,18 @@ export class PrescriptionController {
             next(error);
         }
     };
+
+    recetasDispensa = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const result = await this.prescriptionService.recordDispensa(req.params.id, {
+                tipo: req.body?.tipo,
+                sistema: req.body?.sistema,
+                cantidad: req.body?.cantidad,
+                descripcion: req.body?.descripcion,
+            });
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
 }

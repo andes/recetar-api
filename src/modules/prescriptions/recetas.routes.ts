@@ -20,5 +20,6 @@ router.get('/', checkAppAuth, canReadReceta, prescriptionController.recetasCompa
 
 router.post('/', checkAppAuth, canCreateReceta, validate(andesIngestSchema), prescriptionController.ingest);
 router.patch('/', checkAppAuth, canUpdateReceta, prescriptionController.recetasPatch);
+router.post('/:id/dispensa', checkAppAuth, canUpdateReceta, prescriptionController.recetasDispensa);
 
 export default router;

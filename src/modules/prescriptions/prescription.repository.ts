@@ -258,6 +258,10 @@ export class PrescriptionRepository {
         }).exec();
     }
 
+    async findDispensaParcial(): Promise<IPrescription[]> {
+        return Prescription.find({ 'estadoDispensaActual.tipo': 'dispensa-parcial' }).exec();
+    }
+
     async findByRegistroAndConcept(
         idRegistro: string,
         conceptId?: string,
