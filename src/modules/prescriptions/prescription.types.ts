@@ -1,3 +1,5 @@
+import { Document } from 'mongoose';
+
 export const PRESCRIPTION_SEARCH_LIMIT = 50;
 
 export interface PrescriptionDispenser {
@@ -39,6 +41,50 @@ export interface ReplacedMedication {
     supply?: IPrescriptionSupply['supply'];
 }
 
+export type ExternalIdentifierEntity = 'praxis' | 'prestacion' | 'registro';
+
+export interface IExternalIdentifier {
+    entidad: ExternalIdentifierEntity;
+    valor: string;
+}
+
+export type ExternalSyncStatus = 'pendiente' | 'ok' | 'no_aplicable' | 'error';
+
+export interface IExternalSyncEntity {
+    estado: ExternalSyncStatus;
+    intentos: number;
+    ultimoError?: string;
+}
+
+export interface IExternalSync {
+    praxis?: IExternalSyncEntity;
+}
+
+export type PrescriptionStatus = 'Pendiente' | 'Dispensada' | 'Vencida' | 'Suspendida' | 'Rechazada';
+
+export interface IPrescriptionEstado {
+    tipo: string;
+    fecha?: Date;
+    motivo?: string;
+    observacion?: string;
+}
+
+export interface IPrescriptionDispensa {
+    descripcion?: string;
+    cantidad?: number;
+    organizacion?: { id?: string; nombre?: string };
+    fecha?: Date;
+    sistema?: string;
+}
+
+export interface IPrescriptionEstadoDispensa {
+    tipo: 'sin-dispensa' | 'dispensada' | 'dispensa-parcial';
+    fecha?: Date;
+    sistema?: string;
+    idDispensaApp?: string;
+    cancelada?: { motivo?: string; fecha?: Date };
+}
+
 export interface IPrescription extends Document {
     prescriptionId?: string;
     patient: {
@@ -65,11 +111,19 @@ export interface IPrescription extends Document {
     dispensedAt?: Date;
     replacedMedication?: ReplacedMedication;
     supplies: IPrescriptionSupply[];
-    status: 'Pendiente' | 'Dispensada' | 'Vencida';
+    status: PrescriptionStatus;
+    estados?: IPrescriptionEstado[];
+    estadoActual?: IPrescriptionEstado;
+    estadosDispensa?: IPrescriptionEstadoDispensa[];
+    estadoDispensaActual?: IPrescriptionEstadoDispensa;
+    dispensa?: IPrescriptionDispensa[];
     date: Date;
     ambito?: 'publico' | 'privado';
     tratamientoProlongado?: number;
     treatmentGroupId?: string;
+    ordenTratamiento?: number;
+    identificadoresExternos?: IExternalIdentifier[];
+    syncExterno?: IExternalSync;
     trimestral?: boolean;
     organizacion?: {
         _id?: string;

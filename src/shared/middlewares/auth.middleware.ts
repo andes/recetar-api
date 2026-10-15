@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../../models/user.model';
 import { AuthError } from '../errors';
+import { extractRoleNames } from './auth.types';
 
 export const checkAuth = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     const authHeader = req.headers.authorization;
@@ -19,10 +20,14 @@ export const checkAuth = async (req: Request, _res: Response, next: NextFunction
         return next(new AuthError('errors.auth.invalidToken'));
     }
 
-    const user = await User.findById(payload.sub).select('_id').exec();
+    const user = await User.findById(payload.sub)
+        .populate({ path: 'roles', select: 'role' })
+        .exec();
     if (!user) {
         return next(new AuthError('errors.auth.default'));
     }
+
+    (user as any).roleNames = extractRoleNames(user.roles as unknown as Array<{ role?: string }>);
 
     req.user = user;
     next();

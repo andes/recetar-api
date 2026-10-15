@@ -12,6 +12,8 @@ export const env = {
     ANDES_MPI_ENDPOINT: process.env.ANDES_MPI_ENDPOINT || '',
     VADEMECUM_MS_URL: process.env.VADEMECUM_MS_URL || 'http://localhost:4001',
     VADEMECUM_API_KEY: process.env.VADEMECUM_API_KEY || '',
+    PRAXYS_ENDPOINT: process.env.PRAXYS_ENDPOINT || '',
+    PRAXYS_API_KEY: process.env.PRAXYS_API_KEY || '',
     PATIENT_VALIDATION_ENABLED: process.env.PATIENT_VALIDATION_ENABLED !== 'false',
     SISA_URL: process.env.SISA_URL || '',
     SISA_USERNAME: process.env.SISA_USERNAME || '',

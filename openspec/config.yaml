@@ -1,0 +1,18 @@
+schema: spec-driven
+githubCopilot:
+  cloudAgent: false
+
+context: |
+  Este repositorio (recetar-api) es el hogar de los specs OpenSpec del circuito
+  de recetas de RecetAR. Los changes viven en openspec/changes y las specs
+  (fuente de verdad) en openspec/specs.
+
+  Alcance multi-repo: aunque recetar-api es la casa de los specs, algunos changes
+  tocan o dependen de otros repositorios del workspace:
+    - recetar-api (API; codigo principal de este repo).
+    - recetar-app (frontend; specs a agregar en su propio repo).
+    - api (ANDES): es un target cross-repo documentado aqui. Ese equipo no usa
+      OpenSpec, por lo que el trabajo a realizar alli queda registrado como
+      dependencia y contrato dentro de los changes de este repo.
+
+  Escribir todos los artefactos (proposal, specs, design, tasks) en espanol.

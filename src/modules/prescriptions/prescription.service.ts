@@ -23,6 +23,9 @@ import { PatientNotFoundError } from '../patients/patients.errors';
 import { generatePrescriptionId, mapPrescriptionStatus, normalizeCuil, addDays } from './prescription.utils';
 import { UsersRepository } from '../users/users.repository';
 import { AndesPrescription } from '../../integrations/andes/andes.types';
+import { PraxisClient, PraxisMapper } from '../../integrations/praxis';
+import { AndesIngestDTO } from './ingest.dto';
+import { toRecetaCompatible } from '../../integrations/andes/receta-output.mapper';
 
 export class PrescriptionService {
     constructor(
@@ -32,6 +35,7 @@ export class PrescriptionService {
         private readonly patientServiceProvider: PatientService | (() => PatientService),
         private readonly logger: Logger,
         private readonly usersRepository: UsersRepository,
+        private readonly praxisClient?: PraxisClient,
     ) {}
 
     private get patientService(): PatientService {
@@ -187,7 +191,9 @@ export class PrescriptionService {
                 }
             }
 
-            for (const date of dates) {
+            const supplyDocs: IPrescription[] = [];
+            for (let index = 0; index < dates.length; index++) {
+                const date = dates[index];
                 const patient = { ...dto.patient, ...patientSnapshot } as IPrescription['patient'];
                 if (supply.obraSocial?.nombre) {
                     patient.obraSocial = {
@@ -206,16 +212,175 @@ export class PrescriptionService {
                     status: 'Pendiente',
                     date,
                     ambito: dto.ambito || 'privado',
-                    ...(meses ? { tratamientoProlongado: meses } : {}),
+                    ...(meses ? { tratamientoProlongado: meses, ordenTratamiento: index } : {}),
                     ...(treatmentGroupId ? { treatmentGroupId } : {}),
                     organizacion: dto.organizacion,
                 };
                 const created = await this.prescriptionRepository.create(data);
                 prescriptions.push(created);
+                supplyDocs.push(created);
             }
+
+            await this.syncSupplyToPraxis(supplyDocs, supply);
         }
 
-        return prescriptions[0];
+        const firstCreated = await this.prescriptionRepository.findById(prescriptions[0]._id.toString());
+        return firstCreated || prescriptions[0];
+    }
+
+    private async syncSupplyToPraxis(
+        docs: IPrescription[],
+        supply: { supply?: { type?: string } },
+    ): Promise<void> {
+        if (!docs.length) {
+            return;
+        }
+
+        const eligible = !supply.supply?.type;
+        if (!eligible) {
+            for (const doc of docs) {
+                await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
+                    praxis: { estado: 'no_aplicable', intentos: 0 },
+                });
+            }
+            return;
+        }
+
+        if (!this.praxisClient) {
+            for (const doc of docs) {
+                await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
+                    praxis: { estado: 'pendiente', intentos: 0 },
+                });
+            }
+            return;
+        }
+
+        try {
+            const payload = PraxisMapper.toPraxisFromDoc(docs[0]);
+            const response = await this.praxisClient.createPrescription(payload);
+            for (const doc of docs) {
+                await this.prescriptionRepository.addExternalIdentifier(doc._id.toString(), 'praxis', response.idPrescripcion);
+                await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
+                    praxis: { estado: 'ok', intentos: 0 },
+                });
+            }
+        } catch (error) {
+            this.logger.logError(new Error(`Praxis sync failed: ${(error as Error).message}`));
+            for (const doc of docs) {
+                await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
+                    praxis: { estado: 'pendiente', intentos: 0, ultimoError: (error as Error).message },
+                });
+            }
+        }
+    }
+
+    async ingest(dto: AndesIngestDTO): Promise<IPrescription[]> {
+        const medicamento = dto.medicamento;
+        const esMagistral = !!medicamento?.esMagistral;
+        const conceptId = !esMagistral
+            ? (medicamento?.concepto?.conceptId || medicamento?.generico?.conceptId)
+            : undefined;
+        const magistralNombre = esMagistral ? medicamento?.magistral?.nombre : undefined;
+
+        const existing = await this.prescriptionRepository.findByRegistroAndConcept(dto.idRegistro, conceptId, magistralNombre);
+        if (existing) {
+            return [existing];
+        }
+
+        const meses = this.ingestTreatmentMonths(medicamento);
+        const treatmentGroupId = meses ? new Types.ObjectId().toString() : undefined;
+        const now = new Date(dto.fechaRegistro || new Date());
+
+        const supply = this.buildIngestSupply(medicamento, dto.diagnostico);
+        const patient = this.buildPatientFromIngest(dto.paciente);
+        const professional = this.buildProfessionalFromIngest(dto.profesional);
+
+        const docs: IPrescription[] = [];
+        const count = meses || 1;
+        for (let index = 0; index < count; index++) {
+            const date = addDays(now, index * 30);
+            const data: Partial<IPrescription> = {
+                prescriptionId: generatePrescriptionId(date),
+                patient,
+                professional,
+                supplies: [supply],
+                status: 'Pendiente',
+                date,
+                ambito: 'publico',
+                ...(meses ? { tratamientoProlongado: meses, ordenTratamiento: index } : {}),
+                ...(treatmentGroupId ? { treatmentGroupId } : {}),
+                ...(dto.organizacion ? { organizacion: { _id: dto.organizacion.id, nombre: dto.organizacion.nombre } } : {}),
+            };
+            const created = await this.prescriptionRepository.create(data);
+            await this.prescriptionRepository.addExternalIdentifier(created._id.toString(), 'prestacion', dto.idPrestacion);
+            await this.prescriptionRepository.addExternalIdentifier(created._id.toString(), 'registro', dto.idRegistro);
+            docs.push(created);
+        }
+
+        await this.syncSupplyToPraxis(docs, supply);
+
+        const refreshed: IPrescription[] = [];
+        for (const doc of docs) {
+            const found = await this.prescriptionRepository.findById(doc._id.toString());
+            if (found) {
+                refreshed.push(found);
+            }
+        }
+        return refreshed;
+    }
+
+    private ingestTreatmentMonths(medicamento: AndesIngestDTO['medicamento']): number | undefined {
+        if (!medicamento?.tratamientoProlongado) {
+            return undefined;
+        }
+        const months = parseInt(medicamento?.tiempoTratamiento?.id || '', 10);
+        return Number.isFinite(months) && months > 1 ? months : undefined;
+    }
+
+    private buildIngestSupply(
+        medicamento: AndesIngestDTO['medicamento'],
+        diagnostic?: string,
+    ): IPrescription['supplies'][number] {
+        const esMagistral = !!medicamento?.esMagistral;
+        const conceptId = !esMagistral
+            ? (medicamento?.concepto?.conceptId || medicamento?.generico?.conceptId)
+            : undefined;
+        const term = !esMagistral
+            ? (medicamento?.concepto?.term || medicamento?.generico?.term)
+            : undefined;
+
+        return {
+            supply: esMagistral
+                ? { name: medicamento?.magistral?.nombre || '', type: 'magistral' }
+                : {
+                    name: term || '',
+                    ...(conceptId ? { code: { source: 'SNOMED' as const, value: conceptId } } : {}),
+                },
+            quantity: medicamento?.cantEnvases || 1,
+            quantityPresentation: medicamento?.cantidad || 1,
+            diagnostic: diagnostic || 'Sin diagnóstico',
+            indication: medicamento?.dosisDiaria?.notaMedica || '',
+        };
+    }
+
+    private buildPatientFromIngest(paciente: AndesIngestDTO['paciente']): IPrescription['patient'] {
+        return {
+            firstName: paciente?.nombre || '',
+            lastName: paciente?.apellido || '',
+            dni: paciente?.documento || '',
+            sex: paciente?.sexo || '',
+            ...(paciente?.fechaNacimiento ? { fechaNac: new Date(paciente.fechaNacimiento) } : {}),
+            ...(paciente?.id ? { idMPI: paciente.id } : {}),
+            ...(paciente?.obraSocial ? { obraSocial: { nombre: paciente.obraSocial.nombre, numeroAfiliado: paciente.obraSocial.numeroAfiliado } } : {}),
+        };
+    }
+
+    private buildProfessionalFromIngest(profesional: AndesIngestDTO['profesional']): IPrescription['professional'] {
+        return {
+            businessName: `${profesional?.apellido || ''}, ${profesional?.nombre || ''}`.trim(),
+            ...(profesional?.matricula ? { enrollment: profesional.matricula } : {}),
+            ...(profesional?.matricula ? { profesionGrado: [{ numeroMatricula: profesional.matricula }] } : {}),
+        };
     }
 
     private resolveTreatmentMonths(
@@ -459,5 +624,136 @@ export class PrescriptionService {
             this.logger.logError(new Error('ANDES verify failed'));
         }
         return { local, andes: andesResult };
+    }
+
+    async getRecetasPorPrestacion(idPrestacion: string): Promise<Record<string, unknown>[]> {
+        const docs = await this.prescriptionRepository.findByPrestacion(idPrestacion);
+        return docs.map(toRecetaCompatible);
+    }
+
+    async getRecetasPorPaciente(dni: string, ambito?: string): Promise<Record<string, unknown>[]> {
+        const docs = await this.prescriptionRepository.findByPacienteAmbito(dni, ambito);
+        return docs.map(toRecetaCompatible);
+    }
+
+    async getRecetasPorProfesional(id: string): Promise<Record<string, unknown>[]> {
+        const result = await this.prescriptionRepository.findByUserId(id, 0, 100);
+        return result.prescriptions.map(toRecetaCompatible);
+    }
+
+    async getRecetasCompatibles(filtros?: {
+        documento?: string;
+        estado?: string;
+        fechaInicio?: string;
+        fechaFin?: string;
+    }): Promise<Record<string, unknown>[]> {
+        const mappedEstado = mapPrescriptionStatus(filtros?.estado);
+        const docs = await this.prescriptionRepository.findRecetasHub({ ...filtros, estado: mappedEstado });
+        return docs.map(toRecetaCompatible);
+    }
+
+    getMotivos(): Array<{ label: string; descripcion: string }> {
+        return [
+            { label: 'vencimiento', descripcion: 'Receta vencida' },
+            { label: 'error', descripcion: 'Error en la receta' },
+            { label: 'otro', descripcion: 'Otro motivo' },
+        ];
+    }
+
+    async getVerificar(dni: string, conceptId: string, sexo: string): Promise<Record<string, unknown>[]> {
+        const docs = await this.prescriptionRepository.findByPacienteAmbito(dni, 'todas');
+        const matches = docs.filter(doc =>
+            doc.supplies?.some(s => s.supply?.code?.value === conceptId) &&
+            (!sexo || doc.patient?.sex?.toLowerCase() === sexo.toLowerCase()),
+        );
+        return matches.map(toRecetaCompatible);
+    }
+
+    async patchReceta(op: string, body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+        const id = body.recetaId as string;
+        if (!id) {
+            throw new PrescriptionNotFoundError();
+        }
+        const doc = await this.prescriptionRepository.findByIdOrPrescriptionId(id);
+        if (!doc) {
+            throw new PrescriptionNotFoundError();
+        }
+
+        switch (op) {
+            case 'suspender': {
+                const updated = await this.prescriptionRepository.pushEstado(doc._id.toString(), {
+                    tipo: 'suspendida',
+                    fecha: new Date(),
+                    motivo: body.motivo as string | undefined,
+                    observacion: body.observacion as string | undefined,
+                }, 'Suspendida');
+                return updated ? toRecetaCompatible(updated) : null;
+            }
+            case 'rechazar': {
+                const updated = await this.prescriptionRepository.pushEstado(doc._id.toString(), {
+                    tipo: 'rechazada',
+                    fecha: new Date(),
+                }, 'Rechazada');
+                return updated ? toRecetaCompatible(updated) : null;
+            }
+            case 'dispensar': {
+                const estadoDispensa = { tipo: 'dispensada', fecha: new Date(), sistema: body.sistema as string | undefined };
+                const dispensa = { descripcion: body.descripcion as string | undefined, cantidad: body.cantidad as number | undefined, fecha: new Date(), sistema: body.sistema as string | undefined };
+                const updated = await this.prescriptionRepository.pushDispensa(doc._id.toString(), estadoDispensa, dispensa, 'Dispensada');
+                if (updated) {
+                    await this.prescriptionRepository.pushEstado(doc._id.toString(), { tipo: 'finalizada', fecha: new Date() }, 'Dispensada');
+                }
+                return updated ? toRecetaCompatible(updated) : null;
+            }
+            case 'cancelar-dispensa': {
+                const updated = await this.prescriptionRepository.pushDispensa(doc._id.toString(), {
+                    tipo: 'sin-dispensa', fecha: new Date(), sistema: body.sistema as string | undefined,
+                }, null, 'Pendiente');
+                return updated ? toRecetaCompatible(updated) : null;
+            }
+            case 'sin-dispensar': {
+                const updated = await this.prescriptionRepository.pushDispensa(doc._id.toString(), {
+                    tipo: 'sin-dispensa', fecha: new Date(), sistema: body.sistema as string | undefined,
+                }, null, doc.status);
+                return updated ? toRecetaCompatible(updated) : null;
+            }
+            case 'dispensa-parcial': {
+                const updated = await this.prescriptionRepository.pushDispensa(doc._id.toString(), {
+                    tipo: 'dispensa-parcial', fecha: new Date(), sistema: body.sistema as string | undefined,
+                }, {
+                    descripcion: body.descripcion as string | undefined,
+                    cantidad: body.cantidad as number | undefined,
+                    fecha: new Date(),
+                    sistema: body.sistema as string | undefined,
+                }, 'Dispensada');
+                return updated ? toRecetaCompatible(updated) : null;
+            }
+            default:
+                throw new PrescriptionNotDispensableError();
+        }
+    }
+
+    async recordDispensa(
+        id: string,
+        dto: { tipo?: 'dispensada' | 'dispensa-parcial'; sistema?: string; cantidad?: number; descripcion?: string },
+    ): Promise<Record<string, unknown> | null> {
+        const doc = await this.prescriptionRepository.findByIdOrPrescriptionId(id);
+        if (!doc) {
+            throw new PrescriptionNotFoundError();
+        }
+        const tipo = dto.tipo || 'dispensada';
+        const estadoDispensa = { tipo, fecha: new Date(), sistema: dto.sistema };
+        const dispensa = {
+            descripcion: dto.descripcion,
+            cantidad: dto.cantidad,
+            fecha: new Date(),
+            sistema: dto.sistema,
+        };
+
+        const updated = await this.prescriptionRepository.pushDispensa(doc._id.toString(), estadoDispensa, dispensa, 'Dispensada');
+        if (tipo === 'dispensada') {
+            await this.prescriptionRepository.pushEstado(doc._id.toString(), { tipo: 'finalizada', fecha: new Date() }, 'Dispensada');
+        }
+        return updated ? toRecetaCompatible(updated) : null;
     }
 }

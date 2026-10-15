@@ -4,10 +4,13 @@ import Certificate from '../certificates/certificates.model';
 import Practice from '../practices/practices.model';
 import { checkAuth } from '../../shared/middlewares/auth.middleware';
 import { toObjectId } from '../../shared/utils/object-id';
+import { requirePermission } from '../../shared/middlewares/permission.middleware';
 
 const router = Router();
 
-router.get('/stats', checkAuth, async (req: Request, res: Response, next: NextFunction) => {
+const canReadDocument = requirePermission('read:any', 'document');
+
+router.get('/stats', checkAuth, canReadDocument, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const professionalId = toObjectId((req.user as any)._id);
 

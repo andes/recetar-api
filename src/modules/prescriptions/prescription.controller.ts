@@ -7,6 +7,7 @@ import {
     DispensePrescriptionDTO,
 } from './prescription.dto';
 import { PRESCRIPTION_SEARCH_LIMIT } from './prescription.types';
+import { AndesIngestDTO } from './ingest.dto';
 import { AndesDispenseDTO, AndesCancelDispenseDTO, AndesSuspendDTO } from '../../integrations/andes';
 import { getStringQueryParam } from '../../shared/utils/query';
 import { PinRequiredError, InvalidPinError, SecurityTokenInvalidError } from '../security/security.errors';
@@ -151,7 +152,7 @@ export class PrescriptionController {
     cancelDispense = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const userId = getStringQueryParam(req.query.userId) || '';
-            const isAdmin = (req as any).user?.role === 'admin';
+            const isAdmin = ((req.user as any)?.roleNames || []).includes('admin');
             const prescription = await this.prescriptionService.cancelDispense(req.params.id, userId, isAdmin);
             res.status(200).json(ApiResponse.success(prescription));
         } catch (error) {
@@ -201,6 +202,103 @@ export class PrescriptionController {
             const conceptId = getStringQueryParam(req.query.conceptId) || '';
             const sexo = getStringQueryParam(req.query.sexo) || '';
             const result = await this.prescriptionService.verifyAndesReceta(dni, conceptId, sexo);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    ingest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const result = await this.prescriptionService.ingest(req.body as AndesIngestDTO);
+            res.status(201).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    recetasPorPrestacion = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const result = await this.prescriptionService.getRecetasPorPrestacion(req.params.id);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    recetasPorPaciente = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const ambito = getStringQueryParam(req.query.ambito);
+            const result = await this.prescriptionService.getRecetasPorPaciente(req.params.dni, ambito);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    recetasPorProfesional = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const result = await this.prescriptionService.getRecetasPorProfesional(req.params.id);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    recetasCompatibles = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const filtros = {
+                documento: getStringQueryParam(req.query.documento),
+                estado: getStringQueryParam(req.query.estado),
+                fechaInicio: getStringQueryParam(req.query.fechaInicio),
+                fechaFin: getStringQueryParam(req.query.fechaFin),
+            };
+            const result = await this.prescriptionService.getRecetasCompatibles(filtros);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    recetasMotivos = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const result = this.prescriptionService.getMotivos();
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    recetasVerificar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const dni = getStringQueryParam(req.query.dni) || '';
+            const conceptId = getStringQueryParam(req.query.conceptId) || '';
+            const sexo = getStringQueryParam(req.query.sexo) || '';
+            const result = await this.prescriptionService.getVerificar(dni, conceptId, sexo);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    recetasPatch = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const op = req.body?.op;
+            const result = await this.prescriptionService.patchReceta(op, req.body);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    recetasDispensa = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const result = await this.prescriptionService.recordDispensa(req.params.id, {
+                tipo: req.body?.tipo,
+                sistema: req.body?.sistema,
+                cantidad: req.body?.cantidad,
+                descripcion: req.body?.descripcion,
+            });
             res.status(200).json(ApiResponse.success(result));
         } catch (error) {
             next(error);
