@@ -146,6 +146,16 @@ El progreso se lleva en el checklist del skill en `.opencode/skills/recetar-api-
 - Contexto multi-repo: hay changes que tocan o dependen de `recetar-app` y de `api` (ANDES). `api` **no usa OpenSpec** (equipo mas grande), por lo que el trabajo a realizar alli queda documentado como dependencia/contrato dentro de los changes de este repo.
 - Escribir los artefactos en espanol. Ver `openspec/config.yaml`.
 
+### Descripcion de PR a partir de un change
+Al cerrar un change, armar la descripcion del PR a partir de sus artefactos (seguir el template `.github/pull_request_template.md`):
+- **Requerimiento**: el `Why` del `proposal.md` (+ link a la User Story de Jira).
+- **Funcionalidad desarrollada**: resumen numerado por capability/area implementada (no por commit).
+- **Requiere actualizaciones en la base de datos**: indicar indices nuevos, seeds y campos nuevos de schema. Incluir el comando Mongo cuando aplique (ej. `db.<col>.createIndex(...)`) y el comando de seed.
+- **UserStories llegó a completarse**: marcar **No** si quedaron follow-ups (changes separados con tareas pendientes).
+- Listar **variables de entorno nuevas** y **flags de activacion** (y el comportamiento por defecto/fallback).
+- Aclarar **fuera de alcance / follow-ups** y el estado de los changes archivados.
+- Si el cambio es multi-repo, separar la descripcion por repositorio (`recetar-api`, `api`, etc.).
+
 ## Referencias utiles
 - Operacion de Agenda: `src/agenda/AGENDA_README.md`.
 - Convenciones de PR: `.github/pull_request_template.md`.
