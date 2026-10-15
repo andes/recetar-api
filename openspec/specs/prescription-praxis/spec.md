@@ -1,10 +1,9 @@
-# Spec Delta
+# prescription-praxis Specification
 
 ## Purpose
-
 Define cómo RecetAr publica las recetas de medicamento en Praxis (prescripción electrónica) y cómo maneja la sincronización y sus reintentos sin bloquear la creación local.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Elegibilidad para Praxis
 RecetAr SHALL publicar en Praxis únicamente recetas de medicamento que no sean magistrales; las magistrales y otros casos no elegibles se persisten en RecetAr pero no se envían a Praxis.
@@ -16,17 +15,6 @@ RecetAr SHALL publicar en Praxis únicamente recetas de medicamento que no sean 
 #### Scenario: Magistral no elegible
 - **WHEN** se crea una receta magistral
 - **THEN** RecetAr la persiste y marca la sincronización con Praxis como `no_aplicable` sin enviarla
-
-### Requirement: Identificación por código Alfabeta de un genérico con sugerido
-RecetAr SHALL almacenar en la receta un genérico (droga y presentación) y un comercial sugerido, y SHALL enviar a Praxis el código Alfabeta del producto sugerido (elegido por el profesional o por un criterio por defecto).
-
-#### Scenario: Profesional elige el sugerido
-- **WHEN** el profesional prescribe un genérico y selecciona un comercial sugerido
-- **THEN** RecetAr envía a Praxis el código Alfabeta y código de barras de ese comercial, conservando el genérico en la receta
-
-#### Scenario: Sugerido por defecto
-- **WHEN** el profesional prescribe un genérico sin elegir comercial
-- **THEN** RecetAr selecciona un comercial sugerido por defecto según el criterio definido y lo envía a Praxis
 
 ### Requirement: Envío por insumo con tratamiento prolongado
 RecetAr SHALL enviar a Praxis una petición por cada medicamento de la receta, marcando `tratamientoProlongado` cuando corresponda, y SHALL registrar el identificador devuelto.

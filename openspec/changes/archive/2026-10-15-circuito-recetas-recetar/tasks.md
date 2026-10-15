@@ -11,7 +11,6 @@
 
 - [x] 2.1 Agregar `PRAXYS_ENDPOINT`/`PRAXYS_API_KEY` a `config.ts` y cablear `PraxisClient`/`PraxisMapper` en el composition root de `prescriptions`, verificando que el build y un test de creación pasan
 - [x] 2.2 Implementar la elegibilidad (medicamento no magistral) y el envío por insumo, derivando el `tratamientoProlongado` booleano de Praxis desde los meses del modelo, guardando el `idPrescripcion` en los identificadores (compartido por `treatmentGroupId`), y verificar con test unitario del mapper y del flujo
-- [ ] 2.3 Implementar la selección de genérico + sugerido comercial (modelado nuevo en `supply`/DTO) y el envío del `codigoAlfabeta` del sugerido (elegido o por defecto), y verificar con test que el payload de Praxis usa el código del sugerido
 - [x] 2.4 Marcar `no_aplicable` los casos no enviables (magistral) y verificar con test que no se envía y se persiste con ese estado
 - [x] 2.5 Implementar la sincronización local-first (estado `pendiente` al fallar) y verificar con test que la receta queda persistida con `syncExterno.praxis.estado = 'pendiente'`
 - [x] 2.6 Implementar el job de reintento en `src/agenda/jobs/` (escaneo de pendientes, 3 intentos, luego `error`) registrado para `agenda-ui`, y verificar con test del handler (éxito, falla y agotamiento de intentos)
