@@ -18,6 +18,9 @@ export const messages = {
         validation: {
             default: 'Error de validación',
             invalidDni: 'El DNI debe tener entre 6 y 11 caracteres',
+            nameRequiredWithoutDni: 'Si el paciente no tiene DNI, debe ingresar nombre y apellido',
+            dniRequiredForValidation: 'El paciente debe tener DNI para poder validarse',
+            dniOrIdMpiRequired: 'El paciente debe tener DNI o identificador de ANDES',
             invalidSex: 'Sexo debe ser uno de: masculino, femenino, otro',
             requiredField: 'El campo {field} es requerido',
             invalidEmail: 'El email es incorrecto',
@@ -64,6 +67,7 @@ export const messages = {
         badGateway: {
             default: 'Servicio externo no disponible',
             andes: 'No se pudo conectar con Andes',
+            andesUnauthorized: 'El token de ANDES es inválido o no tiene permisos suficientes',
         },
         application: {
             inactive: 'La aplicación está inactiva',

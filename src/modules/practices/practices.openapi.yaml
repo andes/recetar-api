@@ -51,6 +51,22 @@ paths:
                   format: date-time
                 patient:
                   type: object
+                  description: |
+                    Datos del paciente. Debe incluir `dni` o `idMPI`.
+                    Si no hay `dni`, el paciente queda como no validado.
+                  properties:
+                    firstName:
+                      type: string
+                    lastName:
+                      type: string
+                    dni:
+                      type: string
+                      description: Opcional si se envía `idMPI`.
+                    idMPI:
+                      type: string
+                      nullable: true
+                    sex:
+                      type: string
                 professional:
                   type: object
                 practice:

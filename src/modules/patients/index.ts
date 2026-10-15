@@ -5,8 +5,14 @@ import { env } from '../../config/config';
 
 const logger = {
     logInfo: (..._args: unknown[]) => {},
-    logError: (..._args: unknown[]) => {},
-    logWarn: (..._args: unknown[]) => {},
+    logError: (error: Error, context?: Record<string, unknown>) => {
+        // eslint-disable-next-line no-console
+        console.error('[patients]', error.message, context || {});
+    },
+    logWarn: (message: string, data?: Record<string, unknown>) => {
+        // eslint-disable-next-line no-console
+        console.warn('[patients]', message, data || {});
+    },
 };
 
 const andesClient = new AndesClient({

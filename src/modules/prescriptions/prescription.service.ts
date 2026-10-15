@@ -404,7 +404,11 @@ export class PrescriptionService {
     }
 
     private async resolvePatient(dto: CreatePrescriptionDTO): Promise<PatientSnapshot> {
-        const snapshot = await this.patientService.resolveSnapshot(dto.patient.dni, dto.patient.sex);
+        const snapshot = dto.patient.idMPI
+            ? await this.patientService.resolveSnapshotById(dto.patient.idMPI)
+            : dto.patient.dni
+                ? await this.patientService.resolveSnapshot(dto.patient.dni, dto.patient.sex)
+                : null;
         if (!snapshot) {
             throw new PatientNotFoundError();
         }

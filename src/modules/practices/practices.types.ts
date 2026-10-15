@@ -23,7 +23,8 @@ export interface IObraSocialPractice {
 export interface IPatientSubDoc {
     firstName: string;
     lastName: string;
-    dni: string;
+    dni?: string;
+    idMPI?: string;
     sex: string;
     obraSocial?: IObraSocialPractice | null;
 }

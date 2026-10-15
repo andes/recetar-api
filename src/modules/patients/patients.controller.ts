@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { PatientService } from './patients.service';
 import { ApiResponse } from '../../shared/api-response';
-import { CreatePatientDTO, UpdatePatientDTO } from './patients.dto';
+import { CreatePatientDTO, UpdatePatientDTO, SearchPatientsDTO } from './patients.dto';
 import { getStringQueryParam } from '../../shared/utils/query';
 
 export class PatientController {
@@ -38,6 +38,15 @@ export class PatientController {
         }
     };
 
+    searchPage = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const result = await this.patientService.searchPage(req.query as unknown as SearchPatientsDTO);
+            res.status(200).json(ApiResponse.success(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
     findByDni = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const patients = await this.patientService.findByDni(req.params.dni);
@@ -60,6 +69,24 @@ export class PatientController {
         try {
             const patient = await this.patientService.update(req.params.id, req.body as UpdatePatientDTO);
             res.status(200).json(ApiResponse.success(patient));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    validateById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const patient = await this.patientService.validateById(req.params.id);
+            res.status(200).json(ApiResponse.success(patient));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    remove = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            await this.patientService.remove(req.params.id);
+            res.status(204).send();
         } catch (error) {
             next(error);
         }

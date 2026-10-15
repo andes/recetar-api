@@ -5,14 +5,21 @@ export const createPracticeSchema = z.object({
     patient: z.object({
         firstName: z.string().min(1, 'errors.validation.requiredField'),
         lastName: z.string().min(1, 'errors.validation.requiredField'),
-        dni: z.string().min(1, 'errors.validation.requiredField'),
+        dni: z.string().optional(),
         sex: z.string().min(1, 'errors.validation.requiredField'),
+        idMPI: z.string().nullable().optional(),
         obraSocial: z.object({
             nombre: z.string().optional(),
             codigoPuco: z.number().optional(),
             numeroAfiliado: z.string().optional(),
         }).optional(),
-    }),
+    }).refine(
+        (data) => !!data.dni || !!data.idMPI,
+        {
+            message: 'errors.validation.dniOrIdMpiRequired',
+            path: ['dni'],
+        },
+    ),
     professional: z.object({
         userId: z.string().min(1, 'errors.validation.requiredField'),
         enrollment: z.string().optional(),
@@ -36,6 +43,7 @@ export const updatePracticeSchema = z.object({
         firstName: z.string().optional(),
         lastName: z.string().optional(),
         dni: z.string().optional(),
+        idMPI: z.string().nullable().optional(),
         sex: z.string().optional(),
         obraSocial: z.object({
             nombre: z.string().optional(),

@@ -269,13 +269,15 @@ export interface AndesMedicamentoPayload {
 export interface AndesPatientPayload {
     nombre: string;
     apellido: string;
-    documento: string;
+    documento?: string;
     sexo: string;
     genero: string;
     fechaNacimiento?: Date | string;
     estado: string;
     alias?: string;
     cuil?: string;
+    contacto?: AndesContacto[];
+    direccion?: AndesDireccion[];
 }
 
 export interface AndesSuspendPayload {
@@ -299,10 +301,35 @@ export interface AndesStockItem {
     [key: string]: unknown;
 }
 
+export interface AndesContacto {
+    tipo: 'fijo' | 'celular' | 'email' | 'extranjero';
+    valor: string;
+    ranking?: number;
+    activo?: boolean;
+    ultimaActualizacion?: string;
+}
+
+export interface AndesDireccion {
+    tipo?: string;
+    valor?: string;
+    codigoPostal?: string;
+    ubicacion?: {
+        barrio?: { nombre?: string };
+        localidad?: { nombre?: string };
+        provincia?: { nombre?: string };
+        pais?: { nombre?: string };
+    };
+    ranking?: number;
+    activo?: boolean;
+    geoReferencia?: number[];
+    situacionCalle?: boolean;
+    ultimaActualizacion?: string;
+}
+
 export interface AndesMPIPatient {
     id: string;
     _id?: string;
-    documento: string;
+    documento?: string;
     nombre: string;
     apellido: string;
     sexo: string;
@@ -314,6 +341,8 @@ export interface AndesMPIPatient {
     tipoIdentificacion?: string;
     numeroIdentificacion?: string;
     identificadores?: Array<{ entidad: string; valor: string }>;
+    contacto?: AndesContacto[];
+    direccion?: AndesDireccion[];
 }
 
 export interface AndesMPISearchParams {
@@ -324,6 +353,11 @@ export interface AndesMPISearchParams {
     estado?: string;
     activo?: boolean;
     sexo?: string;
+    email?: string;
+    celular?: string;
+    fijo?: string;
+    skip?: number;
+    limit?: number;
 }
 
 export interface AndesMPISugerido {
@@ -349,14 +383,27 @@ export interface AndesCoverage {
     prepaga?: boolean;
 }
 
+export interface ValidatedDireccion {
+    calle?: string;
+    codigoPostal?: string;
+    barrio?: string;
+    localidad?: string;
+    provincia?: string;
+    pais?: string;
+    ranking?: number;
+    activo?: boolean;
+}
+
 export interface ValidatedPatient {
     dni: string;
     nombre: string;
     apellido: string;
     sexo: string;
+    genero?: string;
     fechaNacimiento: string;
     cuil?: string;
     idMPI?: string;
+    direcciones?: ValidatedDireccion[];
 }
 
 export interface ValidationResponse {
@@ -371,4 +418,5 @@ export interface ValidationResponse {
     foto?: string;
     idTramite?: string;
     errorData?: boolean;
+    direccion?: AndesDireccion[];
 }

@@ -21,6 +21,7 @@ export interface LocalPatient {
     firstName: string;
     fechaNac?: Date | null;
     sex: string;
+    genero?: string;
     idMPI?: string;
     obraSocial?: { nombre?: string; codigoPuco?: number; numeroAfiliado?: string };
     nombreAutopercibido?: string;
@@ -117,6 +118,58 @@ interface NameParts {
 }
 
 export class AndesMapper {
+
+    static repairText(value?: string | null): string {
+        if (!value) {
+            return value || '';
+        }
+        if (!/[\u0080-\u00FF]/.test(value)) {
+            return value;
+        }
+
+        const repaired = Buffer.from(value, 'latin1').toString('utf8');
+        return (repaired.includes('\uFFFD') ? value : repaired).normalize('NFC');
+    }
+
+    static repairName(value?: string | null): string {
+        return AndesMapper.toTitleCase(AndesMapper.repairText(value));
+    }
+
+    static toTitleCase(value?: string | null): string {
+        if (!value) {
+            return value || '';
+        }
+
+        const particles = new Set([
+            'de', 'del', 'la', 'las', 'los', 'y', 'e',
+            'da', 'das', 'do', 'dos', 'van', 'von', 'bin',
+        ]);
+
+        return value
+            .toLocaleLowerCase('es-AR')
+            .split(/\s+/)
+            .map((word, index) => {
+                if (index > 0 && particles.has(word)) {
+                    return word;
+                }
+                return word.replace(/(^|[-'])(\p{L})/gu, (_match, separator: string, letter: string) => {
+                    return separator + letter.toLocaleUpperCase('es-AR');
+                });
+            })
+            .join(' ');
+    }
+
+    static normalizeGenero(value?: string | null): string {
+        const normalized = (value || '')
+            .trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+
+        if (normalized === 'femenino') { return 'mujer'; }
+        if (normalized === 'masculino') { return 'varon'; }
+        return normalized;
+    }
 
     static splitBusinessName(businessName: string): NameParts {
         const parts = businessName ? businessName.split(',') : [];
@@ -251,13 +304,13 @@ export class AndesMapper {
     static toLocalPatient(andesPatient: AndesPatient): Partial<LocalPatient> {
         return {
             dni: andesPatient.documento,
-            firstName: andesPatient.nombre,
-            lastName: andesPatient.apellido,
+            firstName: AndesMapper.repairName(andesPatient.nombre),
+            lastName: AndesMapper.repairName(andesPatient.apellido),
             sex: andesPatient.sexo,
             idMPI: andesPatient.id,
             fechaNac: andesPatient.fechaNacimiento ? new Date(andesPatient.fechaNacimiento) : undefined,
             obraSocial: andesPatient.obraSocial ? {
-                nombre: andesPatient.obraSocial.nombre,
+                nombre: AndesMapper.repairText(andesPatient.obraSocial.nombre),
                 codigoPuco: andesPatient.obraSocial.codigoPuco,
                 numeroAfiliado: andesPatient.obraSocial.numeroAfiliado,
             } : undefined,
@@ -266,14 +319,14 @@ export class AndesMapper {
 
     static toAndesPatient(local: LocalPatient): AndesPatientPayload {
         return {
-            nombre: local.firstName,
-            apellido: local.lastName,
+            nombre: AndesMapper.repairText(local.firstName),
+            apellido: AndesMapper.repairText(local.lastName),
             documento: local.dni || '',
             sexo: local.sex.toLowerCase(),
-            genero: local.sex.toLowerCase(),
+            genero: AndesMapper.normalizeGenero(local.genero || local.sex),
             fechaNacimiento: local.fechaNac || undefined,
             estado: 'temporal',
-            alias: local.nombreAutopercibido || '',
+            alias: AndesMapper.repairText(local.nombreAutopercibido),
         };
     }
 
@@ -450,9 +503,9 @@ export class AndesMapper {
     static toLocalPatientFromMPI(mpiPatient: AndesMPIPatient): Record<string, unknown> {
         return {
             _id: mpiPatient._id || mpiPatient.id,
-            dni: mpiPatient.documento,
-            firstName: mpiPatient.nombre,
-            lastName: mpiPatient.apellido,
+            dni: mpiPatient.documento || '',
+            firstName: AndesMapper.repairName(mpiPatient.nombre),
+            lastName: AndesMapper.repairName(mpiPatient.apellido),
             fechaNac: mpiPatient.fechaNacimiento ? new Date(mpiPatient.fechaNacimiento) : undefined,
             sex: mpiPatient.sexo
                 ? mpiPatient.sexo.charAt(0).toUpperCase() + mpiPatient.sexo.slice(1).toLowerCase()
@@ -460,22 +513,45 @@ export class AndesMapper {
             status: mpiPatient.estado
                 ? mpiPatient.estado.charAt(0).toUpperCase() + mpiPatient.estado.slice(1).toLowerCase()
                 : undefined,
-            genero: mpiPatient.genero,
-            nombreAutopercibido: mpiPatient.alias || '',
+            genero: mpiPatient.genero ? AndesMapper.normalizeGenero(mpiPatient.genero) : undefined,
+            nombreAutopercibido: AndesMapper.repairName(mpiPatient.alias),
             idMPI: mpiPatient.id || mpiPatient._id,
             tipoDocumentoExtranjero: mpiPatient.tipoIdentificacion || '',
             nroDocumentoExtranjero: mpiPatient.numeroIdentificacion || '',
             estado: mpiPatient.estado,
             cuil: mpiPatient.cuil || null,
+            contactos: (mpiPatient.contacto || [])
+                .filter((contacto) => !!contacto?.valor)
+                .map((contacto) => ({
+                    tipo: contacto.tipo,
+                    valor: AndesMapper.repairText(contacto.valor),
+                    ranking: contacto.ranking ?? 0,
+                    activo: contacto.activo ?? true,
+                })),
+            direcciones: (mpiPatient.direccion || [])
+                .filter((direccion) => !!direccion?.valor || !!direccion?.ubicacion)
+                .map((direccion) => ({
+                    calle: AndesMapper.repairText(direccion.valor),
+                    codigoPostal: direccion.codigoPostal || '',
+                    barrio: AndesMapper.repairText(direccion.ubicacion?.barrio?.nombre),
+                    localidad: AndesMapper.repairText(direccion.ubicacion?.localidad?.nombre),
+                    provincia: AndesMapper.repairText(direccion.ubicacion?.provincia?.nombre),
+                    pais: AndesMapper.repairText(direccion.ubicacion?.pais?.nombre),
+                    ranking: direccion.ranking ?? 0,
+                    activo: direccion.activo ?? true,
+                    geoReferencia: direccion.geoReferencia,
+                    situacionCalle: direccion.situacionCalle,
+                })),
         };
     }
 
     static toValidatedPatient(mpiPatient: AndesMPIPatient): ValidatedPatient {
         return {
-            dni: mpiPatient.documento,
-            nombre: mpiPatient.nombre,
-            apellido: mpiPatient.apellido,
+            dni: mpiPatient.documento || '',
+            nombre: AndesMapper.repairName(mpiPatient.nombre),
+            apellido: AndesMapper.repairName(mpiPatient.apellido),
             sexo: mpiPatient.sexo.charAt(0).toUpperCase() + mpiPatient.sexo.slice(1).toLowerCase(),
+            genero: mpiPatient.genero ? AndesMapper.normalizeGenero(mpiPatient.genero) : undefined,
             fechaNacimiento: mpiPatient.fechaNacimiento || '',
             cuil: mpiPatient.cuil,
             idMPI: mpiPatient.id,
@@ -485,25 +561,71 @@ export class AndesMapper {
     static toValidatedPatientFromResponse(data: ValidationResponse): ValidatedPatient {
         return {
             dni: data.documento,
-            nombre: data.nombre,
-            apellido: data.apellido,
+            nombre: AndesMapper.repairName(data.nombre),
+            apellido: AndesMapper.repairName(data.apellido),
             sexo: data.sexo.charAt(0).toUpperCase() + data.sexo.slice(1).toLowerCase(),
             fechaNacimiento: data.fechaNacimiento || '',
             cuil: data.cuil,
+            direcciones: (data.direccion || []).map((direccion) => ({
+                calle: AndesMapper.repairText(direccion.valor),
+                codigoPostal: direccion.codigoPostal || '',
+                barrio: AndesMapper.repairText(direccion.ubicacion?.barrio?.nombre),
+                localidad: AndesMapper.repairText(direccion.ubicacion?.localidad?.nombre),
+                provincia: AndesMapper.repairText(direccion.ubicacion?.provincia?.nombre),
+                pais: AndesMapper.repairText(direccion.ubicacion?.pais?.nombre),
+                ranking: direccion.ranking,
+                activo: direccion.activo,
+            })),
         };
     }
 
-    static toAndesValidatedPatient(validated: ValidatedPatient): AndesPatientPayload {
+    static toAndesValidatedPatient(
+        validated: ValidatedPatient,
+        extras?: {
+            contacto?: AndesPatientPayload['contacto'];
+            direccion?: AndesPatientPayload['direccion'];
+            alias?: string;
+        },
+    ): AndesPatientPayload {
         const sexo = (validated.sexo || '').toLowerCase();
         return {
-            nombre: validated.nombre,
-            apellido: validated.apellido,
-            documento: validated.dni,
+            nombre: AndesMapper.repairText(validated.nombre),
+            apellido: AndesMapper.repairText(validated.apellido),
+            documento: validated.dni || undefined,
             sexo,
-            genero: sexo,
+            genero: AndesMapper.normalizeGenero(validated.genero || sexo),
             fechaNacimiento: validated.fechaNacimiento || undefined,
             cuil: validated.cuil || undefined,
+            ...(extras?.alias ? { alias: AndesMapper.repairText(extras.alias) } : {}),
+            ...(extras?.contacto?.length ? { contacto: extras.contacto } : {}),
+            ...(extras?.direccion?.length ? { direccion: extras.direccion } : {}),
             estado: 'validado',
+        };
+    }
+
+    static toAndesTemporalPatient(data: {
+        nombre: string;
+        apellido: string;
+        sexo: string;
+        genero?: string;
+        fechaNacimiento?: Date | string;
+        alias?: string;
+        cuil?: string;
+        contacto?: AndesPatientPayload['contacto'];
+        direccion?: AndesPatientPayload['direccion'];
+    }): AndesPatientPayload {
+        const sexo = (data.sexo || '').toLowerCase();
+        return {
+            nombre: AndesMapper.repairText(data.nombre),
+            apellido: AndesMapper.repairText(data.apellido),
+            sexo,
+            genero: AndesMapper.normalizeGenero(data.genero || sexo),
+            ...(data.fechaNacimiento ? { fechaNacimiento: data.fechaNacimiento } : {}),
+            ...(data.alias ? { alias: AndesMapper.repairText(data.alias) } : {}),
+            ...(data.cuil ? { cuil: data.cuil } : {}),
+            ...(data.contacto?.length ? { contacto: data.contacto } : {}),
+            ...(data.direccion?.length ? { direccion: data.direccion } : {}),
+            estado: 'temporal',
         };
     }
 

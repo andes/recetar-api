@@ -1,4 +1,5 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { TextDecoder } from 'util';
 import { InternalError } from '../../shared/errors';
 import { andesMessages } from './lang';
 import { AndesMapper } from './andes.mapper';
@@ -29,6 +30,39 @@ export interface AndesClientConfig {
 }
 
 const MPI_DEFAULT_PATH = '/core-v2/mpi/pacientes';
+const MPI_DEFAULT_LIMIT = 50;
+const REQUEST_TIMEOUT_MS = 20000;
+
+export function decodeAndesResponse<T>(data: ArrayBuffer | Uint8Array): T {
+    const bytes = data instanceof ArrayBuffer
+        ? new Uint8Array(data)
+        : new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+
+    let text: string;
+    try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+        text = new TextDecoder('windows-1252').decode(bytes);
+    }
+
+    return normalizeAndesText(JSON.parse(text) as T);
+}
+
+export function normalizeAndesText<T>(value: T): T {
+    if (typeof value === 'string') {
+        return value.normalize('NFC') as T;
+    }
+    if (Array.isArray(value)) {
+        return value.map((item) => normalizeAndesText(item)) as T;
+    }
+    if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        Object.keys(record).forEach((key) => {
+            record[key] = normalizeAndesText(record[key]);
+        });
+    }
+    return value;
+}
 
 export class AndesClient {
     private client: AxiosInstance;
@@ -43,6 +77,7 @@ export class AndesClient {
         this.configured = !!(resolvedEndpoint && resolvedToken);
         this.client = axios.create({
             baseURL: resolvedEndpoint,
+            timeout: REQUEST_TIMEOUT_MS,
             headers: {
                 Authorization: resolvedToken,
                 'Content-Type': 'application/json',
@@ -56,6 +91,14 @@ export class AndesClient {
             error.message = andesMessages.errors.configError;
             throw error;
         }
+    }
+
+    private async requestMpi<T>(config: AxiosRequestConfig): Promise<T> {
+        const response = await this.client.request({
+            ...config,
+            responseType: 'arraybuffer',
+        });
+        return decodeAndesResponse<T>(response.data);
     }
 
     async getPrescriptionsByPatient(params: GetPrescriptionsByPatientParams): Promise<AndesPrescription[]> {
@@ -181,18 +224,25 @@ export class AndesClient {
 
     async searchPatients(params: AndesMPISearchParams): Promise<AndesMPIPatient[]> {
         this.ensureConfigured();
-        const response = await this.client.get<AndesMPIPatient[]>(this.mpiEndpoint, {
+        const patients = await this.requestMpi<AndesMPIPatient[]>({
+            method: 'GET',
+            url: this.mpiEndpoint,
             params: {
-                ...(params.documento && { documento: params.documento }),
-                ...(params.search && { search: params.search }),
-                ...(params.nombre && { nombre: params.nombre }),
-                ...(params.apellido && { apellido: params.apellido }),
-                ...(params.sexo && { sexo: params.sexo }),
+                ...(params.documento ? { documento: params.documento } : {}),
+                ...(params.search ? { search: params.search } : {}),
+                ...(params.nombre ? { nombre: params.nombre } : {}),
+                ...(params.apellido ? { apellido: params.apellido } : {}),
+                ...(params.sexo ? { sexo: params.sexo } : {}),
+                ...(params.estado ? { estado: params.estado } : {}),
+                ...(params.email ? { email: params.email } : {}),
+                ...(params.celular ? { celular: params.celular } : {}),
+                ...(params.fijo ? { fijo: params.fijo } : {}),
                 activo: params.activo ?? true,
-                estado: params.estado ?? 'validado',
+                ...(params.skip ? { skip: params.skip } : {}),
+                limit: params.limit ?? MPI_DEFAULT_LIMIT,
             },
         });
-        return Array.isArray(response.data) ? response.data : [];
+        return Array.isArray(patients) ? patients : [];
     }
 
     async createPatientInMPI(
@@ -200,23 +250,36 @@ export class AndesClient {
         ignoreSuggestions = false,
     ): Promise<AndesMPICreateResponse> {
         this.ensureConfigured();
-        const response = await this.client.post<AndesMPICreateResponse>(this.mpiEndpoint, {
-            ...patientData,
-            ignoreSuggestions,
+        return this.requestMpi<AndesMPICreateResponse>({
+            method: 'POST',
+            url: this.mpiEndpoint,
+            data: {
+                ...patientData,
+                ignoreSuggestions,
+            },
         });
-        return response.data;
     }
 
     async getPatientFromMPI(id: string): Promise<AndesMPIPatient> {
         this.ensureConfigured();
-        const response = await this.client.get<AndesMPIPatient>(`${this.mpiEndpoint}/${id}`);
-        return response.data;
+        return this.requestMpi<AndesMPIPatient>({
+            method: 'GET',
+            url: `${this.mpiEndpoint}/${id}`,
+        });
     }
 
     async updatePatientInMPI(id: string, data: Record<string, unknown>): Promise<AndesMPIPatient> {
         this.ensureConfigured();
-        const response = await this.client.patch<AndesMPIPatient>(`${this.mpiEndpoint}/${id}`, data);
-        return response.data;
+        return this.requestMpi<AndesMPIPatient>({
+            method: 'PATCH',
+            url: `${this.mpiEndpoint}/${id}`,
+            data,
+        });
+    }
+
+    async deletePatientInMPI(id: string): Promise<void> {
+        this.ensureConfigured();
+        await this.client.delete(`${this.mpiEndpoint}/${id}`);
     }
 
     async listCoverages(): Promise<AndesCoverage[]> {
@@ -260,12 +323,16 @@ export class AndesClient {
 
     async validatePatient(dni: string, sexo: string): Promise<ValidatedPatient | null> {
         this.ensureConfigured();
-        const response = await this.client.post<ValidationResponse>('/core-v2/mpi/validacion', {
-            documento: dni,
-            sexo: sexo.toLowerCase(),
+        const validation = await this.requestMpi<ValidationResponse>({
+            method: 'POST',
+            url: '/core-v2/mpi/validacion',
+            data: {
+                documento: dni,
+                sexo: sexo.toLowerCase(),
+            },
         });
-        if (response.data && response.data.documento) {
-            return AndesMapper.toValidatedPatientFromResponse(response.data);
+        if (validation && validation.documento) {
+            return AndesMapper.toValidatedPatientFromResponse(validation);
         }
         return null;
     }

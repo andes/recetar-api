@@ -9,6 +9,26 @@ export interface IObraSocial {
     numeroAfiliado?: string;
 }
 
+export interface IPatientContacto {
+    tipo: 'fijo' | 'celular' | 'email' | 'extranjero';
+    valor: string;
+    ranking?: number;
+    activo?: boolean;
+}
+
+export interface IPatientDireccion {
+    calle?: string;
+    codigoPostal?: string;
+    barrio?: string;
+    localidad?: string;
+    provincia?: string;
+    pais?: string;
+    ranking?: number;
+    activo?: boolean;
+    geoReferencia?: number[];
+    situacionCalle?: boolean;
+}
+
 export interface IPatient extends Document {
     dni?: string;
     lastName: string;
@@ -27,4 +47,6 @@ export interface IPatient extends Document {
     updatedAt?: Date;
     idLocalInMPI?: boolean;
     cuil?: string | null;
+    contactos?: IPatientContacto[];
+    direcciones?: IPatientDireccion[];
 }

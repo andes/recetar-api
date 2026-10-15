@@ -101,7 +101,7 @@ const prescriptionSchema = new mongoose.Schema({
     patient: {
         firstName: { type: String, required: true },
         lastName: { type: String, required: true },
-        dni: { type: String, required: true },
+        dni: { type: String, default: '' },
         sex: { type: String, required: true },
         obraSocial: {
             nombre: String,

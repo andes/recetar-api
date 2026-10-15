@@ -44,11 +44,17 @@ export const createPrescriptionSchema = z.object({
     patient: z.object({
         firstName: z.string().min(1, 'errors.validation.requiredField'),
         lastName: z.string().min(1, 'errors.validation.requiredField'),
-        dni: z.string().min(1, 'errors.validation.requiredField'),
+        dni: z.string().optional(),
         sex: z.string().min(1, 'errors.validation.requiredField'),
         fechaNac: z.string().optional(),
         idMPI: z.string().nullable().optional(),
-    }),
+    }).refine(
+        (data) => !!data.dni || !!data.idMPI,
+        {
+            message: 'errors.validation.dniOrIdMpiRequired',
+            path: ['dni'],
+        },
+    ),
     professional: z.object({
         userId: z.string().min(1, 'errors.validation.requiredField'),
         businessName: z.string().min(1, 'errors.validation.requiredField'),

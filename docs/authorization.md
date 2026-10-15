@@ -34,7 +34,7 @@ Orden recomendado: `checkAuth` → `requirePermission` → `validate` → contro
 | `user` | `admin`/`auditor`: `create/read/update:any`, `admin`: `delete:any`; profesionales y farmacéuticos: `read:own`/`update:own`; `owner`: `delete:any` |
 | `role` | `owner`: `create/read/update/delete:any` |
 | `prescription`, `prescriptionPublic`, `practice`, `certificate` | profesionales: `create:any`, `read:any/own`, `update:own`, `delete:any`; farmacéuticos: `read:any`, `update:any`; `admin`: `create/read/update/delete:any`; `auditor`/`owner`: `read:any`; `owner`: `delete:any` |
-| `patient` | profesionales: `create:any`, `read:any/own`; farmacéuticos: `read:any`; `admin`: `create/read/update:any`; `auditor`/`owner`: `read:any` |
+| `patient` | profesionales: `create/read/update/delete:any`, `read:any/own`; auditores: `read/update/delete:any`; farmacéuticos: `read:any`; `admin`: `create/read/update:any`; `owner`: `read/delete:any` |
 | `supplies` | roles operativos: `read:any`; `admin`: `create/read/update/delete:any`; `owner`: `read:any`, `delete:any` |
 | `stock` | roles operativos y `admin`/`auditor`: `read:any` |
 | `document` | roles operativos, `admin`/`auditor`/`owner`: `read:any` |

@@ -24,8 +24,9 @@ const obraSocialSubSchema = new mongoose.Schema({
 const patientSubSchema = new mongoose.Schema({
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
-    dni: { type: String, required: true },
+    dni: { type: String, default: '' },
     sex: { type: String, required: true },
+    idMPI: { type: String, default: '' },
     obraSocial: { type: obraSocialSubSchema, default: null },
 }, { _id: false });
 

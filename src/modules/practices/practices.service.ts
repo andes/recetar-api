@@ -35,17 +35,21 @@ export class PracticeService {
     }
 
     async create(dto: CreatePracticeDTO): Promise<IPractice> {
-        const snapshot = await this.resolvePatient(dto.patient.dni, dto.patient.sex);
+        const snapshot = await this.resolvePatient(dto.patient);
         const data: Partial<IPractice> = {
             ...dto as unknown as Partial<IPractice>,
-            patient: { ...dto.patient, ...snapshot },
+            patient: { ...dto.patient, ...snapshot, idMPI: dto.patient.idMPI ?? snapshot.idMPI ?? undefined },
             date: new Date(dto.date),
         };
         return this.practiceRepository.create(data);
     }
 
-    private async resolvePatient(dni: string, sex: string): Promise<PatientSnapshot> {
-        const snapshot = await this.patientService.resolveSnapshot(dni, sex);
+    private async resolvePatient(patient: CreatePracticeDTO['patient']): Promise<PatientSnapshot> {
+        const snapshot = patient.idMPI
+            ? await this.patientService.resolveSnapshotById(patient.idMPI)
+            : patient.dni
+                ? await this.patientService.resolveSnapshot(patient.dni, patient.sex)
+                : null;
         if (!snapshot) {
             throw new PatientNotFoundError();
         }

@@ -26,7 +26,13 @@ const patientSubSchema = z.object({
         nombre: z.string().optional(),
         numeroAfiliado: z.string().optional(),
     }).optional(),
-});
+}).refine(
+    (data) => !!data.dni || !!data.idMPI,
+    {
+        message: 'errors.validation.dniOrIdMpiRequired',
+        path: ['dni'],
+    },
+);
 
 export const createCertificateSchema = z.object({
     patient: patientSubSchema,

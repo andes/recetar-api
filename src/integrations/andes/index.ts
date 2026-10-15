@@ -37,6 +37,8 @@ export type {
     AndesStockItem,
     AndesMPIPatient,
     AndesMPISearchParams,
+    AndesContacto,
+    AndesDireccion,
     AndesMPISugerido,
     AndesMPICreateResponse,
     AndesCoverage,

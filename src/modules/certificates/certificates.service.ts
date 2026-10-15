@@ -58,11 +58,11 @@ export class CertificateService {
     }
 
     private async resolvePatient(dto: CreateCertificateDTO): Promise<PatientSnapshot> {
-        const dni = dto.patient.dni;
-        if (!dni) {
-            return { idMPI: dto.patient.idMPI ?? undefined } as unknown as PatientSnapshot;
-        }
-        const snapshot = await this.patientService.resolveSnapshot(dni, dto.patient.sex);
+        const snapshot = dto.patient.idMPI
+            ? await this.patientService.resolveSnapshotById(dto.patient.idMPI)
+            : dto.patient.dni
+                ? await this.patientService.resolveSnapshot(dto.patient.dni, dto.patient.sex)
+                : null;
         if (!snapshot) {
             throw new PatientNotFoundError();
         }

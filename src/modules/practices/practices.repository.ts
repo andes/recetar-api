@@ -58,6 +58,15 @@ export class PracticeRepository {
             .sort({ createdAt: -1 }).limit(limit).exec();
     }
 
+    async findByUserIdAndPatientIdMPI(userId: string, patientIdMPI: string, limit = 10): Promise<IPractice[]> {
+        const professionalId = toObjectId(userId);
+        if (!professionalId) {
+            return [];
+        }
+        return Practice.find({ 'professional.userId': professionalId, 'patient.idMPI': patientIdMPI })
+            .sort({ createdAt: -1 }).limit(limit).exec();
+    }
+
     async create(data: Partial<IPractice>): Promise<IPractice> {
         return Practice.create(data);
     }

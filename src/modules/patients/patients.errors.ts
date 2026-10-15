@@ -41,3 +41,9 @@ export class PatientAndesUnavailableError extends ApiError {
         super(502, 'ANDES_UNAVAILABLE', 'errors.badGateway.andes');
     }
 }
+
+export class PatientAndesUnauthorizedError extends ApiError {
+    constructor() {
+        super(502, 'ANDES_UNAUTHORIZED', 'errors.badGateway.andesUnauthorized');
+    }
+}

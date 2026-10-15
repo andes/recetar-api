@@ -59,6 +59,15 @@ export class CertificateRepository {
             .sort({ createdAt: -1 }).limit(limit).exec();
     }
 
+    async findByUserIdAndPatientIdMPI(userId: string, patientIdMPI: string, limit = 10): Promise<ICertificate[]> {
+        const professionalId = toObjectId(userId);
+        if (!professionalId) {
+            return [];
+        }
+        return Certificate.find({ 'professional.userId': professionalId, 'patient.idMPI': patientIdMPI })
+            .sort({ createdAt: -1 }).limit(limit).exec();
+    }
+
     async create(data: Partial<ICertificate>): Promise<ICertificate> {
         return Certificate.create(data);
     }

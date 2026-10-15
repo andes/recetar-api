@@ -23,7 +23,16 @@ describe('hasPermission', () => {
     });
 
     it('denies an action without grant', () => {
-        expect(hasPermission(['professional'], 'delete:any', 'patient')).toBe(false);
+        expect(hasPermission(['professional'], 'delete:any', 'user')).toBe(false);
+    });
+
+    it('allows a professional to delete a patient', () => {
+        expect(hasPermission(['professional'], 'delete:any', 'patient')).toBe(true);
+    });
+
+    it('allows an auditor to update and delete a patient', () => {
+        expect(hasPermission(['auditor'], 'update:any', 'patient')).toBe(true);
+        expect(hasPermission(['auditor'], 'delete:any', 'patient')).toBe(true);
     });
 
     it('denies when the user has no roles', () => {

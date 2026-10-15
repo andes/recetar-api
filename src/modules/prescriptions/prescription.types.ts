@@ -90,7 +90,7 @@ export interface IPrescription extends Document {
     patient: {
         firstName: string;
         lastName: string;
-        dni: string;
+        dni?: string;
         sex: string;
         obraSocial?: { nombre?: string; codigoPuco?: number; numeroAfiliado?: string };
         fechaNac?: Date;

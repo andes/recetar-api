@@ -12,13 +12,20 @@ const practiceRepo = new PracticeRepository();
 router.get('/:userId/patients/:patientDni/recent-documents', checkAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { userId, patientDni } = req.params;
+        const patientIdMPI = (req.query.patientIdMPI as string) || '';
         const limit = Math.min(parseInt(req.query.limit as string, 10) || 10, 50);
 
-        const [prescriptions, certificates, practices] = await Promise.all([
-            prescriptionRepo.findByUserIdAndPatientDni(userId, patientDni, limit),
-            certificateRepo.findByUserIdAndPatientDni(userId, patientDni, limit),
-            practiceRepo.findByUserIdAndPatientDni(userId, patientDni, limit),
-        ]);
+        const [prescriptions, certificates, practices] = patientIdMPI
+            ? await Promise.all([
+                prescriptionRepo.findByUserIdAndPatientIdMPI(userId, patientIdMPI, limit),
+                certificateRepo.findByUserIdAndPatientIdMPI(userId, patientIdMPI, limit),
+                practiceRepo.findByUserIdAndPatientIdMPI(userId, patientIdMPI, limit),
+            ])
+            : await Promise.all([
+                prescriptionRepo.findByUserIdAndPatientDni(userId, patientDni, limit),
+                certificateRepo.findByUserIdAndPatientDni(userId, patientDni, limit),
+                practiceRepo.findByUserIdAndPatientDni(userId, patientDni, limit),
+            ]);
 
         res.status(200).json({
             status: 'success',

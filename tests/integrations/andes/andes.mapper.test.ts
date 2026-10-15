@@ -206,4 +206,65 @@ describe('AndesMapper', () => {
             expect(result.medicamento.tiempoTratamiento).toBeNull();
         });
     });
+
+    describe('codificación y formato de nombres', () => {
+        it('repara un nombre doblemente codificado y lo pasa a formato título', () => {
+            const result = AndesMapper.toLocalPatientFromMPI({
+                id: 'andes-1',
+                nombre: 'MATIAS NICOL\u00c3\u0081S',
+                apellido: 'PEREZ',
+                sexo: 'masculino',
+                estado: 'validado',
+            } as any);
+
+            expect(result.firstName).toBe('Matias Nicol\u00e1s');
+        });
+
+        it('convierte nombres en mayúsculas a formato título con partículas en minúscula', () => {
+            expect(AndesMapper.repairName('JUAN DE LA CRUZ')).toBe('Juan de la Cruz');
+            expect(AndesMapper.repairName('O\'CONNOR')).toBe('O\'Connor');
+            expect(AndesMapper.repairName('GARC\u00cdA-L\u00d3PEZ')).toBe('Garc\u00eda-L\u00f3pez');
+        });
+
+        it('conserva un nombre ya correcto', () => {
+            expect(AndesMapper.repairText('MATIAS NICOL\u00c1S')).toBe('MATIAS NICOL\u00c1S');
+            expect(AndesMapper.repairName('Matias Nicol\u00e1s')).toBe('Matias Nicol\u00e1s');
+        });
+
+        it('no repara un valor que ya contiene el carácter de reemplazo', () => {
+            const value = 'MATIAS NICOL\uFFFD' + 'S';
+            expect(AndesMapper.repairText(value)).toBe(value);
+        });
+
+        it('mapea la dirección de la validación y no inventa género', () => {
+            const result = AndesMapper.toValidatedPatientFromResponse({
+                documento: '30123456',
+                nombre: 'MATIAS NICOL\u00c1S',
+                apellido: 'PEREZ',
+                sexo: 'masculino',
+                genero: 'masculino',
+                direccion: [{
+                    valor: 'SAN MARTIN 123',
+                    codigoPostal: '8300',
+                    ubicacion: {
+                        barrio: { nombre: 'CENTRO' },
+                        localidad: { nombre: 'NEUQUEN' },
+                        provincia: { nombre: 'NEUQUEN' },
+                        pais: { nombre: 'ARGENTINA' },
+                    },
+                }],
+            });
+
+            expect(result.nombre).toBe('Matias Nicol\u00e1s');
+            expect(result.direcciones?.[0]).toMatchObject({
+                calle: 'SAN MARTIN 123',
+                codigoPostal: '8300',
+                barrio: 'CENTRO',
+                localidad: 'NEUQUEN',
+                provincia: 'NEUQUEN',
+                pais: 'ARGENTINA',
+            });
+            expect(result.genero).toBeUndefined();
+        });
+    });
 });
