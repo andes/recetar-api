@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import andesController from '../controllers/andesPrescription.controller';
 import practiceController from '../controllers/practice.controller';
-import { checkAuthAndes } from '../middlewares/passport-config-andes.middleware';
+import { checkAuth } from '../middlewares/passport-config.middleware';
 
 
 class AndesRoutes{
@@ -12,10 +12,10 @@ class AndesRoutes{
   public routes(): Router{
 
     // Rutas de prescripciones
-    this.router.post('/prescriptions', checkAuthAndes, andesController.create);
+    this.router.post('/prescriptions', checkAuth, andesController.create);
 
     // Rutas de prácticas médicas
-    this.router.post('/practices', checkAuthAndes, practiceController.create);
+    this.router.post('/practices', checkAuth, practiceController.create);
 
     return this.router;
   }
