@@ -12,6 +12,10 @@ const LocalStrategy = passportLocal.Strategy;
 const ExtractJwt = passportJwt.ExtractJwt;
 const IAT_FUTURE_SKEW_SECONDS = 60;
 
+// Los tokens emitidos para aplicaciones externas no dependen de una sesión
+// interactiva, por lo que no se les aplica la edad máxima de sesión.
+const isAppTokenPayload = (payload: { isAppToken?: boolean }): boolean => payload.isAppToken === true;
+
 // Config passport JWT strategy
 // We will use Bearer token to authenticate
 // This configuration checks:
@@ -49,7 +53,7 @@ passport.use('jwt', new JwtStrategy({
             return done(null, false, { code: httpCodes.UNAUTHORIZED, message: 'El usuario está inactivo, debe volver a iniciar sesión' });
         }
 
-        if (!payload.isAppToken && isSessionExpired(user.lastLogin)) {
+        if (!isAppTokenPayload(payload) && isSessionExpired(user.lastLogin)) {
             if (payload.sub) {
                 await User.updateOne({ _id: payload.sub }, { refreshToken: '' });
             }
