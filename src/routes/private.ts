@@ -3,6 +3,7 @@
 import { Router, Request, Response } from 'express';
 
 import { hasPermissionIn } from '../middlewares/roles.middleware';
+import { requireAppToken } from '../middlewares/app-token.middleware';
 // interfaces
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 
@@ -42,6 +43,8 @@ class PrivateRoutes {
         this.router.get('/prescriptions/user/:id', prescriptionController.getByUserId);
         this.router.get('/prescriptions/user/:id/search', prescriptionController.searchByTerm);
         this.router.get('/prescriptions/find/:patient_id', prescriptionController.getPrescriptionsByDateOrPatientId);
+        // Machine-to-machine: consulta recetas por idMPI con token de API (app-token)
+        this.router.get('/prescriptions/by-patient/:idMPI', requireAppToken, prescriptionController.getByPatientIdMPI);
         this.router.get(`/prescriptions/:id`, hasPermissionIn('readAny', 'prescription'), prescriptionController.show);
         this.router.post(`/prescriptions/`, hasPermissionIn('createAny', 'prescription'), prescriptionController.create);
         this.router.post(`/prescriptions/get-csv/`, hasPermissionIn('readAny', 'prescription'), prescriptionController.getCsv);

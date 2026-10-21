@@ -567,6 +567,54 @@ class PrescriptionController implements BaseController {
         }
     };
 
+    /**
+     * Consulta las recetas de un paciente por su idMPI (consumo máquina-a-máquina).
+     * Devuelve un listado paginado (skip/limit) con datos acotados, sin exponer
+     * detalles internos de la API (por ejemplo el _id de Mongo), conservando el
+     * prescriptionId. Documentación: docs/api/prescriptions-by-patient-idmpi.md
+     */
+    public getByPatientIdMPI = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            const { idMPI } = req.params;
+
+            if (!idMPI) {
+                return res.status(400).json({ message: 'El idMPI es requerido' });
+            }
+
+            const DEFAULT_LIMIT = 20;
+            const MAX_LIMIT = 100;
+
+            const parsedSkip = parseInt(req.query.skip as string, 10);
+            const parsedLimit = parseInt(req.query.limit as string, 10);
+
+            const skip = Number.isNaN(parsedSkip) || parsedSkip < 0 ? 0 : parsedSkip;
+            let limit = Number.isNaN(parsedLimit) || parsedLimit <= 0 ? DEFAULT_LIMIT : parsedLimit;
+            if (limit > MAX_LIMIT) { limit = MAX_LIMIT; }
+
+            await this.updateStatusesByPatientIdMPI(idMPI);
+
+            const query = { 'patient.idMPI': idMPI };
+
+            const [prescriptions, total] = await Promise.all([
+                Prescription.find(query).sort({ date: -1 }).skip(skip).limit(limit),
+                Prescription.countDocuments(query)
+            ]);
+
+            await this.ensurePrescriptionIds(prescriptions);
+
+            return res.status(200).json({
+                total,
+                skip,
+                limit,
+                prescripciones: prescriptions.map((prescription) => this.mapPrescriptionForApi(prescription))
+            });
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.log(err);
+            return res.status(500).json('Server Error');
+        }
+    };
+
 
     public getByUserId = async (req: Request, res: Response): Promise<Response> => {
         try {
@@ -916,6 +964,61 @@ class PrescriptionController implements BaseController {
                 prescription.prescriptionId = prescriptionId;
             }
         }
+    };
+
+    private updateStatusesByPatientIdMPI = async (idMPI: string): Promise<void> => {
+        const limitDate: Date = moment().subtract(30, 'day').startOf('day').toDate(); // expired control date
+        // before search: update expired prescriptions, with status "Pendiente"
+        await Prescription.updateMany({
+            status: 'Pendiente',
+            date: { $lt: limitDate },
+            'patient.idMPI': idMPI
+        }, {
+            status: 'Vencida'
+        });
+    };
+
+    /**
+     * Da forma a una receta para el consumo externo (API): expone solo los datos
+     * acordados y omite los detalles internos (por ejemplo, el _id de Mongo).
+     */
+    private mapPrescriptionForApi = (prescription: IPrescription): any => {
+        const prescriptionSupply = prescription.supplies && prescription.supplies.length ? prescription.supplies[0] : null;
+        const supply: any = prescriptionSupply?.supply || {};
+
+        const profesionGrado: any[] = (prescription.professional as any)?.profesionGrado || [];
+        const matricula = prescription.professional?.enrollment || profesionGrado[0]?.numeroMatricula || null;
+        const especialidad = profesionGrado[0]?.profesion || null;
+
+        const estadoActualMap: Record<string, string> = {
+            Pendiente: 'pendiente',
+            Dispensada: 'dispensada',
+            Vencida: 'vencida'
+        };
+
+        const isDispensed = !!prescription.dispensedAt
+            || !!(prescription.dispensedBy && prescription.dispensedBy.userId)
+            || prescription.status === 'Dispensada';
+
+        return {
+            idPrescripcion: prescription.prescriptionId || null,
+            profesional: {
+                nombre: prescription.professional?.businessName || null,
+                matricula,
+                especialidad
+            },
+            medicamento: prescriptionSupply ? {
+                nombre: supply.name || null,
+                concepto: supply.snomedConcept || null,
+                presentacion: supply.firstPresentation || null,
+                cantidad: prescriptionSupply.quantity ?? null,
+                unidadMedida: (prescriptionSupply as any).unidadMedida || null
+            } : null,
+            diagnostico: (prescriptionSupply as any)?.diagnostic || null,
+            fechaCreacion: prescription.createdAt || prescription.date || null,
+            estadoActual: estadoActualMap[prescription.status] || String(prescription.status || '').toLowerCase(),
+            estadoDispensa: isDispensed ? 'dispensada' : 'sin-dispensa'
+        };
     };
 
     private getSupplies = (supplies: any[]) => {
