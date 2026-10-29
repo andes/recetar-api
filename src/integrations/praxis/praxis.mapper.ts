@@ -38,13 +38,24 @@ export class PraxisMapper {
         const prescriptor = this.buildPrescriptor(professional);
         const praxisPatient = this.buildPaciente(patient, prescription.patient);
         const cobertura = this.buildCobertura(prescription);
+        const meses = prescription.tratamientoProlongado && prescription.tratamientoProlongado > 1
+            ? prescription.tratamientoProlongado
+            : undefined;
+        const idAtencion = prescription.treatmentGroupId || prescription.prescriptionId;
 
         return {
             paciente: praxisPatient,
             ...(cobertura && { coberturaSalud: cobertura }),
             prescriptor,
             renglones,
-            tratamientoProlongado: !!prescription.tratamientoProlongado,
+            tratamientoProlongado: !!meses,
+            ...(idAtencion ? { idAtencion } : {}),
+            ...(meses ? {
+                recetas: {
+                    cantidadRecetas: meses,
+                    cantidadDiasEntreRecetas: 30,
+                },
+            } : {}),
         };
     }
 

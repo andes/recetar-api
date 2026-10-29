@@ -12,10 +12,10 @@ export interface PraxisPaciente {
 
 export interface PraxisCoberturaSalud {
     idObraSocial: number;
-    idConvenio: number;
+    idConvenio?: number;
     numeroAfiliado: string;
-    codigoPlan: string;
-    nombrePlan: string;
+    codigoPlan?: string;
+    nombrePlan?: string;
 }
 
 export interface PraxisPrescriptor {
@@ -44,18 +44,41 @@ export interface PraxisRenglon {
     observaciones?: string;
 }
 
+export interface PraxisRecetasRequest {
+    cantidadRecetas: number;
+    cantidadDiasEntreRecetas: number;
+}
+
 export interface PraxisPrescriptionRequest {
     paciente: PraxisPaciente;
     coberturaSalud?: PraxisCoberturaSalud;
     prescriptor: PraxisPrescriptor;
     renglones: PraxisRenglon[];
     tratamientoProlongado: boolean;
+    idAtencion?: string;
+    recetas?: PraxisRecetasRequest;
+    fechaPrescripcion?: string;
+}
+
+export interface PraxisRecetaEmitida {
+    numeroReceta?: string;
+    idReceta?: number;
+    hash?: string;
+    contenidoQR?: string;
+    cuirs?: Array<string | null>;
+}
+
+export interface PraxisMensaje {
+    mensaje?: string;
+    codigo?: number;
+    severidad?: 'E' | 'A' | 'I' | string;
 }
 
 export interface PraxisPrescriptionResponse {
-    idPrescripcion: string;
-    estado: string;
-    mensaje?: string;
+    idPrescripcion: number;
+    hash?: string;
+    recetasEmitidas?: PraxisRecetaEmitida[];
+    mensajes?: PraxisMensaje[];
 }
 
 export interface PraxisErrorResponse {

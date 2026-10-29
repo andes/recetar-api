@@ -1,0 +1,24 @@
+{
+    "fecha": "2020-07-02T08:32:12",
+    "beneficiario": {
+        "numero": "1894390300"
+    },
+    "receta": {
+        "fecha": "2020-07-01",
+        "numero": "10015"
+    },
+    "dispensa": {
+        "numeroAutorizacion": "00301003244905",
+        "renglones": [
+            {
+                "producto": {
+                    "descripcion": "TRIFAMOX  250 mg JBE x  120",
+                    "codigoBarras": "7790375001704",
+                    "troquel": 2711982,
+                    "codigoAlfabeta": 1057
+                },
+                "cantidadEnvases": 1
+            }
+        ]
+    }
+}

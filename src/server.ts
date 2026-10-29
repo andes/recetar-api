@@ -26,6 +26,12 @@ class Server {
         this.app.use(express.json());
         this.app.use(cors());
 
+        const trustProxy = process.env.TRUST_PROXY;
+        if (trustProxy) {
+            const hops = parseInt(trustProxy, 10);
+            this.app.set('trust proxy', Number.isNaN(hops) ? trustProxy : hops);
+        }
+
         this.app.set('etag', false);
 
         // Log temporal de requests entrantes (debug)

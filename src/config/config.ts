@@ -19,4 +19,9 @@ export const env = {
     SISA_USERNAME: process.env.SISA_USERNAME || '',
     SISA_PASSWORD: process.env.SISA_PASSWORD || '',
     SISA_PROVINCIA: parseInt(process.env.SISA_PROVINCIA || '15', 10),
+    PRAXIS_INBOUND_ENABLED: process.env.PRAXIS_INBOUND_ENABLED !== 'false',
+    PRAXIS_INBOUND_ALLOWED_IPS: process.env.PRAXIS_INBOUND_ALLOWED_IPS || '',
+    PRAXIS_INBOUND_API_KEY: process.env.PRAXIS_INBOUND_API_KEY || '',
+    PRAXIS_INBOUND_ENFORCE_HTTPS: process.env.PRAXIS_INBOUND_ENFORCE_HTTPS === 'true',
+    PRAXIS_INBOUND_EVENTS_TTL_DAYS: parseInt(process.env.PRAXIS_INBOUND_EVENTS_TTL_DAYS || '180', 10),
 };

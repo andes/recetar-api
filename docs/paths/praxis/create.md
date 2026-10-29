@@ -55,7 +55,8 @@ curl -s -X POST http://localhost:4000/api/prescriptions/praxis \
         "indicaciones": "Tomar 1 comprimido por vía oral cada 24 horas"
       }
     ],
-    "tratamientoProlongado": false
+    "tratamientoProlongado": false,
+    "idAtencion": "P-123"
   }'
 ```
 
@@ -65,12 +66,25 @@ curl -s -X POST http://localhost:4000/api/prescriptions/praxis \
 {
   "status": "success",
   "data": {
-    "idPrescripcion": "12345",
-    "estado": "creada",
-    "mensaje": "Prescripción creada exitosamente"
+    "idPrescripcion": 12345,
+    "hash": "9f2c...",
+    "recetasEmitidas": [
+      {
+        "numeroReceta": "10015",
+        "idReceta": 1234567890,
+        "hash": "a153a3...",
+        "contenidoQR": "https://...",
+        "cuirs": ["..."]
+      }
+    ],
+    "mensajes": []
   }
 }
 ```
+
+El `hash` de la prescripción y el `hash` de cada receta son los identificadores que usa el contrato de eventos de Praxis. RecetAr los guarda en `identificadoresExternos` (`praxis` y `praxis-receta`) y en `syncExterno.praxis`.
+
+En tratamientos prolongados se envía además `recetas: { cantidadRecetas: N, cantidadDiasEntreRecetas: 30 }` para que Praxis emita una receta por mes.
 
 ### Errores comunes
 

@@ -61,6 +61,13 @@ export const messages = {
             default: 'Error interno del servidor',
             dbConnection: 'Error de conexión a la base de datos',
         },
+        praxisEvent: {
+            notFound: 'Evento de Praxis sin receta local asociada',
+            disabled: 'Recepción de eventos de Praxis deshabilitada',
+            ipNotAllowed: 'IP no autorizada para eventos de Praxis',
+            invalidApiKey: 'API key inválida para eventos de Praxis',
+            httpsRequired: 'La recepción de eventos de Praxis requiere HTTPS',
+        },
         badGateway: {
             default: 'Servicio externo no disponible',
             andes: 'No se pudo conectar con Andes',

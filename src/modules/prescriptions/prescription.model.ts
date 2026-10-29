@@ -46,7 +46,7 @@ const replacedMedicationSchema = new mongoose.Schema({
 }, { _id: false });
 
 const externalIdentifierSubSchema = new mongoose.Schema({
-    entidad: { type: String, enum: ['praxis', 'prestacion', 'registro'], required: true },
+    entidad: { type: String, enum: ['praxis', 'praxis-receta', 'prestacion', 'registro'], required: true },
     valor: { type: String, required: true },
 }, { _id: false });
 
@@ -54,6 +54,13 @@ const externalSyncEntitySubSchema = new mongoose.Schema({
     estado: { type: String, enum: ['pendiente', 'ok', 'no_aplicable', 'error'], required: true },
     intentos: { type: Number, default: 0 },
     ultimoError: String,
+    idPrescripcion: String,
+    idAtencion: String,
+    idReceta: String,
+    numeroReceta: String,
+    cuirs: { type: [String], default: undefined },
+    contenidoQR: String,
+    observacion: String,
 }, { _id: false });
 
 const externalSyncSubSchema = new mongoose.Schema({
@@ -78,6 +85,7 @@ const dispensaSubSchema = new mongoose.Schema({
     organizacion: { id: String, nombre: String },
     fecha: Date,
     sistema: String,
+    numeroAutorizacion: String,
 }, { _id: false });
 
 const estadoDispensaSubSchema = new mongoose.Schema({
@@ -85,6 +93,7 @@ const estadoDispensaSubSchema = new mongoose.Schema({
     fecha: { type: Date, default: Date.now },
     sistema: String,
     idDispensaApp: String,
+    numeroAutorizacion: String,
     cancelada: { motivo: String, fecha: Date },
 }, { _id: false });
 
@@ -93,6 +102,7 @@ const estadoDispensaActualSubSchema = new mongoose.Schema({
     fecha: Date,
     sistema: String,
     idDispensaApp: String,
+    numeroAutorizacion: String,
     cancelada: { motivo: String, fecha: Date },
 }, { _id: false });
 
@@ -162,6 +172,8 @@ prescriptionSchema.index(
     { 'identificadoresExternos.entidad': 1, 'identificadoresExternos.valor': 1 },
     { name: 'identificadoresExternos_entidad_valor' },
 );
+prescriptionSchema.index({ 'syncExterno.praxis.idAtencion': 1 });
+prescriptionSchema.index({ 'syncExterno.praxis.idPrescripcion': 1 });
 
 // Compatibilidad: las recetas viejas (legacy `trimestral`) se leen como tratamiento prolongado de 3 meses.
 // `trimestral` queda como dato de solo lectura; no se escribe desde la API nueva.

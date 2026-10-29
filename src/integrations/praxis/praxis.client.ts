@@ -1,9 +1,14 @@
 import axios, { AxiosInstance } from 'axios';
 import { InternalError } from '../../shared/errors';
 import {
+    PraxisAuthenticationError,
+    PraxisPrescriptionError,
+} from './praxis.errors';
+import {
     PraxisPrescriptionRequest,
     PraxisPrescriptionResponse,
     PraxisErrorResponse,
+    PraxisMensaje,
 } from './praxis.types';
 
 export interface PraxisClientConfig {
@@ -42,16 +47,43 @@ export class PraxisClient {
                 'api/v2/prescripcion',
                 payload
             );
-            return response.data;
+            const data = response.data;
+            const errores = (data.mensajes || []).filter(mensaje => mensaje.severidad === 'E');
+            if (errores.length) {
+                throw new PraxisPrescriptionError(this.describeMessages(errores));
+            }
+            return data;
         } catch (error) {
+            if (error instanceof PraxisPrescriptionError || error instanceof PraxisAuthenticationError) {
+                throw error;
+            }
             if (axios.isAxiosError(error) && error.response) {
-                const errorData = error.response.data as PraxisErrorResponse;
-                throw new InternalError(
-                    `Error de Praxis: ${errorData.mensaje || error.message}`
-                );
+                const status = error.response.status;
+                const data = error.response.data as Partial<PraxisPrescriptionResponse> & Partial<PraxisErrorResponse>;
+                const detail = this.describeError(data, error.message);
+                if (status === 401 || status === 403) {
+                    throw new PraxisAuthenticationError(detail);
+                }
+                throw new PraxisPrescriptionError(detail);
             }
             throw error;
         }
+    }
+
+    private describeMessages(mensajes: PraxisMensaje[]): string {
+        const detail = mensajes.map(mensaje => mensaje.mensaje).filter(Boolean).join(' | ');
+        return detail || 'Praxis rechazó la prescripción';
+    }
+
+    private describeError(
+        data: Partial<PraxisPrescriptionResponse> & Partial<PraxisErrorResponse>,
+        fallback: string,
+    ): string {
+        const mensajes = (data.mensajes || []).map(mensaje => mensaje.mensaje).filter(Boolean);
+        if (mensajes.length) {
+            return `Error de Praxis: ${mensajes.join(' | ')}`;
+        }
+        return `Error de Praxis: ${data.mensaje || data.error || fallback}`;
     }
 
     async getPrescriptionPdf(idPrescripcion: string): Promise<{ pdf: string; contentType: string }> {
