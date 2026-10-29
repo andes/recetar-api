@@ -171,20 +171,72 @@ components:
           type: boolean
           default: false
           description: Indica si es tratamiento prolongado
+        idAtencion:
+          type: string
+          description: Identificador de la prescripción asignado por la organización (correlación)
+        recetas:
+          type: object
+          description: Recetas posdatadas del tratamiento prolongado
+          properties:
+            cantidadRecetas:
+              type: integer
+              minimum: 1
+            cantidadDiasEntreRecetas:
+              type: integer
+              minimum: 1
+        fechaPrescripcion:
+          type: string
+          format: date-time
+          description: Fecha de la prescripción; si se omite, se usa la fecha del día
+
+    PraxisRecetaEmitida:
+      type: object
+      description: Receta emitida por Praxis
+      properties:
+        numeroReceta:
+          type: string
+        idReceta:
+          type: integer
+        hash:
+          type: string
+        contenidoQR:
+          type: string
+        cuirs:
+          type: array
+          items:
+            type: string
+
+    PraxisMensaje:
+      type: object
+      description: Mensaje de Praxis
+      properties:
+        mensaje:
+          type: string
+        codigo:
+          type: integer
+        severidad:
+          type: string
+          description: E=Error, A=Aviso, I=Información
 
     PraxisPrescriptionResponse:
       type: object
-      description: Respuesta de Praxis al crear prescripción
+      description: Respuesta real de Praxis al crear una prescripción
       properties:
         idPrescripcion:
+          type: integer
+          format: int64
+          description: ID interno de la prescripción en Praxis
+        hash:
           type: string
-          description: ID de la prescripción en Praxis
-        estado:
-          type: string
-          description: Estado de la prescripción
-        mensaje:
-          type: string
-          description: Mensaje descriptivo
+          description: Hash de la prescripción, usado en el contrato de eventos
+        recetasEmitidas:
+          type: array
+          items:
+            $ref: '#/components/schemas/PraxisRecetaEmitida'
+        mensajes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PraxisMensaje'
 
 paths:
   /prescriptions/praxis:
@@ -204,7 +256,7 @@ paths:
         1. Valida los datos con Zod
         2. Mapea al formato Praxis v2
         3. Envía POST a `/api/v2/prescripcion`
-        4. Retorna el ID de la prescripción creada
+        4. Retorna el hash de prescripción y las recetas emitidas
       security:
         - bearerAuth: []
       requestBody:
@@ -237,6 +289,7 @@ paths:
                     codigoCIE10: I10
                   indicaciones: Tomar 1 comprimido por vía oral cada 24 horas
               tratamientoProlongado: false
+              idAtencion: "P-123"
       responses:
         "201":
           description: Prescripción creada exitosamente

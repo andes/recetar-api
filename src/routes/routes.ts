@@ -17,6 +17,7 @@ import documentsRoutes from '../modules/documents/documents.routes';
 import usersRoutes from '../modules/users/users.routes';
 import securityRoutes from '../modules/security/security.routes';
 import applicationsRoutes from '../modules/applications/applications.routes';
+import praxisEventsRoutes from '../modules/praxis-events/praxis-events.routes';
 
 const router = Router();
 
@@ -37,5 +38,6 @@ router.use('/stock', stockRoutes);
 router.use('/vademecum', vademecumRoutes);
 router.use('/professionals', recentDocumentsRoutes);
 router.use('/documents', documentsRoutes);
+router.use('/praxis', praxisEventsRoutes);
 
 export default router;

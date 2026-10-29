@@ -41,7 +41,7 @@ export interface ReplacedMedication {
     supply?: IPrescriptionSupply['supply'];
 }
 
-export type ExternalIdentifierEntity = 'praxis' | 'prestacion' | 'registro';
+export type ExternalIdentifierEntity = 'praxis' | 'praxis-receta' | 'prestacion' | 'registro';
 
 export interface IExternalIdentifier {
     entidad: ExternalIdentifierEntity;
@@ -54,6 +54,13 @@ export interface IExternalSyncEntity {
     estado: ExternalSyncStatus;
     intentos: number;
     ultimoError?: string;
+    idPrescripcion?: string;
+    idAtencion?: string;
+    idReceta?: string;
+    numeroReceta?: string;
+    cuirs?: string[];
+    contenidoQR?: string;
+    observacion?: string;
 }
 
 export interface IExternalSync {
@@ -75,6 +82,7 @@ export interface IPrescriptionDispensa {
     organizacion?: { id?: string; nombre?: string };
     fecha?: Date;
     sistema?: string;
+    numeroAutorizacion?: string;
 }
 
 export interface IPrescriptionEstadoDispensa {
@@ -82,6 +90,7 @@ export interface IPrescriptionEstadoDispensa {
     fecha?: Date;
     sistema?: string;
     idDispensaApp?: string;
+    numeroAutorizacion?: string;
     cancelada?: { motivo?: string; fecha?: Date };
 }
 

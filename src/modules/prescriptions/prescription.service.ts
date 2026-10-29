@@ -258,12 +258,11 @@ export class PrescriptionService {
         try {
             const payload = PraxisMapper.toPraxisFromDoc(docs[0]);
             const response = await this.praxisClient.createPrescription(payload);
-            for (const doc of docs) {
-                await this.prescriptionRepository.addExternalIdentifier(doc._id.toString(), 'praxis', response.idPrescripcion);
-                await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
-                    praxis: { estado: 'ok', intentos: 0 },
-                });
+            const warnings = (response.mensajes || []).filter(mensaje => mensaje.severidad !== 'E');
+            for (const warning of warnings) {
+                this.logger.logWarn(`Praxis: ${warning.mensaje || warning.codigo || 'aviso sin detalle'}`);
             }
+            await this.prescriptionRepository.savePraxisResponse(docs, response, 0);
         } catch (error) {
             this.logger.logError(new Error(`Praxis sync failed: ${(error as Error).message}`));
             for (const doc of docs) {

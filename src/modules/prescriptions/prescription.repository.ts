@@ -9,6 +9,7 @@ import {
 } from './prescription.types';
 import { normalizeCuil, cuilDigitsRegex } from './prescription.utils';
 import { toObjectId } from '../../shared/utils/object-id';
+import type { PraxisPrescriptionResponse } from '../../integrations/praxis/praxis.types';
 
 export class PrescriptionRepository {
     async findAll(skip = 0, limit = 20): Promise<{ prescriptions: IPrescription[]; total: number }> {
@@ -251,6 +252,14 @@ export class PrescriptionRepository {
         }).exec();
     }
 
+    async findByPraxisIdAtencion(idAtencion: string): Promise<IPrescription[]> {
+        return Prescription.find({ 'syncExterno.praxis.idAtencion': idAtencion }).exec();
+    }
+
+    async findByPraxisIdPrescripcion(idPrescripcion: string): Promise<IPrescription[]> {
+        return Prescription.find({ 'syncExterno.praxis.idPrescripcion': idPrescripcion }).exec();
+    }
+
     async findPendingPraxisSync(limit = 100): Promise<IPrescription[]> {
         return Prescription.find({ 'syncExterno.praxis.estado': 'pendiente' }).limit(limit).exec();
     }
@@ -339,11 +348,14 @@ export class PrescriptionRepository {
     async pushDispensa(
         id: string,
         estadoDispensa: Record<string, unknown>,
-        dispensa: Record<string, unknown> | null,
+        dispensa: Record<string, unknown> | Record<string, unknown>[] | null,
         status: string,
     ): Promise<IPrescription | null> {
         const $push: Record<string, unknown> = { estadosDispensa: estadoDispensa };
-        if (dispensa) { $push.dispensa = dispensa; }
+        if (dispensa) {
+            const entries = Array.isArray(dispensa) ? dispensa : [dispensa];
+            $push.dispensa = { $each: entries };
+        }
         return Prescription.findByIdAndUpdate(id, {
             $set: { status, estadoDispensaActual: estadoDispensa },
             $push,
@@ -352,5 +364,54 @@ export class PrescriptionRepository {
 
     async updateSyncExterno(id: string, sync: IExternalSync): Promise<IPrescription | null> {
         return Prescription.findByIdAndUpdate(id, { $set: { syncExterno: sync } }, { new: true }).exec();
+    }
+
+    async savePraxisResponse(
+        docs: IPrescription[],
+        response: PraxisPrescriptionResponse,
+        intentos: number,
+    ): Promise<void> {
+        const ordered = [...docs].sort(
+            (a, b) => (a.ordenTratamiento ?? 0) - (b.ordenTratamiento ?? 0),
+        );
+        const idAtencion = ordered[0]?.treatmentGroupId || ordered[0]?.prescriptionId;
+        const recetas = response.recetasEmitidas || [];
+
+        for (let index = 0; index < ordered.length; index++) {
+            const doc = ordered[index];
+            const receta = recetas[index];
+            const docId = doc._id.toString();
+
+            if (response.hash) {
+                await this.addExternalIdentifier(docId, 'praxis', response.hash);
+            }
+            if (receta?.hash) {
+                await this.addExternalIdentifier(docId, 'praxis-receta', receta.hash);
+            }
+
+            const observacion = recetas.length < ordered.length
+                ? `Praxis emitió ${recetas.length} receta(s) para ${ordered.length} mes(es)`
+                : undefined;
+            const cuirs = this.normalizeCuirs(receta?.cuirs);
+
+            await this.updateSyncExterno(docId, {
+                praxis: {
+                    estado: 'ok',
+                    intentos,
+                    idPrescripcion: String(response.idPrescripcion),
+                    ...(idAtencion ? { idAtencion } : {}),
+                    ...(receta?.idReceta != null ? { idReceta: String(receta.idReceta) } : {}),
+                    ...(receta?.numeroReceta ? { numeroReceta: receta.numeroReceta } : {}),
+                    ...(cuirs ? { cuirs } : {}),
+                    ...(receta?.contenidoQR ? { contenidoQR: receta.contenidoQR } : {}),
+                    ...(observacion ? { observacion } : {}),
+                },
+            });
+        }
+    }
+
+    private normalizeCuirs(cuirs?: Array<string | null>): string[] | undefined {
+        const normalized = (cuirs || []).filter((cuir): cuir is string => !!cuir);
+        return normalized.length ? normalized : undefined;
     }
 }

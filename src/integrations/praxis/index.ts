@@ -16,6 +16,9 @@ export type {
     PraxisRenglon,
     PraxisDiagnostico,
     PraxisProducto,
+    PraxisRecetaEmitida,
+    PraxisMensaje,
+    PraxisRecetasRequest,
 } from './praxis.types';
 export type {
     CreatePraxisPrescriptionDTO,
