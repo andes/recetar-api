@@ -50,6 +50,12 @@ export const createPraxisPrescriptionSchema = z.object({
     prescriptor: praxisPrescriptorSchema,
     renglones: z.array(praxisRenglonSchema).min(1, 'errors.validation.requiredField'),
     tratamientoProlongado: z.boolean().default(false),
+    idAtencion: z.string().optional(),
+    recetas: z.object({
+        cantidadRecetas: z.number().int().min(1),
+        cantidadDiasEntreRecetas: z.number().int().min(1),
+    }).optional(),
+    fechaPrescripcion: z.string().optional(),
 });
 
 export type CreatePraxisPrescriptionDTO = z.infer<typeof createPraxisPrescriptionSchema>;

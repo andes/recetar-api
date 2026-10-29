@@ -7,7 +7,7 @@ import {
     PraxisAnnulmentResponse,
     PraxisMensaje,
 } from './praxis.types';
-import { PraxisNotEligibleError, PraxisResponseError } from './praxis.errors';
+import { PraxisAuthenticationError, PraxisNotEligibleError, PraxisResponseError } from './praxis.errors';
 import { checkPraxisEligibility } from './praxis.eligibility';
 
 export interface PraxisClientConfig {
@@ -78,6 +78,11 @@ export class PraxisClient {
                 const mensaje = this.firstErrorMensaje(errorData?.mensajes) || errorData?.mensajes?.[0];
                 if (mensaje) {
                     throw new PraxisResponseError(mensaje.mensaje, mensaje.codigo, mensaje.severidad);
+                }
+                if (error.response.status === 401 || error.response.status === 403) {
+                    throw new PraxisAuthenticationError(
+                        `Error de autenticación con Praxis: ${errorData?.mensaje || errorData?.error || error.message}`
+                    );
                 }
                 throw new InternalError(
                     `Error de Praxis: ${errorData?.mensaje || errorData?.error || error.message}`

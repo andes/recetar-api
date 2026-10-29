@@ -4,7 +4,7 @@ import { AndesClient, PrescriptionAndesRepository, PrescriptionAndesNotFoundErro
 import { PatientService } from '../patients';
 import type { PatientSnapshot } from '../patients';
 import { Logger } from '../../shared/logger/logger.interface';
-import { IPrescription, PRESCRIPTION_SEARCH_LIMIT, PrescriptionDispenser, ExternalIdentifierEntity, PraxisReceta } from './prescription.types';
+import { IPrescription, PRESCRIPTION_SEARCH_LIMIT, PrescriptionDispenser, ExternalIdentifierEntity } from './prescription.types';
 import { IPrescriptionAndes } from '../../integrations/andes';
 import {
     CreatePrescriptionDTO, UpdatePrescriptionDTO,
@@ -288,6 +288,10 @@ export class PrescriptionService {
         try {
             const payload = PraxisMapper.toPraxisFromDoc(data as IPrescription);
             const response = await this.praxisClient.createPrescription(payload);
+            const warnings = (response.mensajes || []).filter(mensaje => mensaje.severidad !== 'E');
+            for (const warning of warnings) {
+                this.logger.logWarn(`Praxis: ${warning.mensaje || warning.codigo || 'aviso sin detalle'}`);
+            }
             return { kind: 'ok', response };
         } catch (error) {
             this.logger.logError(new Error(`Praxis sync failed: ${(error as Error).message}`));
@@ -324,24 +328,7 @@ export class PrescriptionService {
             return;
         }
 
-        const response = publication.response;
-        const praxisId = String(response.idPrescripcion);
-        const praxisRecetas: PraxisReceta[] = (response.recetasEmitidas || []).map((receta) => ({
-            idReceta: String(receta.idReceta),
-            numeroReceta: receta.numeroReceta,
-            hash: receta.hash,
-        }));
-
-        for (const doc of docs) {
-            await this.prescriptionRepository.addExternalIdentifier(doc._id.toString(), 'praxis', praxisId);
-            await this.prescriptionRepository.update(doc._id.toString(), {
-                praxisHash: response.hash,
-                praxisRecetas,
-            });
-            await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), {
-                praxis: { estado: 'ok', intentos: 0 },
-            });
-        }
+        await this.prescriptionRepository.savePraxisResponse(docs, publication.response, 0);
     }
 
     private async markPraxisSync(
@@ -567,7 +554,7 @@ export class PrescriptionService {
         if (!prescription) {
             throw new PrescriptionNotFoundError();
         }
-        const praxisId = this.getExternalIdentifier(prescription, 'praxis');
+        const praxisId = this.getPraxisId(prescription);
         const praxisHash = prescription.praxisHash;
         if (!praxisId || !praxisHash || !this.praxisClient) {
             throw new PrescriptionPdfUnavailableError();
@@ -587,8 +574,15 @@ export class PrescriptionService {
         return prescription.identificadoresExternos?.find((entry) => entry.entidad === entidad)?.valor;
     }
 
+    // El `idPrescripcion` vive en la metadata de sincronización; el identificador `praxis`
+    // guarda el hash. Se mantiene el fallback para recetas publicadas antes de este cambio.
+    private getPraxisId(prescription: IPrescription): string | undefined {
+        return prescription.syncExterno?.praxis?.idPrescripcion
+            || this.getExternalIdentifier(prescription, 'praxis');
+    }
+
     private async annulInPraxis(prescription: IPrescription): Promise<void> {
-        const praxisId = this.getExternalIdentifier(prescription, 'praxis');
+        const praxisId = this.getPraxisId(prescription);
         const praxisHash = prescription.praxisHash;
         if (!praxisId || !praxisHash || !this.praxisClient) {
             return;
