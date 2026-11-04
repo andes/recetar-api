@@ -5,3 +5,4 @@ process.env.ANDES_ENDPOINT = 'http://localhost:9999';
 process.env.ANDES_MPI_ENDPOINT = 'http://localhost:9999/mpi';
 process.env.JWT_MPI_TOKEN = 'test-mpi-token';
 process.env.CF_SECRET_KEY = 'test-cf-secret';
+process.env.LOG_SAMPLE_RATE = '0';

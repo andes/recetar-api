@@ -1,15 +1,21 @@
+import './telemetry';
 import express from 'express';
 import cors from 'cors';
+import type { Server as HttpServer } from 'http';
+import { httpMiddleware, createLogger, wideEventMiddleware } from '@andes/log';
 import { errorHandler } from './shared/middlewares/error-handler';
 import { env } from './config/config';
 import { buildOpenApiSpec } from './config/openapi';
 import { initializeMongo } from './database/dbconfig';
+import { gracefulShutdown as closeGracefully } from './shared/shutdown';
+import { shutdownTelemetry } from './telemetry';
 import routes from './routes/routes';
 
 const apiSpec = buildOpenApiSpec();
 
 class Server {
     protected app: express.Application;
+    private httpServer?: HttpServer;
 
     constructor() {
         this.app = express();
@@ -23,6 +29,8 @@ class Server {
         await initializeMongo();
         this.app.set('port', process.env.PORT || 4000);
 
+        this.app.use(httpMiddleware());
+        this.app.use(wideEventMiddleware(createLogger('wide-event')));
         this.app.use(express.json());
         this.app.use(cors());
 
@@ -33,13 +41,6 @@ class Server {
         }
 
         this.app.set('etag', false);
-
-        // Log temporal de requests entrantes (debug)
-        this.app.use((req, _res, next) => {
-            // eslint-disable-next-line no-console
-            console.log('[req]', req.method, req.originalUrl);
-            next();
-        });
 
         const { apiReference } = await import('@scalar/express-api-reference');
         this.app.use('/api-docs', apiReference({
@@ -56,7 +57,7 @@ class Server {
 
     async start() {
         await this.config();
-        this.app.listen(this.app.get('port'), () => {
+        this.httpServer = this.app.listen(this.app.get('port'), () => {
             // eslint-disable-next-line no-console
             console.log(`API Server running on port ${this.app.get('port')}`);
             // eslint-disable-next-line no-console
@@ -69,6 +70,10 @@ class Server {
     async gracefulShutdown() {
         // eslint-disable-next-line no-console
         console.log('Cerrando servidor API...');
+        await closeGracefully({
+            server: this.httpServer,
+            shutdown: shutdownTelemetry,
+        });
         process.exit(0);
     }
 }
