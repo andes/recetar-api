@@ -1,0 +1,242 @@
+tags:
+  - name: Praxis Eventos
+    description: |
+      Recepción de eventos de ciclo de vida enviados por Praxis (RPE).
+
+      **Base URL que configura Praxis:** `https://<host>/api/praxis`
+
+      **Seguridad:** allowlist de IPs y, opcionalmente, header `x-api-key`.
+
+components:
+  securitySchemes:
+    PraxisApiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+
+  schemas:
+    PraxisEventoProducto:
+      type: object
+      properties:
+        descripcion: { type: string }
+        codigoBarras: { type: string }
+        troquel: { type: integer }
+        codigoAlfabeta: { type: integer }
+
+    PraxisEventoRenglon:
+      type: object
+      required: [cantidadEnvases]
+      properties:
+        numeroRenglon: { type: integer }
+        tipoPrescripcion: { type: string, enum: [G, P, M] }
+        generico:
+          type: object
+          properties:
+            drogas: { type: string }
+            presentacion: { type: string }
+        producto:
+          $ref: '#/components/schemas/PraxisEventoProducto'
+        cantidadEnvases: { type: integer, minimum: 1 }
+        diagnostico:
+          type: object
+          properties:
+            descripcion: { type: string }
+            cie10: { type: string }
+            ciE10: { type: string }
+        indicaciones: { type: string }
+        cuir: { type: string }
+
+    PraxisEventoReceta:
+      type: object
+      required: [hash]
+      properties:
+        hash: { type: string, maxLength: 64 }
+        fecha: { type: string }
+        numero: { type: string }
+        fechaAnulacion: { type: string }
+        id: { type: integer }
+
+    PraxisPrescripcionEvento:
+      type: object
+      required: [hash, recetas, renglones]
+      properties:
+        id: { type: integer }
+        hash: { type: string, maxLength: 64 }
+        fecha: { type: string }
+        idAtencion: { type: string }
+        prescriptor:
+          type: object
+          properties:
+            nombre: { type: string }
+            matricula: { type: string }
+            tipoMatricula: { type: string }
+            idProvinciaMatricula: { type: string }
+            cuit: { type: string }
+            idOrganizacion: { type: integer }
+        obraSocial:
+          type: object
+          properties:
+            nombre: { type: string }
+            codigoRNOS: { type: integer }
+        beneficiario:
+          type: object
+          properties:
+            numero: { type: string }
+            nombre: { type: string }
+            tipoDocumento: { type: string }
+            numeroDocumento: { type: integer }
+            correo: { type: string }
+            celular: { type: string }
+            cuil: { type: integer }
+        tratamientoProlongado: { type: boolean }
+        recetas:
+          type: array
+          items:
+            $ref: '#/components/schemas/PraxisEventoReceta'
+        renglones:
+          type: array
+          items:
+            $ref: '#/components/schemas/PraxisEventoRenglon'
+
+    PraxisDispensaEvento:
+      type: object
+      required: [dispensa]
+      properties:
+        fecha: { type: string }
+        beneficiario:
+          type: object
+          properties:
+            numero: { type: string }
+        receta:
+          type: object
+          properties:
+            fecha: { type: string }
+            numero: { type: string }
+        dispensa:
+          type: object
+          required: [numeroAutorizacion, renglones]
+          properties:
+            numeroAutorizacion: { type: string, maxLength: 20 }
+            renglones:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                required: [cantidadEnvases]
+                properties:
+                  producto:
+                    $ref: '#/components/schemas/PraxisEventoProducto'
+                  cantidadEnvases: { type: integer, minimum: 1 }
+
+    PraxisEventoResult:
+      type: object
+      properties:
+        hash: { type: string }
+        duplicate: { type: boolean }
+        estado: { type: string, enum: [procesado, desconocido, error] }
+        linked: { type: boolean }
+        affected: { type: integer }
+
+paths:
+  /praxis/prescripciones:
+    post:
+      tags: [Praxis Eventos]
+      summary: Prescripción emitida
+      description: Acepta el alta de una prescripción y vincula los hashes de sus recetas.
+      security:
+        - PraxisApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PraxisPrescripcionEvento'
+      responses:
+        '201':
+          description: Evento registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    $ref: '#/components/schemas/PraxisEventoResult'
+        '200':
+          description: Evento repetido (idempotente)
+        '422':
+          description: Payload inválido
+
+  /praxis/prescripciones/{hash}:
+    delete:
+      tags: [Praxis Eventos]
+      summary: Anulación de prescripción
+      security:
+        - PraxisApiKey: []
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema: { type: string, maxLength: 64 }
+      responses:
+        '200':
+          description: Prescripción anulada o ya anulada
+        '404':
+          description: Hash desconocido
+
+  /praxis/recetas/{hash}:
+    delete:
+      tags: [Praxis Eventos]
+      summary: Anulación de receta
+      security:
+        - PraxisApiKey: []
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema: { type: string, maxLength: 64 }
+      responses:
+        '200':
+          description: Receta anulada o ya anulada
+        '404':
+          description: Hash desconocido
+
+  /praxis/recetas/{hash}/dispensa:
+    post:
+      tags: [Praxis Eventos]
+      summary: Dispensa de receta
+      security:
+        - PraxisApiKey: []
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema: { type: string, maxLength: 64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PraxisDispensaEvento'
+      responses:
+        '200':
+          description: Dispensa registrada
+        '404':
+          description: Hash desconocido
+        '422':
+          description: Payload inválido
+    delete:
+      tags: [Praxis Eventos]
+      summary: Anulación de dispensa
+      security:
+        - PraxisApiKey: []
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema: { type: string, maxLength: 64 }
+      responses:
+        '200':
+          description: Dispensa anulada o ya anulada
+        '404':
+          description: Hash desconocido

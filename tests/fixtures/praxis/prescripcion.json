@@ -1,0 +1,60 @@
+{
+	"id": 1,
+    "hash": "1234567890",
+    "fecha": "2020-07-01T20:20:39",
+	"idAtencion": "",
+    "prescriptor": {
+        "nombre": "Nombre del médico",
+        "matricula": "12345",
+		"tipoMatricula": "P",
+		"idProvinciaMatricula": "S",
+        "cuit": "20223598276",
+		"idOrganizacion": 5
+    },
+    "obraSocial": {
+        "nombre": "Nombre de la obra social",
+        "codigoRNOS": 123456
+    },
+    "beneficiario": {
+        "numero": "1894390300",
+        "nombre": "JUAN PEREZ",
+        "tipoDocumento": "DNI",
+        "numeroDocumento": 18943903,
+        "correo": "juan.perez@gmail.com",
+        "celular": "341 5937592",
+        "cuil": 20189439031
+    },
+    "tratamientoProlongado": false,
+    "recetas": [
+        {
+            "hash": "a153a3a4798d444aba482d5a9f6abac31e1d5083dda5af4999cc77c05fb1ce3a",
+            "fecha": "2020-07-01",
+            "numero": "10015",
+			"fechaAnulacion": "",
+			"id": 1234567890
+        }
+    ],
+    "renglones": [
+        {
+			"numeroRenglon": 1,
+            "tipoPrescripcion": "P",
+            "generico": {
+                "drogas": "Amoxicilina",
+                "presentacion": "250 MG Líquido x 120"
+            },
+            "producto": {
+                "descripcion": "TRIFAMOX  250 mg JBE x  120",
+                "codigoBarras": "7790375001704",
+                "troquel": 2711982,
+                "codigoAlfabeta": 1057
+            },
+            "cantidadEnvases": 2,
+            "diagnostico": {
+                "descripcion": "",
+                "ciE10": ""
+            },
+            "indicaciones": "",
+			"cuir": ""
+        }
+    ]
+}

@@ -93,4 +93,67 @@ describe('PrescriptionRepository · identificadores externos', () => {
         expect(updated?.syncExterno?.praxis?.estado).toBe('pendiente');
         expect(updated?.syncExterno?.praxis?.intentos).toBe(1);
     });
+
+    it('finds prescriptions by praxis-receta hash', async () => {
+        const a = await repository.create(build() as any);
+        const b = await repository.create(build() as any);
+        await repository.addExternalIdentifier(a._id.toString(), 'praxis-receta', 'RECETA-1');
+        await repository.addExternalIdentifier(b._id.toString(), 'praxis-receta', 'RECETA-1');
+
+        const found = await repository.findByExternalIdentifier('praxis-receta', 'RECETA-1');
+
+        expect(found).toHaveLength(2);
+    });
+
+    it('finds prescriptions by praxis idAtencion and idPrescripcion', async () => {
+        const doc = await repository.create(build({
+            syncExterno: {
+                praxis: {
+                    estado: 'ok',
+                    intentos: 0,
+                    idPrescripcion: 'PRAX-1',
+                    idAtencion: 'AT-1',
+                },
+            },
+        }) as any);
+
+        const byAtencion = await repository.findByPraxisIdAtencion('AT-1');
+        const byPrescripcion = await repository.findByPraxisIdPrescripcion('PRAX-1');
+
+        expect(byAtencion.map(d => d._id.toString())).toEqual([doc._id.toString()]);
+        expect(byPrescripcion.map(d => d._id.toString())).toEqual([doc._id.toString()]);
+    });
+
+    it('persists praxis metadata and numeroAutorizacion', async () => {
+        const doc = await repository.create(build({
+            syncExterno: {
+                praxis: {
+                    estado: 'ok',
+                    intentos: 0,
+                    idPrescripcion: 'PRAX-1',
+                    idAtencion: 'AT-1',
+                    idReceta: 'REC-1',
+                    numeroReceta: '10015',
+                    cuirs: ['CUIR-1'],
+                    contenidoQR: 'QR-1',
+                    observacion: 'ok',
+                },
+            },
+            estadoDispensaActual: { tipo: 'dispensada', numeroAutorizacion: 'OPF-1' },
+            dispensa: [{ descripcion: 'Ibuprofeno', cantidad: 1, sistema: 'praxis', numeroAutorizacion: 'OPF-1' }],
+        }) as any);
+
+        const found = await repository.findById(doc._id.toString());
+        const praxis = found?.syncExterno?.praxis;
+
+        expect(praxis?.idPrescripcion).toBe('PRAX-1');
+        expect(praxis?.idAtencion).toBe('AT-1');
+        expect(praxis?.idReceta).toBe('REC-1');
+        expect(praxis?.numeroReceta).toBe('10015');
+        expect(praxis?.cuirs).toHaveLength(1);
+        expect(praxis?.cuirs?.[0]).toBe('CUIR-1');
+        expect(praxis?.contenidoQR).toBe('QR-1');
+        expect(found?.estadoDispensaActual?.numeroAutorizacion).toBe('OPF-1');
+        expect(found?.dispensa?.[0].numeroAutorizacion).toBe('OPF-1');
+    });
 });

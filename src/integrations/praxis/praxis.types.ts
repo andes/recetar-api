@@ -45,12 +45,20 @@ export interface PraxisRenglon {
     observaciones?: string;
 }
 
+export interface PraxisRecetasRequest {
+    cantidadRecetas: number;
+    cantidadDiasEntreRecetas: number;
+}
+
 export interface PraxisPrescriptionRequest {
     paciente: PraxisPaciente;
     coberturaSalud?: PraxisCoberturaSalud;
     prescriptor: PraxisPrescriptor;
     renglones: PraxisRenglon[];
     tratamientoProlongado: boolean;
+    idAtencion?: string;
+    recetas?: PraxisRecetasRequest;
+    fechaPrescripcion?: string;
 }
 
 export interface PraxisRecetaEmitida {
@@ -58,7 +66,7 @@ export interface PraxisRecetaEmitida {
     idReceta: number;
     hash: string;
     contenidoQR?: string;
-    cuirs?: string[];
+    cuirs?: Array<string | null>;
 }
 
 export interface PraxisMensaje {
