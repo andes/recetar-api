@@ -10,7 +10,7 @@ tags:
       - **Tratamiento prolongado**: `tratamientoProlongado` (2 a 12) se define **por medicamento** (en cada `supply`) y genera una receta por mes (día 0, +30, +60, ...) para ese medicamento. Cada medicamento sin tratamiento genera una única receta. Solo aplica a medicamentos; un tratamiento explícito sobre un insumo se rechaza (409). Los campos raíz `tratamientoProlongado` y `trimestral` son un fallback deprecado (aplican a los medicamentos sin valor propio e ignoran insumos). Las N recetas de un mismo tratamiento comparten `treatmentGroupId` (generado por el servidor) para poder agruparlas.
       - **Búsquedas**: por profesional, por paciente (DNI), por rango de fechas, por CUIT/CUIL de la farmacia.
       - **Verificación**: consulta recetas activas locales + ANDES por DNI + conceptId.
-      - **Publicación electrónica**: los endpoints orientados a app devuelven `estadoPublicacion` (`ok` | `pendiente` | `error` | `no_aplicable` | `desconocido`) y omiten los identificadores de integración (`syncExterno`, `identificadoresExternos`, `praxisHash`, `praxisRecetas`).
+      - **Publicación electrónica**: los endpoints orientados a app devuelven `estadoPublicacion` (`ok` | `pendiente` | `error` | `no_aplicable` | `desconocido`) y omiten los identificadores de integración (`syncExterno`, `identificadoresExternos`, `praxysHash`, `praxysRecetas`).
 
 paths:
   /prescriptions:

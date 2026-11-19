@@ -46,7 +46,7 @@ const replacedMedicationSchema = new mongoose.Schema({
 }, { _id: false });
 
 const externalIdentifierSubSchema = new mongoose.Schema({
-    entidad: { type: String, enum: ['praxis', 'praxis-receta', 'prestacion', 'registro'], required: true },
+    entidad: { type: String, enum: ['praxys', 'praxys-receta', 'prestacion', 'registro'], required: true },
     valor: { type: String, required: true },
 }, { _id: false });
 
@@ -65,10 +65,10 @@ const externalSyncEntitySubSchema = new mongoose.Schema({
 }, { _id: false });
 
 const externalSyncSubSchema = new mongoose.Schema({
-    praxis: { type: externalSyncEntitySubSchema },
+    praxys: { type: externalSyncEntitySubSchema },
 }, { _id: false });
 
-const praxisRecetaSubSchema = new mongoose.Schema({
+const praxysRecetaSubSchema = new mongoose.Schema({
     idReceta: { type: String, required: true },
     numeroReceta: String,
     hash: { type: String, required: true },
@@ -166,8 +166,8 @@ const prescriptionSchema = new mongoose.Schema({
     ordenTratamiento: { type: Number },
     identificadoresExternos: { type: [externalIdentifierSubSchema], default: [] },
     syncExterno: { type: externalSyncSubSchema, default: {} },
-    praxisHash: { type: String },
-    praxisRecetas: { type: [praxisRecetaSubSchema], default: undefined },
+    praxysHash: { type: String },
+    praxysRecetas: { type: [praxysRecetaSubSchema], default: undefined },
     trimestral: Boolean,
     organizacion: {
         _id: String,
@@ -183,8 +183,8 @@ prescriptionSchema.index(
     { 'identificadoresExternos.entidad': 1, 'identificadoresExternos.valor': 1 },
     { name: 'identificadoresExternos_entidad_valor' },
 );
-prescriptionSchema.index({ 'syncExterno.praxis.idAtencion': 1 });
-prescriptionSchema.index({ 'syncExterno.praxis.idPrescripcion': 1 });
+prescriptionSchema.index({ 'syncExterno.praxys.idAtencion': 1 });
+prescriptionSchema.index({ 'syncExterno.praxys.idPrescripcion': 1 });
 
 // Compatibilidad: las recetas viejas (legacy `trimestral`) se leen como tratamiento prolongado de 3 meses.
 // `trimestral` queda como dato de solo lectura; no se escribe desde la API nueva.

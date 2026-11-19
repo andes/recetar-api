@@ -122,6 +122,7 @@ Luego en el YAML se referencian con `$ref: '#/components/schemas/LoginDTO'`.
 | Comando | Descripción |
 |---|---|
 | `npm run docs:build` | Genera `openapi.json` en la raíz del proyecto a partir de los YAML |
+| `npm run docs:build:praxys` | Genera `dist/praxys-docs/openapi.json` y `api-reference.html` acotados a `/praxys` |
 | El spec se sirve automáticamente en `/api-docs` al iniciar el servidor |
 
 ## Verificación

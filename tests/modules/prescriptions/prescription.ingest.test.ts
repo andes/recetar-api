@@ -5,7 +5,7 @@ import { PrescriptionRepository } from '../../../src/modules/prescriptions/presc
 import { PrescriptionAndesRepository } from '../../../src/integrations/andes';
 import { PrescriptionService } from '../../../src/modules/prescriptions/prescription.service';
 import { AndesClient } from '../../../src/integrations/andes';
-import { PraxisClient } from '../../../src/integrations/praxis';
+import { PraxysClient } from '../../../src/integrations/praxys';
 import { PatientService } from '../../../src/modules/patients';
 import { UsersRepository } from '../../../src/modules/users/users.repository';
 import { ApplicationService } from '../../../src/modules/applications/applications.service';
@@ -31,16 +31,16 @@ let app: ReturnType<typeof createApp>;
 let applicationService: ApplicationService;
 let applicationRepository: ApplicationRepository;
 
-const fakePraxis = {
+const fakePraxys = {
     createPrescription: jest.fn(async () => ({ idPrescripcion: 'PRAX-I', estado: 'creada' })),
-} as unknown as PraxisClient;
+} as unknown as PraxysClient;
 
 beforeAll(async () => {
     await connectTestDB();
     app = createApp();
     repo = new PrescriptionRepository();
     andesRepo = new PrescriptionAndesRepository();
-    service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, fakePraxis);
+    service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, fakePraxys);
     applicationRepository = new ApplicationRepository();
     applicationService = new ApplicationService(applicationRepository, logger as any);
 });
@@ -100,7 +100,7 @@ describe('PrescriptionService.ingest', () => {
         expect(new Set(all.map((p: any) => p.treatmentGroupId)).size).toBe(1);
     });
 
-    it('marca magistral como no_aplicable y no envía a Praxis', async () => {
+    it('marca magistral como no_aplicable y no envía a Praxys', async () => {
         const payload = ingestPayload({
             medicamento: { esMagistral: true, magistral: { nombre: 'Magistral Y' }, cantEnvases: 1 },
         });
@@ -108,8 +108,8 @@ describe('PrescriptionService.ingest', () => {
         const docs = await service.ingest(payload as any);
 
         expect(docs[0].supplies[0].supply.type).toBe('magistral');
-        expect(docs[0].syncExterno?.praxis?.estado).toBe('no_aplicable');
-        expect(fakePraxis.createPrescription).not.toHaveBeenCalled();
+        expect(docs[0].syncExterno?.praxys?.estado).toBe('no_aplicable');
+        expect(fakePraxys.createPrescription).not.toHaveBeenCalled();
     });
 });
 

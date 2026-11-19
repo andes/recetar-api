@@ -1,16 +1,16 @@
 # prescription-external-identifiers Specification
 
 ## Purpose
-Define cómo RecetAr almacena y consulta los identificadores que los sistemas externos asignan o esperan para una receta, de modo que la receta pueda vincularse con Praxis, con la prestación de origen y con la HUDS.
+Define cómo RecetAr almacena y consulta los identificadores que los sistemas externos asignan o esperan para una receta, de modo que la receta pueda vincularse con Praxys, con la prestación de origen y con la HUDS.
 
 ## Requirements
 
 ### Requirement: Almacenamiento de identificadores externos
-RecetAr SHALL almacenar en cada receta un array `identificadoresExternos` de pares `{ entidad, valor }`, donde `entidad` sea `praxis`, `prestacion` o `registro`, persistiendo como máximo una entrada por entidad (upsert).
+RecetAr SHALL almacenar en cada receta un array `identificadoresExternos` de pares `{ entidad, valor }`, donde `entidad` sea `praxys`, `prestacion` o `registro`, persistiendo como máximo una entrada por entidad (upsert).
 
-#### Scenario: Se agrega el identificador de Praxis
-- **WHEN** Praxis asigna un identificador a una receta
-- **THEN** RecetAr registra una entrada `{ entidad: 'praxis', valor: <idPrescripcion> }` sin duplicar una entrada previa de `praxis`
+#### Scenario: Se agrega el identificador de Praxys
+- **WHEN** Praxys asigna un identificador a una receta
+- **THEN** RecetAr registra una entrada `{ entidad: 'praxys', valor: <idPrescripcion> }` sin duplicar una entrada previa de `praxys`
 
 #### Scenario: Receta originada en una prestación
 - **WHEN** la receta se crea a partir de una prestación de ANDES con `idPrestacion` e `idRegistro`

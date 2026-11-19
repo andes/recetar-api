@@ -43,7 +43,7 @@ describe('ApplicationRepository', () => {
     });
 
     it('updates the stored token', async () => {
-        const created = await repository.create({ nombre: 'PRAXIS' });
+        const created = await repository.create({ nombre: 'PRAXYS' });
 
         const updated = await repository.updateToken(created._id.toString(), 'token-123');
 
@@ -51,7 +51,7 @@ describe('ApplicationRepository', () => {
     });
 
     it('updates the active flag', async () => {
-        const created = await repository.create({ nombre: 'PRAXIS' });
+        const created = await repository.create({ nombre: 'PRAXYS' });
 
         const updated = await repository.updateActive(created._id.toString(), false);
 

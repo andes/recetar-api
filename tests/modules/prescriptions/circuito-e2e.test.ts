@@ -3,7 +3,7 @@ import { PrescriptionRepository } from '../../../src/modules/prescriptions/presc
 import { PrescriptionAndesRepository } from '../../../src/integrations/andes';
 import { PrescriptionService } from '../../../src/modules/prescriptions/prescription.service';
 import { AndesClient } from '../../../src/integrations/andes';
-import { PraxisClient } from '../../../src/integrations/praxis';
+import { PraxysClient } from '../../../src/integrations/praxys';
 import { PatientService } from '../../../src/modules/patients';
 import { UsersRepository } from '../../../src/modules/users/users.repository';
 
@@ -23,19 +23,19 @@ let repo: PrescriptionRepository;
 let andesRepo: PrescriptionAndesRepository;
 let service: PrescriptionService;
 
-const fakePraxis = {
+const fakePraxys = {
     createPrescription: jest.fn(async () => ({
         idPrescripcion: 1,
         hash: 'PRAX-HASH-E2E',
         recetasEmitidas: [{ hash: 'REC-E2E' }],
     })),
-} as unknown as PraxisClient;
+} as unknown as PraxysClient;
 
 beforeAll(async () => {
     await connectTestDB();
     repo = new PrescriptionRepository();
     andesRepo = new PrescriptionAndesRepository();
-    service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, fakePraxis);
+    service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, fakePraxys);
 });
 
 afterAll(async () => {
@@ -47,7 +47,7 @@ beforeEach(async () => {
 });
 
 describe('Circuito de recetas (e2e interno)', () => {
-    it('prestacion -> ingesta -> praxis -> consulta por prestacion', async () => {
+    it('prestacion -> ingesta -> praxys -> consulta por prestacion', async () => {
         const docs = await service.ingest({
             idPrestacion: 'PREST-E2E',
             idRegistro: 'REG-E2E',
@@ -61,9 +61,9 @@ describe('Circuito de recetas (e2e interno)', () => {
         // 1) Se persiste en RecetAr con sus identificadores externos
         expect(docs).toHaveLength(1);
         expect(docs[0].identificadoresExternos?.some(e => e.entidad === 'prestacion' && e.valor === 'PREST-E2E')).toBe(true);
-        expect(docs[0].identificadoresExternos?.some(e => e.entidad === 'praxis' && e.valor === 'PRAX-HASH-E2E')).toBe(true);
-        expect(docs[0].identificadoresExternos?.some(e => e.entidad === 'praxis-receta' && e.valor === 'REC-E2E')).toBe(true);
-        expect(docs[0].syncExterno?.praxis?.idPrescripcion).toBe('1');
+        expect(docs[0].identificadoresExternos?.some(e => e.entidad === 'praxys' && e.valor === 'PRAX-HASH-E2E')).toBe(true);
+        expect(docs[0].identificadoresExternos?.some(e => e.entidad === 'praxys-receta' && e.valor === 'REC-E2E')).toBe(true);
+        expect(docs[0].syncExterno?.praxys?.idPrescripcion).toBe('1');
 
         // 2) Se consulta por prestacion y devuelve el shape compatible
         const recetas = await service.getRecetasPorPrestacion('PREST-E2E');

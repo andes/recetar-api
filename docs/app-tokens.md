@@ -1,6 +1,6 @@
 # Tokens de aplicación (sistema-a-sistema)
 
-Autenticación para que sistemas externos (ANDES, SIFAHO, Praxis y futuros) accedan a RecetAr con identidad de aplicación, permisos acotados y tokens revocables.
+Autenticación para que sistemas externos (ANDES, SIFAHO, Praxys y futuros) accedan a RecetAr con identidad de aplicación, permisos acotados y tokens revocables.
 
 ## Entidad de aplicación
 
@@ -56,7 +56,7 @@ Reemitir el token (`POST /applications/:id/token`) guarda el nuevo como vigente;
 
 El `src-legacy` tenía `generateAppToken` (JWT de un usuario con rol `app`, sin identidad de aplicación ni revocación). El nuevo mecanismo de aplicaciones convive durante la transición:
 
-1. Desplegar aplicaciones (este change) y emitir tokens a ANDES, SIFAHO y Praxis.
+1. Desplegar aplicaciones (este change) y emitir tokens a ANDES, SIFAHO y Praxys.
 2. Migrar cada consumidor al token de aplicación.
 3. Retirar el mecanismo heredado (rol `app`) cuando no queden consumidores.
 

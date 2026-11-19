@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: |
     Autenticación sistema-a-sistema para RecetAr. Permite registrar aplicaciones
-    (ANDES, SIFAHO, Praxis y futuras) y emitir tokens de aplicación con permisos
+    (ANDES, SIFAHO, Praxys y futuras) y emitir tokens de aplicación con permisos
     acotados y revocables.
 
     **Autenticación:**

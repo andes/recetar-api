@@ -1,0 +1,77 @@
+import { PrescriptionRepository } from '../../modules/prescriptions/prescription.repository';
+import { IPrescription } from '../../modules/prescriptions/prescription.types';
+import { PraxysClient, PraxysMapper, PraxysNotEligibleError, PraxysResponseError } from '../../integrations/praxys';
+import { env } from '../../config/config';
+
+const MAX_ATTEMPTS = 3;
+const BATCH_LIMIT = 100;
+
+export interface PraxysSyncDeps {
+    repository?: PrescriptionRepository;
+    client?: PraxysClient;
+    maxAttempts?: number;
+    limit?: number;
+}
+
+export async function runPraxysSync(deps: PraxysSyncDeps = {}): Promise<void> {
+    const repository = deps.repository ?? new PrescriptionRepository();
+    const client = deps.client ?? new PraxysClient({
+        praxysEndpoint: env.PRAXYS_ENDPOINT,
+        praxysApiKey: env.PRAXYS_API_KEY,
+    });
+    const maxAttempts = deps.maxAttempts ?? MAX_ATTEMPTS;
+    const limit = deps.limit ?? BATCH_LIMIT;
+
+    const pendientes = await repository.findPendingPraxysSync(limit);
+    const groups = groupPendingByTreatment(pendientes);
+
+    for (const group of groups) {
+        const current = group.reduce(
+            (max, doc) => Math.max(max, doc.syncExterno?.praxys?.intentos ?? 0),
+            0,
+        );
+        try {
+            const payload = PraxysMapper.toPraxysFromDoc(group[0]);
+            const response = await client.createPrescription(payload);
+            await repository.savePraxysResponse(group, response, current + 1);
+        } catch (error) {
+            const notEligible = error instanceof PraxysNotEligibleError;
+            const intentos = notEligible ? current : current + 1;
+            const estado = notEligible
+                ? 'no_aplicable'
+                : (intentos >= maxAttempts ? 'error' : 'pendiente');
+            const codigo = error instanceof PraxysResponseError || error instanceof PraxysNotEligibleError
+                ? error.codigo
+                : undefined;
+
+            for (const doc of group) {
+                const previous = doc.syncExterno?.praxys;
+                const plain = previous && typeof (previous as unknown as { toObject?: () => unknown }).toObject === 'function'
+                    ? (previous as unknown as { toObject: () => Record<string, unknown> }).toObject()
+                    : (previous || {});
+                await repository.updateSyncExterno(doc._id.toString(), {
+                    praxys: {
+                        ...plain,
+                        estado,
+                        intentos,
+                        ultimoError: (error as Error).message,
+                        codigo,
+                    },
+                });
+            }
+        }
+    }
+}
+
+function groupPendingByTreatment(pendientes: IPrescription[]): IPrescription[][] {
+    const groups = new Map<string, IPrescription[]>();
+    for (const doc of pendientes) {
+        const key = doc.treatmentGroupId || doc._id.toString();
+        const group = groups.get(key) || [];
+        group.push(doc);
+        groups.set(key, group);
+    }
+    return Array.from(groups.values()).map(group =>
+        group.sort((a, b) => (a.ordenTratamiento ?? 0) - (b.ordenTratamiento ?? 0)),
+    );
+}

@@ -1,6 +1,6 @@
 import Agenda from 'agenda';
 import mongoose from 'mongoose';
-import { runPraxisSync } from './jobs/sync-praxis-identifiers';
+import { runPraxysSync } from './jobs/sync-praxys-identifiers';
 import { runVencimientoRecetas } from './jobs/vencimiento-recetas';
 import { runActualizarEstadosDispensa } from './jobs/actualizar-estados-dispensa';
 import { isDev } from '../shared/logger/dev-logger';
@@ -55,10 +55,10 @@ class AgendaService {
     }
 
     private defineJobs(): void {
-        this.agenda.define('sync-praxis-identifiers', { concurrency: 1, lockLifetime: 60000 }, async () => {
-            await runPraxisSync();
+        this.agenda.define('sync-praxys-identifiers', { concurrency: 1, lockLifetime: 60000 }, async () => {
+            await runPraxysSync();
         });
-        this.agenda.every('15 minutes', 'sync-praxis-identifiers');
+        this.agenda.every('15 minutes', 'sync-praxys-identifiers');
 
         this.agenda.define('vencimiento-recetas', { concurrency: 1, lockLifetime: 60000 }, async () => {
             await runVencimientoRecetas();

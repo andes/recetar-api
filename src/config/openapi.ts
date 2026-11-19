@@ -24,7 +24,7 @@ const baseSpec: Record<string, unknown> = {
         },
         {
             name: 'Integraciones',
-            tags: ['Andes', 'Praxis', 'Praxis Eventos'],
+            tags: ['Andes', 'Praxys', 'Praxys Eventos'],
         },
     ],
 };

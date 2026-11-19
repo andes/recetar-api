@@ -57,7 +57,7 @@ describe('ApplicationService', () => {
         });
 
         it('uses the default expiry when not provided', async () => {
-            const app = await service.create({ nombre: 'PRAXIS' });
+            const app = await service.create({ nombre: 'PRAXYS' });
 
             const issued = await service.issueToken(app._id.toString());
 
@@ -65,7 +65,7 @@ describe('ApplicationService', () => {
         });
 
         it('honors a custom expiry', async () => {
-            const app = await service.create({ nombre: 'PRAXIS' });
+            const app = await service.create({ nombre: 'PRAXYS' });
 
             const issued = await service.issueToken(app._id.toString(), { expiresInHours: 24 });
 
@@ -73,7 +73,7 @@ describe('ApplicationService', () => {
         });
 
         it('stores the issued token as the current token', async () => {
-            const app = await service.create({ nombre: 'PRAXIS' });
+            const app = await service.create({ nombre: 'PRAXYS' });
 
             const issued = await service.issueToken(app._id.toString());
 

@@ -1,7 +1,7 @@
 # application-tokens Specification
 
 ## Purpose
-Permite que sistemas externos (ANDES, SIFAHO, Praxis y futuros) accedan a RecetAr con identidad de aplicación, permisos acotados y tokens revocables, en reemplazo del mecanismo heredado basado en usuarios con rol `app`.
+Permite que sistemas externos (ANDES, SIFAHO, Praxys y futuros) accedan a RecetAr con identidad de aplicación, permisos acotados y tokens revocables, en reemplazo del mecanismo heredado basado en usuarios con rol `app`.
 
 ## Requirements
 

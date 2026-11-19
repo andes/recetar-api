@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Definir la resolución y validación del CUIT/CUIL del profesional para la emisión de documentos y la publicación en Praxis.
+Definir la resolución y validación del CUIT/CUIL del profesional para la emisión de documentos y la publicación en Praxys.
 
 ## ADDED Requirements
 

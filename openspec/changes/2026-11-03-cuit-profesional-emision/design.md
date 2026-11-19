@@ -4,7 +4,7 @@
 
 - ANDES expone el CUIT/CUIL personal del profesional en `cuit`, pero puede venir vacío.
 - La cuenta de RecetAr (`users.cuil`) guarda el CUIL (profesional) o CUIT (farmacia) capturado en el alta.
-- Praxis arma `prescriptor.cuit` desde el snapshot `professional.cuil`; sin ese dato la publicación falla.
+- Praxys arma `prescriptor.cuit` desde el snapshot `professional.cuil`; sin ese dato la publicación falla.
 
 ## Goals / Non-Goals
 

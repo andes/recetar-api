@@ -3,7 +3,7 @@ import { PrescriptionRepository } from '../../../src/modules/prescriptions/presc
 import { PrescriptionAndesRepository } from '../../../src/integrations/andes';
 import { PrescriptionService } from '../../../src/modules/prescriptions/prescription.service';
 import { AndesClient } from '../../../src/integrations/andes';
-import { PraxisClient } from '../../../src/integrations/praxis';
+import { PraxysClient } from '../../../src/integrations/praxys';
 import { PatientService } from '../../../src/modules/patients';
 import { UsersRepository } from '../../../src/modules/users/users.repository';
 
@@ -25,15 +25,15 @@ let repo: PrescriptionRepository;
 let andesRepo: PrescriptionAndesRepository;
 let service: PrescriptionService;
 
-const fakePraxis = {
+const fakePraxys = {
     createPrescription: jest.fn(async () => ({ idPrescripcion: 'PRAX-H', estado: 'creada' })),
-} as unknown as PraxisClient;
+} as unknown as PraxysClient;
 
 beforeAll(async () => {
     await connectTestDB();
     repo = new PrescriptionRepository();
     andesRepo = new PrescriptionAndesRepository();
-    service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, fakePraxis);
+    service = new PrescriptionService(repo, andesRepo, mockAndesClient, patientStub, logger as any, usersStub, fakePraxys);
 });
 
 afterAll(async () => {

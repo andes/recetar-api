@@ -2,7 +2,7 @@ import { PrescriptionRepository } from './prescription.repository';
 import { PrescriptionService } from './prescription.service';
 import { PrescriptionController } from './prescription.controller';
 import { AndesClient, PrescriptionAndesRepository } from '../../integrations/andes';
-import { PraxisClient } from '../../integrations/praxis';
+import { PraxysClient } from '../../integrations/praxys';
 import { createProfessionalService } from '../professionals';
 import { getPatientService } from '../patients';
 import { UsersRepository } from '../users/users.repository';
@@ -19,13 +19,13 @@ const andesClient = new AndesClient({
     mpiEndpoint: env.ANDES_MPI_ENDPOINT,
 });
 const usersRepository = new UsersRepository();
-// En tests no se publica a Praxis (evita llamadas externas); los tests de Praxis
+// En tests no se publica a Praxys (evita llamadas externas); los tests de Praxys
 // construyen el servicio con un cliente mockeado.
-const praxisClient = process.env.NODE_ENV === 'test'
+const praxysClient = process.env.NODE_ENV === 'test'
     ? undefined
-    : new PraxisClient({
-        praxisEndpoint: env.PRAXYS_ENDPOINT,
-        praxisApiKey: env.PRAXYS_API_KEY,
+    : new PraxysClient({
+        praxysEndpoint: env.PRAXYS_ENDPOINT,
+        praxysApiKey: env.PRAXYS_API_KEY,
     });
 const professionalProfileService = createProfessionalService(andesClient, devLogger);
 const service = new PrescriptionService(
@@ -35,7 +35,7 @@ const service = new PrescriptionService(
     getPatientService,
     devLogger,
     usersRepository,
-    praxisClient,
+    praxysClient,
     professionalProfileService,
 );
 

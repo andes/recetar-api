@@ -1,6 +1,6 @@
 export { AndesClient, AndesMapper } from './andes';
 export { SisaClient } from './sisa';
-export { PraxisClient, PraxisMapper } from './praxis';
+export { PraxysClient, PraxysMapper } from './praxys';
 export type {
     AndesPrescription,
     AndesPatient,
@@ -8,6 +8,6 @@ export type {
     AndesStockItem,
 } from './andes';
 export type {
-    PraxisPrescriptionRequest,
-    PraxisPrescriptionResponse,
-} from './praxis';
+    PraxysPrescriptionRequest,
+    PraxysPrescriptionResponse,
+} from './praxys';

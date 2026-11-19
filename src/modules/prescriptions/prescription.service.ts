@@ -27,12 +27,12 @@ import { generatePrescriptionId, mapPrescriptionStatus, normalizeCuil, addDays }
 import { UsersRepository } from '../users/users.repository';
 import { ProfessionalService } from '../professionals';
 import { AndesPrescription } from '../../integrations/andes/andes.types';
-import { PraxisClient, PraxisMapper, PraxisNotEligibleError, PraxisResponseError, PraxisEligibilityError, PraxisPublicationError, PraxisPrescriptionResponse } from '../../integrations/praxis';
+import { PraxysClient, PraxysMapper, PraxysNotEligibleError, PraxysResponseError, PraxysEligibilityError, PraxysPublicationError, PraxysPrescriptionResponse } from '../../integrations/praxys';
 import { AndesIngestDTO } from './ingest.dto';
 import { toRecetaCompatible } from '../../integrations/andes/receta-output.mapper';
 
 type SupplyPublication =
-    | { kind: 'ok'; response: PraxisPrescriptionResponse }
+    | { kind: 'ok'; response: PraxysPrescriptionResponse }
     | { kind: 'local'; reason?: string; codigo?: number | string }
     | { kind: 'pending' };
 
@@ -44,7 +44,7 @@ export class PrescriptionService {
         private readonly patientServiceProvider: PatientService | (() => PatientService),
         private readonly logger: Logger,
         private readonly usersRepository: UsersRepository,
-        private readonly praxisClient?: PraxisClient,
+        private readonly praxysClient?: PraxysClient,
         private readonly professionalProfileService?: ProfessionalService,
     ) {}
 
@@ -234,7 +234,7 @@ export class PrescriptionService {
                 });
             }
 
-            // Publicar antes de persistir: si Praxis falla, no se guarda nada.
+            // Publicar antes de persistir: si Praxys falla, no se guarda nada.
             const publication = await this.publishSupply(dataList[0], supply);
             prepared.push({ dataList, supply, publication });
         }
@@ -276,36 +276,36 @@ export class PrescriptionService {
         data: Partial<IPrescription>,
         supply: CreatePrescriptionDTO['supplies'][number],
     ): Promise<SupplyPublication> {
-        // Magistrales e insumos no se publican en Praxis (local-only válido).
+        // Magistrales e insumos no se publican en Praxys (local-only válido).
         if (supply.supply?.type) {
-            return { kind: 'local', reason: 'Tipo de prescripción no publicable en Praxis' };
+            return { kind: 'local', reason: 'Tipo de prescripción no publicable en Praxys' };
         }
 
-        if (!this.praxisClient || this.praxisClient.isConfigured?.() === false) {
+        if (!this.praxysClient || this.praxysClient.isConfigured?.() === false) {
             return { kind: 'pending' };
         }
 
         try {
-            const payload = PraxisMapper.toPraxisFromDoc(data as IPrescription);
-            const response = await this.praxisClient.createPrescription(payload);
+            const payload = PraxysMapper.toPraxysFromDoc(data as IPrescription);
+            const response = await this.praxysClient.createPrescription(payload);
             const warnings = (response.mensajes || []).filter(mensaje => mensaje.severidad !== 'E');
             for (const warning of warnings) {
-                this.logger.logWarn(`Praxis: ${warning.mensaje || warning.codigo || 'aviso sin detalle'}`);
+                this.logger.logWarn(`Praxys: ${warning.mensaje || warning.codigo || 'aviso sin detalle'}`);
             }
             return { kind: 'ok', response };
         } catch (error) {
-            this.logger.logError(new Error(`Praxis sync failed: ${(error as Error).message}`));
-            if (error instanceof PraxisNotEligibleError) {
+            this.logger.logError(new Error(`Praxys sync failed: ${(error as Error).message}`));
+            if (error instanceof PraxysNotEligibleError) {
                 // Paciente sin DNI en ámbito público: local-only válido.
                 if (error.reason === 'Paciente sin DNI' && data.ambito === 'publico') {
                     return { kind: 'local', reason: error.reason, codigo: error.codigo };
                 }
-                throw new PraxisEligibilityError(error.reason, error.codigo);
+                throw new PraxysEligibilityError(error.reason, error.codigo);
             }
-            if (error instanceof PraxisResponseError) {
-                throw new PraxisPublicationError(`No se pudo publicar la receta: ${error.message}`, error.codigo);
+            if (error instanceof PraxysResponseError) {
+                throw new PraxysPublicationError(`No se pudo publicar la receta: ${error.message}`, error.codigo);
             }
-            throw new PraxisPublicationError(`No se pudo publicar la receta: ${(error as Error).message}`);
+            throw new PraxysPublicationError(`No se pudo publicar la receta: ${(error as Error).message}`);
         }
     }
 
@@ -314,7 +314,7 @@ export class PrescriptionService {
         publication: SupplyPublication,
     ): Promise<void> {
         if (publication.kind === 'local') {
-            await this.markPraxisSync(docs, {
+            await this.markPraxysSync(docs, {
                 estado: 'no_aplicable',
                 intentos: 0,
                 ultimoError: publication.reason,
@@ -324,19 +324,19 @@ export class PrescriptionService {
         }
 
         if (publication.kind === 'pending') {
-            await this.markPraxisSync(docs, { estado: 'pendiente', intentos: 0 });
+            await this.markPraxysSync(docs, { estado: 'pendiente', intentos: 0 });
             return;
         }
 
-        await this.prescriptionRepository.savePraxisResponse(docs, publication.response, 0);
+        await this.prescriptionRepository.savePraxysResponse(docs, publication.response, 0);
     }
 
-    private async markPraxisSync(
+    private async markPraxysSync(
         docs: IPrescription[],
-        praxis: { estado: 'pendiente' | 'ok' | 'no_aplicable' | 'error'; intentos: number; ultimoError?: string; codigo?: number | string },
+        praxys: { estado: 'pendiente' | 'ok' | 'no_aplicable' | 'error'; intentos: number; ultimoError?: string; codigo?: number | string },
     ): Promise<void> {
         for (const doc of docs) {
-            await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), { praxis });
+            await this.prescriptionRepository.updateSyncExterno(doc._id.toString(), { praxys });
         }
     }
 
@@ -383,13 +383,13 @@ export class PrescriptionService {
             docs.push(created);
         }
 
-        // Ingesta desde ANDES: la receta ya existe; si Praxis falla no se bloquea, se reintenta luego.
+        // Ingesta desde ANDES: la receta ya existe; si Praxys falla no se bloquea, se reintenta luego.
         try {
             const publication = await this.publishSupply(docs[0], supply);
             await this.applyPublication(docs, publication);
         } catch (error) {
-            const estado = error instanceof PraxisEligibilityError ? 'no_aplicable' : 'pendiente';
-            await this.markPraxisSync(docs, {
+            const estado = error instanceof PraxysEligibilityError ? 'no_aplicable' : 'pendiente';
+            await this.markPraxysSync(docs, {
                 estado,
                 intentos: 0,
                 ultimoError: (error as Error).message,
@@ -520,7 +520,7 @@ export class PrescriptionService {
         if (prescription.status !== 'Pendiente') {
             throw new PrescriptionNotDispensableError();
         }
-        if (this.getExternalIdentifier(prescription, 'praxis')) {
+        if (this.getExternalIdentifier(prescription, 'praxys')) {
             throw new PrescriptionPublishedError();
         }
         await this.prescriptionRepository.delete(id);
@@ -545,7 +545,7 @@ export class PrescriptionService {
             throw new PrescriptionNotFoundError();
         }
 
-        await this.annulInPraxis(prescription);
+        await this.annulInPraxys(prescription);
         return updated;
     }
 
@@ -554,15 +554,15 @@ export class PrescriptionService {
         if (!prescription) {
             throw new PrescriptionNotFoundError();
         }
-        const praxisId = this.getPraxisId(prescription);
-        const praxisHash = prescription.praxisHash;
-        if (!praxisId || !praxisHash || !this.praxisClient) {
+        const praxysId = this.getPraxysId(prescription);
+        const praxysHash = prescription.praxysHash;
+        if (!praxysId || !praxysHash || !this.praxysClient) {
             throw new PrescriptionPdfUnavailableError();
         }
         try {
-            return await this.praxisClient.getPrescriptionPdf(praxisId, praxisHash);
+            return await this.praxysClient.getPrescriptionPdf(praxysId, praxysHash);
         } catch (error) {
-            this.logger.logError(new Error(`Praxis pdf failed: ${(error as Error).message}`));
+            this.logger.logError(new Error(`Praxys pdf failed: ${(error as Error).message}`));
             throw new PrescriptionPdfUnavailableError();
         }
     }
@@ -574,23 +574,23 @@ export class PrescriptionService {
         return prescription.identificadoresExternos?.find((entry) => entry.entidad === entidad)?.valor;
     }
 
-    // El `idPrescripcion` vive en la metadata de sincronización; el identificador `praxis`
+    // El `idPrescripcion` vive en la metadata de sincronización; el identificador `praxys`
     // guarda el hash. Se mantiene el fallback para recetas publicadas antes de este cambio.
-    private getPraxisId(prescription: IPrescription): string | undefined {
-        return prescription.syncExterno?.praxis?.idPrescripcion
-            || this.getExternalIdentifier(prescription, 'praxis');
+    private getPraxysId(prescription: IPrescription): string | undefined {
+        return prescription.syncExterno?.praxys?.idPrescripcion
+            || this.getExternalIdentifier(prescription, 'praxys');
     }
 
-    private async annulInPraxis(prescription: IPrescription): Promise<void> {
-        const praxisId = this.getPraxisId(prescription);
-        const praxisHash = prescription.praxisHash;
-        if (!praxisId || !praxisHash || !this.praxisClient) {
+    private async annulInPraxys(prescription: IPrescription): Promise<void> {
+        const praxysId = this.getPraxysId(prescription);
+        const praxysHash = prescription.praxysHash;
+        if (!praxysId || !praxysHash || !this.praxysClient) {
             return;
         }
         try {
-            await this.praxisClient.annulPrescription(praxisId, praxisHash);
+            await this.praxysClient.annulPrescription(praxysId, praxysHash);
         } catch (error) {
-            this.logger.logError(new Error(`Praxis annul failed: ${(error as Error).message}`));
+            this.logger.logError(new Error(`Praxys annul failed: ${(error as Error).message}`));
         }
     }
 
@@ -839,7 +839,7 @@ export class PrescriptionService {
                     motivo: body.motivo as string | undefined,
                     observacion: body.observacion as string | undefined,
                 }, 'Suspendida');
-                await this.annulInPraxis(doc);
+                await this.annulInPraxys(doc);
                 return updated ? toRecetaCompatible(updated) : null;
             }
             case 'rechazar': {

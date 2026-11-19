@@ -3,7 +3,7 @@ import { PrescriptionRepository } from '../../../src/modules/prescriptions/presc
 import { PrescriptionAndesRepository } from '../../../src/integrations/andes';
 import { PrescriptionService } from '../../../src/modules/prescriptions/prescription.service';
 import { AndesClient } from '../../../src/integrations/andes';
-import { PraxisClient } from '../../../src/integrations/praxis';
+import { PraxysClient } from '../../../src/integrations/praxys';
 import { PatientService } from '../../../src/modules/patients';
 import { UsersRepository } from '../../../src/modules/users/users.repository';
 import Prescription from '../../../src/modules/prescriptions/prescription.model';
@@ -56,7 +56,7 @@ beforeEach(async () => {
     logger.logError.mockClear();
 });
 
-function buildService(praxisClient?: PraxisClient): PrescriptionService {
+function buildService(praxysClient?: PraxysClient): PrescriptionService {
     return new PrescriptionService(
         repo,
         andesRepo,
@@ -64,7 +64,7 @@ function buildService(praxisClient?: PraxisClient): PrescriptionService {
         patientStub,
         logger as any,
         usersStub,
-        praxisClient,
+        praxysClient,
     );
 }
 
@@ -80,49 +80,49 @@ async function createPrescription(overrides: Record<string, unknown> = {}) {
     });
 }
 
-const praxisIdentifier = [{ entidad: 'praxis', valor: 'PRAX-1' }];
+const praxysIdentifier = [{ entidad: 'praxys', valor: 'PRAX-1' }];
 
 describe('PrescriptionService · suspensión', () => {
-    it('suspende localmente y anula en Praxis cuando hay identificador', async () => {
-        const praxisClient = {
+    it('suspende localmente y anula en Praxys cuando hay identificador', async () => {
+        const praxysClient = {
             annulPrescription: jest.fn(async () => undefined),
-        } as unknown as PraxisClient;
-        const service = buildService(praxisClient);
-        const doc = await createPrescription({ identificadoresExternos: praxisIdentifier, praxisHash: 'HASH-1' });
+        } as unknown as PraxysClient;
+        const service = buildService(praxysClient);
+        const doc = await createPrescription({ identificadoresExternos: praxysIdentifier, praxysHash: 'HASH-1' });
 
         const result = await service.suspend(doc._id.toString(), { motivo: 'error' });
 
         expect(result.status).toBe('Suspendida');
         expect(result.estadoActual?.tipo).toBe('suspendida');
-        expect(praxisClient.annulPrescription).toHaveBeenCalledWith('PRAX-1', 'HASH-1');
-        expect(praxisClient.annulPrescription).toHaveBeenCalledTimes(1);
+        expect(praxysClient.annulPrescription).toHaveBeenCalledWith('PRAX-1', 'HASH-1');
+        expect(praxysClient.annulPrescription).toHaveBeenCalledTimes(1);
     });
 
-    it('mantiene la suspensión local aunque Praxis falle (local-first)', async () => {
-        const praxisClient = {
-            annulPrescription: jest.fn(async () => { throw new Error('Praxis down'); }),
-        } as unknown as PraxisClient;
-        const service = buildService(praxisClient);
-        const doc = await createPrescription({ identificadoresExternos: praxisIdentifier, praxisHash: 'HASH-1' });
+    it('mantiene la suspensión local aunque Praxys falle (local-first)', async () => {
+        const praxysClient = {
+            annulPrescription: jest.fn(async () => { throw new Error('Praxys down'); }),
+        } as unknown as PraxysClient;
+        const service = buildService(praxysClient);
+        const doc = await createPrescription({ identificadoresExternos: praxysIdentifier, praxysHash: 'HASH-1' });
 
         const result = await service.suspend(doc._id.toString());
 
         expect(result.status).toBe('Suspendida');
-        expect(praxisClient.annulPrescription).toHaveBeenCalledTimes(1);
+        expect(praxysClient.annulPrescription).toHaveBeenCalledTimes(1);
         expect(logger.logError).toHaveBeenCalled();
     });
 
-    it('no llama a Praxis cuando no hay identificador', async () => {
-        const praxisClient = {
+    it('no llama a Praxys cuando no hay identificador', async () => {
+        const praxysClient = {
             annulPrescription: jest.fn(async () => undefined),
-        } as unknown as PraxisClient;
-        const service = buildService(praxisClient);
+        } as unknown as PraxysClient;
+        const service = buildService(praxysClient);
         const doc = await createPrescription();
 
         const result = await service.suspend(doc._id.toString());
 
         expect(result.status).toBe('Suspendida');
-        expect(praxisClient.annulPrescription).not.toHaveBeenCalled();
+        expect(praxysClient.annulPrescription).not.toHaveBeenCalled();
     });
 
     it('rechaza suspender una receta que no está Pendiente', async () => {
@@ -132,48 +132,48 @@ describe('PrescriptionService · suspensión', () => {
         await expect(service.suspend(doc._id.toString())).rejects.toBeInstanceOf(PrescriptionNotSuspendableError);
     });
 
-    it('anula en Praxis al suspender desde el hub (patchReceta)', async () => {
-        const praxisClient = {
+    it('anula en Praxys al suspender desde el hub (patchReceta)', async () => {
+        const praxysClient = {
             annulPrescription: jest.fn(async () => undefined),
-        } as unknown as PraxisClient;
-        const service = buildService(praxisClient);
-        const doc = await createPrescription({ identificadoresExternos: praxisIdentifier, praxisHash: 'HASH-1' });
+        } as unknown as PraxysClient;
+        const service = buildService(praxysClient);
+        const doc = await createPrescription({ identificadoresExternos: praxysIdentifier, praxysHash: 'HASH-1' });
 
         await service.patchReceta('suspender', { recetaId: doc._id.toString(), motivo: 'error' });
 
-        expect(praxisClient.annulPrescription).toHaveBeenCalledWith('PRAX-1', 'HASH-1');
+        expect(praxysClient.annulPrescription).toHaveBeenCalledWith('PRAX-1', 'HASH-1');
         const updated = await repo.findById(doc._id.toString());
         expect(updated?.status).toBe('Suspendida');
     });
 });
 
 describe('PrescriptionService · PDF', () => {
-    it('devuelve el PDF cuando hay identificador de Praxis', async () => {
-        const praxisClient = {
+    it('devuelve el PDF cuando hay identificador de Praxys', async () => {
+        const praxysClient = {
             getPrescriptionPdf: jest.fn(async () => ({ pdf: 'BASE64', contentType: 'application/pdf' })),
-        } as unknown as PraxisClient;
-        const service = buildService(praxisClient);
-        const doc = await createPrescription({ identificadoresExternos: praxisIdentifier, praxisHash: 'HASH-1' });
+        } as unknown as PraxysClient;
+        const service = buildService(praxysClient);
+        const doc = await createPrescription({ identificadoresExternos: praxysIdentifier, praxysHash: 'HASH-1' });
 
         const result = await service.getPdf(doc._id.toString());
 
         expect(result).toEqual({ pdf: 'BASE64', contentType: 'application/pdf' });
-        expect(praxisClient.getPrescriptionPdf).toHaveBeenCalledWith('PRAX-1', 'HASH-1');
+        expect(praxysClient.getPrescriptionPdf).toHaveBeenCalledWith('PRAX-1', 'HASH-1');
     });
 
-    it('responde no disponible cuando no hay identificador de Praxis', async () => {
-        const service = buildService({ getPrescriptionPdf: jest.fn() } as unknown as PraxisClient);
+    it('responde no disponible cuando no hay identificador de Praxys', async () => {
+        const service = buildService({ getPrescriptionPdf: jest.fn() } as unknown as PraxysClient);
         const doc = await createPrescription();
 
         await expect(service.getPdf(doc._id.toString())).rejects.toBeInstanceOf(PrescriptionPdfUnavailableError);
     });
 
-    it('responde no disponible cuando Praxis falla', async () => {
-        const praxisClient = {
-            getPrescriptionPdf: jest.fn(async () => { throw new Error('Praxis down'); }),
-        } as unknown as PraxisClient;
-        const service = buildService(praxisClient);
-        const doc = await createPrescription({ identificadoresExternos: praxisIdentifier, praxisHash: 'HASH-1' });
+    it('responde no disponible cuando Praxys falla', async () => {
+        const praxysClient = {
+            getPrescriptionPdf: jest.fn(async () => { throw new Error('Praxys down'); }),
+        } as unknown as PraxysClient;
+        const service = buildService(praxysClient);
+        const doc = await createPrescription({ identificadoresExternos: praxysIdentifier, praxysHash: 'HASH-1' });
 
         await expect(service.getPdf(doc._id.toString())).rejects.toBeInstanceOf(PrescriptionPdfUnavailableError);
     });
@@ -182,7 +182,7 @@ describe('PrescriptionService · PDF', () => {
 describe('PrescriptionService · borrado protegido', () => {
     it('rechaza eliminar una receta ya publicada', async () => {
         const service = buildService();
-        const doc = await createPrescription({ identificadoresExternos: praxisIdentifier });
+        const doc = await createPrescription({ identificadoresExternos: praxysIdentifier });
 
         await expect(service.delete(doc._id.toString())).rejects.toBeInstanceOf(PrescriptionPublishedError);
         expect(await repo.findById(doc._id.toString())).not.toBeNull();
@@ -203,8 +203,8 @@ describe('prescription.view', () => {
         const input = {
             _id: '1',
             status: 'Pendiente',
-            syncExterno: { praxis: { estado: 'ok', intentos: 0 } },
-            identificadoresExternos: praxisIdentifier,
+            syncExterno: { praxys: { estado: 'ok', intentos: 0 } },
+            identificadoresExternos: praxysIdentifier,
         };
 
         const result = toAppPrescription(input) as Record<string, unknown>;
@@ -223,7 +223,7 @@ describe('prescription.view', () => {
 
     it('oculta los identificadores en listas y agrega estadoPublicacion', () => {
         const list = toAppPrescriptionList([
-            { _id: '1', syncExterno: { praxis: { estado: 'pendiente' } }, identificadoresExternos: [] },
+            { _id: '1', syncExterno: { praxys: { estado: 'pendiente' } }, identificadoresExternos: [] },
         ]) as Record<string, unknown>[];
 
         expect(list[0]['syncExterno']).toBeUndefined();

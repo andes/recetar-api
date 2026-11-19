@@ -89,3 +89,9 @@ Todas las respuestas siguen el formato:
   }
 }
 ```
+
+## Integración Praxys (eventos RPE)
+
+La recepción de eventos de ciclo de vida enviados por Praxys está documentada en
+[praxys-inbound-integracion.md](./praxys-inbound-integracion.md). El contrato técnico detallado
+está en [praxys-events.md](./praxys-events.md).

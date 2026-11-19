@@ -1,8 +1,8 @@
 function resolveEstadoPublicacion(source: Record<string, unknown>): string {
     const syncExterno = source['syncExterno'] as
-        | { praxis?: { estado?: string } }
+        | { praxys?: { estado?: string } }
         | undefined;
-    const estado = syncExterno?.praxis?.estado;
+    const estado = syncExterno?.praxys?.estado;
     return typeof estado === 'string' && estado ? estado : 'desconocido';
 }
 
@@ -18,13 +18,13 @@ function stripExternalFields<T>(doc: T): T {
     copy['estadoPublicacion'] = resolveEstadoPublicacion(copy);
     delete copy['syncExterno'];
     delete copy['identificadoresExternos'];
-    delete copy['praxisHash'];
-    delete copy['praxisRecetas'];
+    delete copy['praxysHash'];
+    delete copy['praxysRecetas'];
     return copy as T;
 }
 
 // Las respuestas orientadas a la app no exponen los identificadores de integración
-// (Praxis / prestación / registro). En su lugar exponen un estado neutral de
+// (Praxys / prestación / registro). En su lugar exponen un estado neutral de
 // publicación electrónica que la app usa para avisar y bloquear la dispensa privada.
 export function toAppPrescription<T>(doc: T): T {
     return stripExternalFields(doc);

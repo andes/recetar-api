@@ -6,11 +6,11 @@ import {
     IExternalIdentifier,
     ExternalIdentifierEntity,
     IExternalSync,
-    PraxisReceta,
+    PraxysReceta,
 } from './prescription.types';
 import { normalizeCuil, cuilDigitsRegex } from './prescription.utils';
 import { toObjectId } from '../../shared/utils/object-id';
-import type { PraxisPrescriptionResponse } from '../../integrations/praxis/praxis.types';
+import type { PraxysPrescriptionResponse } from '../../integrations/praxys/praxys.types';
 
 export class PrescriptionRepository {
     async findAll(skip = 0, limit = 20): Promise<{ prescriptions: IPrescription[]; total: number }> {
@@ -253,16 +253,16 @@ export class PrescriptionRepository {
         }).exec();
     }
 
-    async findByPraxisIdAtencion(idAtencion: string): Promise<IPrescription[]> {
-        return Prescription.find({ 'syncExterno.praxis.idAtencion': idAtencion }).exec();
+    async findByPraxysIdAtencion(idAtencion: string): Promise<IPrescription[]> {
+        return Prescription.find({ 'syncExterno.praxys.idAtencion': idAtencion }).exec();
     }
 
-    async findByPraxisIdPrescripcion(idPrescripcion: string): Promise<IPrescription[]> {
-        return Prescription.find({ 'syncExterno.praxis.idPrescripcion': idPrescripcion }).exec();
+    async findByPraxysIdPrescripcion(idPrescripcion: string): Promise<IPrescription[]> {
+        return Prescription.find({ 'syncExterno.praxys.idPrescripcion': idPrescripcion }).exec();
     }
 
-    async findPendingPraxisSync(limit = 100): Promise<IPrescription[]> {
-        return Prescription.find({ 'syncExterno.praxis.estado': 'pendiente' }).limit(limit).exec();
+    async findPendingPraxysSync(limit = 100): Promise<IPrescription[]> {
+        return Prescription.find({ 'syncExterno.praxys.estado': 'pendiente' }).limit(limit).exec();
     }
 
     async findPendientesEnRango(desde: Date, hasta: Date): Promise<IPrescription[]> {
@@ -367,9 +367,9 @@ export class PrescriptionRepository {
         return Prescription.findByIdAndUpdate(id, { $set: { syncExterno: sync } }, { new: true }).exec();
     }
 
-    async savePraxisResponse(
+    async savePraxysResponse(
         docs: IPrescription[],
-        response: PraxisPrescriptionResponse,
+        response: PraxysPrescriptionResponse,
         intentos: number,
     ): Promise<void> {
         const ordered = [...docs].sort(
@@ -384,29 +384,29 @@ export class PrescriptionRepository {
             const docId = doc._id.toString();
 
             if (response.hash) {
-                await this.addExternalIdentifier(docId, 'praxis', response.hash);
+                await this.addExternalIdentifier(docId, 'praxys', response.hash);
             }
             if (receta?.hash) {
-                await this.addExternalIdentifier(docId, 'praxis-receta', receta.hash);
+                await this.addExternalIdentifier(docId, 'praxys-receta', receta.hash);
             }
 
-            const praxisRecetas: PraxisReceta[] = recetas.map((emitida) => ({
+            const praxysRecetas: PraxysReceta[] = recetas.map((emitida) => ({
                 idReceta: String(emitida.idReceta),
                 numeroReceta: emitida.numeroReceta,
                 hash: emitida.hash,
             }));
             await this.update(docId, {
-                praxisHash: response.hash,
-                praxisRecetas,
+                praxysHash: response.hash,
+                praxysRecetas,
             });
 
             const observacion = recetas.length < ordered.length
-                ? `Praxis emitió ${recetas.length} receta(s) para ${ordered.length} mes(es)`
+                ? `Praxys emitió ${recetas.length} receta(s) para ${ordered.length} mes(es)`
                 : undefined;
             const cuirs = this.normalizeCuirs(receta?.cuirs);
 
             await this.updateSyncExterno(docId, {
-                praxis: {
+                praxys: {
                     estado: 'ok',
                     intentos,
                     idPrescripcion: String(response.idPrescripcion),

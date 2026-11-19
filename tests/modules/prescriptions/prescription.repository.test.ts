@@ -35,17 +35,17 @@ describe('PrescriptionRepository · identificadores externos', () => {
     it('adds an external identifier', async () => {
         const created = await repository.create(build() as any);
 
-        const updated = await repository.addExternalIdentifier(created._id.toString(), 'praxis', 'ID-1');
+        const updated = await repository.addExternalIdentifier(created._id.toString(), 'praxys', 'ID-1');
 
         expect(updated?.identificadoresExternos).toHaveLength(1);
-        expect(updated?.identificadoresExternos?.[0]).toMatchObject({ entidad: 'praxis', valor: 'ID-1' });
+        expect(updated?.identificadoresExternos?.[0]).toMatchObject({ entidad: 'praxys', valor: 'ID-1' });
     });
 
     it('upserts without duplicating the same entity', async () => {
         const created = await repository.create(build() as any);
-        await repository.addExternalIdentifier(created._id.toString(), 'praxis', 'ID-1');
+        await repository.addExternalIdentifier(created._id.toString(), 'praxys', 'ID-1');
 
-        const updated = await repository.addExternalIdentifier(created._id.toString(), 'praxis', 'ID-2');
+        const updated = await repository.addExternalIdentifier(created._id.toString(), 'praxys', 'ID-2');
 
         expect(updated?.identificadoresExternos).toHaveLength(1);
         expect(updated?.identificadoresExternos?.[0].valor).toBe('ID-2');
@@ -53,7 +53,7 @@ describe('PrescriptionRepository · identificadores externos', () => {
 
     it('keeps distinct entities', async () => {
         const created = await repository.create(build() as any);
-        await repository.addExternalIdentifier(created._id.toString(), 'praxis', 'ID-1');
+        await repository.addExternalIdentifier(created._id.toString(), 'praxys', 'ID-1');
         await repository.addExternalIdentifier(created._id.toString(), 'prestacion', 'PREST-1');
         const updated = await repository.addExternalIdentifier(created._id.toString(), 'registro', 'REG-1');
 
@@ -87,28 +87,28 @@ describe('PrescriptionRepository · identificadores externos', () => {
         const created = await repository.create(build() as any);
 
         const updated = await repository.updateSyncExterno(created._id.toString(), {
-            praxis: { estado: 'pendiente', intentos: 1 },
+            praxys: { estado: 'pendiente', intentos: 1 },
         });
 
-        expect(updated?.syncExterno?.praxis?.estado).toBe('pendiente');
-        expect(updated?.syncExterno?.praxis?.intentos).toBe(1);
+        expect(updated?.syncExterno?.praxys?.estado).toBe('pendiente');
+        expect(updated?.syncExterno?.praxys?.intentos).toBe(1);
     });
 
-    it('finds prescriptions by praxis-receta hash', async () => {
+    it('finds prescriptions by praxys-receta hash', async () => {
         const a = await repository.create(build() as any);
         const b = await repository.create(build() as any);
-        await repository.addExternalIdentifier(a._id.toString(), 'praxis-receta', 'RECETA-1');
-        await repository.addExternalIdentifier(b._id.toString(), 'praxis-receta', 'RECETA-1');
+        await repository.addExternalIdentifier(a._id.toString(), 'praxys-receta', 'RECETA-1');
+        await repository.addExternalIdentifier(b._id.toString(), 'praxys-receta', 'RECETA-1');
 
-        const found = await repository.findByExternalIdentifier('praxis-receta', 'RECETA-1');
+        const found = await repository.findByExternalIdentifier('praxys-receta', 'RECETA-1');
 
         expect(found).toHaveLength(2);
     });
 
-    it('finds prescriptions by praxis idAtencion and idPrescripcion', async () => {
+    it('finds prescriptions by praxys idAtencion and idPrescripcion', async () => {
         const doc = await repository.create(build({
             syncExterno: {
-                praxis: {
+                praxys: {
                     estado: 'ok',
                     intentos: 0,
                     idPrescripcion: 'PRAX-1',
@@ -117,17 +117,17 @@ describe('PrescriptionRepository · identificadores externos', () => {
             },
         }) as any);
 
-        const byAtencion = await repository.findByPraxisIdAtencion('AT-1');
-        const byPrescripcion = await repository.findByPraxisIdPrescripcion('PRAX-1');
+        const byAtencion = await repository.findByPraxysIdAtencion('AT-1');
+        const byPrescripcion = await repository.findByPraxysIdPrescripcion('PRAX-1');
 
         expect(byAtencion.map(d => d._id.toString())).toEqual([doc._id.toString()]);
         expect(byPrescripcion.map(d => d._id.toString())).toEqual([doc._id.toString()]);
     });
 
-    it('persists praxis metadata and numeroAutorizacion', async () => {
+    it('persists praxys metadata and numeroAutorizacion', async () => {
         const doc = await repository.create(build({
             syncExterno: {
-                praxis: {
+                praxys: {
                     estado: 'ok',
                     intentos: 0,
                     idPrescripcion: 'PRAX-1',
@@ -140,19 +140,19 @@ describe('PrescriptionRepository · identificadores externos', () => {
                 },
             },
             estadoDispensaActual: { tipo: 'dispensada', numeroAutorizacion: 'OPF-1' },
-            dispensa: [{ descripcion: 'Ibuprofeno', cantidad: 1, sistema: 'praxis', numeroAutorizacion: 'OPF-1' }],
+            dispensa: [{ descripcion: 'Ibuprofeno', cantidad: 1, sistema: 'praxys', numeroAutorizacion: 'OPF-1' }],
         }) as any);
 
         const found = await repository.findById(doc._id.toString());
-        const praxis = found?.syncExterno?.praxis;
+        const praxys = found?.syncExterno?.praxys;
 
-        expect(praxis?.idPrescripcion).toBe('PRAX-1');
-        expect(praxis?.idAtencion).toBe('AT-1');
-        expect(praxis?.idReceta).toBe('REC-1');
-        expect(praxis?.numeroReceta).toBe('10015');
-        expect(praxis?.cuirs).toHaveLength(1);
-        expect(praxis?.cuirs?.[0]).toBe('CUIR-1');
-        expect(praxis?.contenidoQR).toBe('QR-1');
+        expect(praxys?.idPrescripcion).toBe('PRAX-1');
+        expect(praxys?.idAtencion).toBe('AT-1');
+        expect(praxys?.idReceta).toBe('REC-1');
+        expect(praxys?.numeroReceta).toBe('10015');
+        expect(praxys?.cuirs).toHaveLength(1);
+        expect(praxys?.cuirs?.[0]).toBe('CUIR-1');
+        expect(praxys?.contenidoQR).toBe('QR-1');
         expect(found?.estadoDispensaActual?.numeroAutorizacion).toBe('OPF-1');
         expect(found?.dispensa?.[0].numeroAutorizacion).toBe('OPF-1');
     });

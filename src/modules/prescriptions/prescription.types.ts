@@ -41,7 +41,7 @@ export interface ReplacedMedication {
     supply?: IPrescriptionSupply['supply'];
 }
 
-export type ExternalIdentifierEntity = 'praxis' | 'praxis-receta' | 'prestacion' | 'registro';
+export type ExternalIdentifierEntity = 'praxys' | 'praxys-receta' | 'prestacion' | 'registro';
 
 export interface IExternalIdentifier {
     entidad: ExternalIdentifierEntity;
@@ -65,10 +65,10 @@ export interface IExternalSyncEntity {
 }
 
 export interface IExternalSync {
-    praxis?: IExternalSyncEntity;
+    praxys?: IExternalSyncEntity;
 }
 
-export interface PraxisReceta {
+export interface PraxysReceta {
     idReceta: string;
     numeroReceta?: string;
     hash: string;
@@ -143,8 +143,8 @@ export interface IPrescription extends Document {
     ordenTratamiento?: number;
     identificadoresExternos?: IExternalIdentifier[];
     syncExterno?: IExternalSync;
-    praxisHash?: string;
-    praxisRecetas?: PraxisReceta[];
+    praxysHash?: string;
+    praxysRecetas?: PraxysReceta[];
     trimestral?: boolean;
     organizacion?: {
         _id?: string;
