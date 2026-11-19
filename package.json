@@ -13,10 +13,10 @@
     "scripts": {
         "clean": "rm -rf dist",
         "build": "tsc",
-        "start": "node dist/src/server.js",
+        "start": "node dist/src/src/server.js",
         "start:dev": "ts-node ./src/server.ts",
         "start:agenda-ui": "ts-node ./src/agenda-ui.ts",
-        "start:agenda-ui:prod": "node dist/src/agenda-ui.js",
+        "start:agenda-ui:prod": "node dist/src/src/agenda-ui.js",
         "dev": "nodemon",
         "dev:agenda-ui": "nodemon --config nodemon.agenda.json",
         "dev:all": "concurrently \"npm run dev\" \"npm run dev:agenda-ui\"",

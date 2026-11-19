@@ -77,12 +77,6 @@ function isSecure(req: Request): boolean {
 }
 
 function clientIp(req: Request): string {
-    if (req.app.get('trust proxy')) {
-        const forwarded = headerValue(req, 'x-forwarded-for');
-        if (forwarded) {
-            return normalizeIp(forwarded.split(',')[0].trim());
-        }
-    }
     return normalizeIp(req.ip || req.socket.remoteAddress || '');
 }
 

@@ -30,7 +30,12 @@ class Server {
         const trustProxy = process.env.TRUST_PROXY;
         if (trustProxy) {
             const hops = parseInt(trustProxy, 10);
-            this.app.set('trust proxy', Number.isNaN(hops) ? trustProxy : hops);
+            const value = trustProxy === 'true'
+                ? true
+                : trustProxy === 'false'
+                    ? false
+                    : Number.isNaN(hops) ? trustProxy : hops;
+            this.app.set('trust proxy', value);
         }
 
         this.app.set('etag', false);

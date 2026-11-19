@@ -5,12 +5,20 @@ import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-open
 
 const API_PREFIX = process.env.API_URI_PREFIX || process.env.API_URI_PRFIX || '/api';
 
+function readDocsFile(relativePath: string): string | null {
+    try {
+        return readFileSync(join(process.cwd(), relativePath), 'utf-8');
+    } catch {
+        return null;
+    }
+}
+
 const baseSpec: Record<string, unknown> = {
     openapi: '3.0.3',
     info: {
         title: 'RecetAR API',
         version: '1.0.0',
-        description: readFileSync(join(__dirname, '../../docs/index.md'), 'utf-8'),
+        description: readDocsFile('docs/index.md') || 'RecetAR API',
     },
     servers: [
         { url: `http://localhost:${process.env.PORT || 4000}${API_PREFIX}`, description: 'Local' },
@@ -71,12 +79,9 @@ function resolveDescriptionFiles(obj: unknown): void {
     const record = obj as Record<string, unknown>;
 
     if ('x-description-file' in record && typeof record['x-description-file'] === 'string') {
-        const filePath = join(__dirname, '../..', record['x-description-file'] as string);
-        try {
-            record['description'] = readFileSync(filePath, 'utf-8');
-        } catch {
-            record['description'] = `*Documentation not found: ${record['x-description-file']}*`;
-        }
+        const content = readDocsFile(record['x-description-file'] as string);
+        record['description'] = content
+            || `*Documentation not found: ${record['x-description-file']}*`;
         delete record['x-description-file'];
     }
 
