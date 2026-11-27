@@ -3,6 +3,7 @@ import Patient from '../models/patient.model';
 import IPatient from '../interfaces/patient.interface';
 import { BaseController } from '../interfaces/classes/base-controllers.interface';
 import needle from 'needle';
+import { buildPatientSexRegex, matchesPatientSex, normalizePatientSex } from '../utils/patient-sex';
 
 class PatientController implements BaseController {
 
@@ -63,12 +64,27 @@ class PatientController implements BaseController {
     public getByDni = async (req: Request, res: Response): Promise<Response> => {
         try {
             const { dni } = req.params;
+            const sex = normalizePatientSex(req.query.sex || req.query.sexo);
+            const patientFilters: any = { dni };
+            const patientSexRegex = buildPatientSexRegex(sex);
+
+            if (patientSexRegex) {
+                patientFilters.sex = patientSexRegex;
+            }
+
             // Primero busca en base de RecetAR
-            const patients = await Patient.find({ dni });
+            const patients = await Patient.find(patientFilters);
             // Si no encuentra, busca en MPI
             if (patients.length === 0) {
-                const resp = await needle('get', `${process.env.ANDES_MPI_ENDPOINT}?documento=${dni}&activo=true&estado=validado`, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
-                resp.body.forEach((item: any) => {
+                let mpiUrl = `${process.env.ANDES_MPI_ENDPOINT}?documento=${dni}&activo=true&estado=validado`;
+                if (sex) {
+                    mpiUrl += `&sexo=${sex}`;
+                }
+
+                const resp = await needle('get', mpiUrl, { headers: { Authorization: process.env.JWT_MPI_TOKEN } });
+                const mpiPatients = Array.isArray(resp.body) ? resp.body : [];
+
+                mpiPatients.filter((item: any) => matchesPatientSex(item.sexo, sex)).forEach((item: any) => {
                     patients.push(<IPatient>{
                         dni: item.documento,
                         firstName: item.nombre,
